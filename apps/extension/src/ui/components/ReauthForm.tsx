@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { RpcError } from "../../rpc/client";
 import { errorMessage } from "../errors";
 import { useNow } from "../hooks";
@@ -30,7 +30,13 @@ export function ReauthForm({
   const [error, setError] = useState<string | null>(null);
   const [waitUntil, setWaitUntil] = useState(0);
   const now = useNow(waitUntil > 0 ? 250 : 0);
-  const waiting = waitUntil > now;
+  const waitSeconds = Math.max(0, Math.ceil((waitUntil - now) / 1000));
+  const waiting = waitSeconds > 0;
+
+  // Stops the 250 ms interval once the wait is over.
+  useEffect(() => {
+    if (waitUntil > 0 && waitSeconds === 0) setWaitUntil(0);
+  }, [waitUntil, waitSeconds]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -63,6 +69,13 @@ export function ReauthForm({
         autoFocus={autoFocus}
         mono
       />
+      {/* The live region is set once; the ticking number stays out of it. */}
+      <p role="status" className="m-0 min-h-4 text-xs text-warn">
+        {waitUntil > 0 ? t("lock.waitNotice") : ""}
+      </p>
+      <p aria-live="off" className="m-0 min-h-4 font-mono text-xs text-warn">
+        {waiting ? t("lock.countdown", { seconds: waitSeconds }) : ""}
+      </p>
       <div>
         <Button
           type="submit"

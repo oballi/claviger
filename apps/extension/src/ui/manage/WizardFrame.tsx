@@ -40,7 +40,11 @@ export function WizardFrame({
                 >
                   <span className="font-mono text-[11px]">{String(i + 1).padStart(2, "0")}</span>
                   <span className="flex-1">{t(key)}</span>
-                  {i < step ? <Icon name="check" size={14} /> : null}
+                  {i < step ? (
+                    <span role="img" aria-label={t("setup.step.done")} className="flex">
+                      <Icon name="check" size={14} />
+                    </span>
+                  ) : null}
                   {current ? (
                     <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-text" />
                   ) : null}

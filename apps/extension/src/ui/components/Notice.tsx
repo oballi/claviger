@@ -11,12 +11,13 @@ export function Notice({
   tone?: "muted" | "warn";
 }) {
   return (
-    <div
-      role="note"
-      className={`flex gap-4 border-t border-hair pt-4 text-[13px] leading-normal ${tone === "warn" ? "text-warn" : "text-muted"}`}
-    >
-      <span className="shrink-0 font-mono text-[11px] tracking-wide">{label}</span>
-      <span>{children}</span>
+    <div role="note" className="flex gap-4 border-t border-hair pt-4 text-[13px] leading-normal">
+      <span
+        className={`shrink-0 font-mono text-[11px] tracking-wide ${tone === "warn" ? "text-warn" : "text-muted"}`}
+      >
+        {label}
+      </span>
+      <span className="text-muted">{children}</span>
     </div>
   );
 }

@@ -145,6 +145,7 @@ export const tr = {
   "setup.step.recovery": "Kurtarma kodu",
   "setup.step.lock": "Kilit tercihi",
   "setup.step.storage": "Depolama",
+  "setup.step.done": "Tamamlandı",
   "setup.step.account": "İlk hesap",
 } as const;
 

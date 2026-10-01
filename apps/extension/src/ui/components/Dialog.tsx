@@ -28,12 +28,20 @@ export function Dialog({
     return () => opener?.focus?.();
   }, []);
 
-  function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key === "Escape") {
+  // Document-level so Escape still closes the dialog after focus has left the panel.
+  const close = useRef(onClose);
+  close.current = onClose;
+  useEffect(() => {
+    function onEscape(event: globalThis.KeyboardEvent) {
+      if (event.key !== "Escape") return;
       event.stopPropagation();
-      onClose();
-      return;
+      close.current();
     }
+    document.addEventListener("keydown", onEscape);
+    return () => document.removeEventListener("keydown", onEscape);
+  }, []);
+
+  function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key !== "Tab" || !panel.current) return;
     const items = Array.from(panel.current.querySelectorAll<HTMLElement>(FOCUSABLE));
     if (items.length === 0) return;

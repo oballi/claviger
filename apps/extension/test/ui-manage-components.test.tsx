@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -91,6 +91,23 @@ describe("Dialog", () => {
   });
 });
 
+describe("Dialog escape", () => {
+  it("closes on Escape even when focus has left the panel", async () => {
+    const { ui } = await harness();
+    const onClose = vi.fn();
+    renderUi(
+      <Dialog title="Başlık" onClose={onClose}>
+        <button type="button">birinci</button>
+      </Dialog>,
+      ui,
+    );
+    (document.activeElement as HTMLElement).blur();
+    expect(document.activeElement).toBe(document.body);
+    await userEvent.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("ReauthForm", () => {
   it("shows a wrong password and passes a fresh token and the password on success", async () => {
     const { ui } = await harness();
@@ -145,6 +162,56 @@ describe("ReauthForm", () => {
     await vi.waitFor(() => expect(screen.getByRole("alert").textContent).toBe("Parola yanlış."));
     await userEvent.type(screen.getByLabelText("Ana parola"), PASSWORD);
     expect(screen.getByRole("button", { name: "Onayla" })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("alert").textContent).toBe("Parola yanlış.");
+    expect(screen.getByText(/^[12] sn$/)).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toBe(t("lock.waitNotice"));
+  });
+
+  it("enables the button again once the wait is over", async () => {
+    const { ui } = await harness();
+    for (let i = 0; i < 2; i++)
+      await ui.rpc("reauth", { password: "wrong password" }).catch(() => undefined);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      renderUi(<ReauthForm submitLabel="Onayla" onConfirmed={() => {}} />, ui);
+      await userEvent.type(screen.getByLabelText("Ana parola"), "wrong password", { delay: null });
+      await userEvent.click(screen.getByRole("button", { name: "Onayla" }));
+      await vi.waitFor(() => expect(screen.getByText(/^[12] sn$/)).toBeTruthy());
+      await vi.advanceTimersByTimeAsync(3000);
+      await vi.waitFor(() => expect(screen.getByRole("status").textContent).toBe(""));
+      await userEvent.type(screen.getByLabelText("Ana parola"), "x", { delay: null });
+      expect(screen.getByRole("button", { name: "Onayla" })).toHaveProperty("disabled", false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("ignores direct submits while throttled or disabled", async () => {
+    const { ui } = await harness();
+    for (let i = 0; i < 2; i++)
+      await ui.rpc("reauth", { password: "wrong password" }).catch(() => undefined);
+    let reauthCalls = 0;
+    const counting: typeof ui = {
+      ...ui,
+      rpc: ((type: string, payload: unknown) => {
+        if (type === "reauth") reauthCalls++;
+        return (ui.rpc as (t: string, p: unknown) => unknown)(type, payload);
+      }) as typeof ui.rpc,
+    };
+    const first = renderUi(<ReauthForm submitLabel="Onayla" onConfirmed={() => {}} />, counting);
+    await userEvent.type(screen.getByLabelText("Ana parola"), "wrong password");
+    await userEvent.click(screen.getByRole("button", { name: "Onayla" }));
+    await vi.waitFor(() => expect(screen.getByText(/^[12] sn$/)).toBeTruthy());
+    expect(reauthCalls).toBe(1);
+    await userEvent.type(screen.getByLabelText("Ana parola"), PASSWORD);
+    fireEvent.submit(screen.getByLabelText("Ana parola").closest("form")!);
+    expect(reauthCalls).toBe(1);
+    first.unmount();
+
+    renderUi(<ReauthForm submitLabel="Kapalı" disabled onConfirmed={() => {}} />, counting);
+    await userEvent.type(screen.getByLabelText("Ana parola"), PASSWORD);
+    fireEvent.submit(screen.getByLabelText("Ana parola").closest("form")!);
+    expect(reauthCalls).toBe(1);
   });
 });
 
@@ -184,6 +251,9 @@ describe("LockPolicyOptions", () => {
     expect(onChange).toHaveBeenLastCalledWith({ kind: "never" });
     expect(screen.getByText("Bu bilgisayara erişen biri kodlarını görebilir.")).toBeTruthy();
     expect(screen.getByRole("group", { name: "Kilit tercihi" })).toBeTruthy();
+    expect(screen.getByText(t("picker.never.hint"), { exact: false })).toBeTruthy();
+    for (const radio of screen.getAllByRole("radio", { name: /Tarayıcı|Hiçbir/ }))
+      expect(document.querySelector(`label[for="${radio.id}"]`)?.className).toContain("min-h-11");
   });
 
   it("explains the Firefox screen-lock behaviour", async () => {
@@ -267,6 +337,8 @@ describe("frames", () => {
     );
     expect(steps[2]!.getAttribute("aria-current")).toBe("step");
     expect(steps[1]!.getAttribute("aria-current")).toBeNull();
+    expect(within(steps[1]!).getByLabelText("Tamamlandı")).toBeTruthy();
+    expect(within(steps[2]!).queryByLabelText("Tamamlandı")).toBeNull();
     expect(screen.getByText("03 / 05")).toBeTruthy();
   });
 

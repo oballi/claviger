@@ -148,5 +148,6 @@ export const en: Record<MessageKey, string> = {
   "setup.step.recovery": "Recovery code",
   "setup.step.lock": "Lock setting",
   "setup.step.storage": "Storage",
+  "setup.step.done": "Done",
   "setup.step.account": "First account",
 };

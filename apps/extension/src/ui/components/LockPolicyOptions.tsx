@@ -33,7 +33,7 @@ function Option({
       <div className="flex flex-1 flex-col gap-1">
         <label
           htmlFor={id}
-          className="flex cursor-pointer items-center gap-2 text-[15px] font-medium"
+          className="flex min-h-11 cursor-pointer items-center gap-2 text-[15px] font-medium"
         >
           {title}
           {badge ? (
