@@ -83,6 +83,7 @@ export function RecoverScreen({
           code={fresh}
           doneLabel={t("recover.done")}
           onDone={() => {
+            rpc("confirmRecoveryCode", {}).catch(() => {});
             setFresh(null);
             onDone();
           }}

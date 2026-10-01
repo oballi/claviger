@@ -264,6 +264,23 @@ export const tr = {
   "security.recoveryCreated": "Yeni kurtarma kodu kaydedildi.",
   "security.lock": "Kilit",
   "security.lockHint": "Kasa ne zaman kendiliğinden kilitlensin.",
+  "security.display": "Görünüm ve pano",
+  "security.view": "Görünüm",
+  "security.viewHint": "Kodlar popup'ta nasıl görünsün.",
+  "view.normal": "Normal",
+  "view.compact": "Kompakt",
+  "view.hidden": "Gizli",
+  "view.hiddenHint": "Kodlar gizli kalır, tıklayınca kopyalanır.",
+  "security.clipboard": "Panoyu temizle",
+  "security.clipboardHint":
+    "Kopyalanan kod bu süre sonunda panodan silinir. Bu sürede başka bir şey kopyalarsan o da silinir.",
+  "clipboard.30": "30 sn sonra",
+  "clipboard.60": "1 dk sonra",
+  "clipboard.0": "Hiçbir zaman",
+  "security.recoveryUnconfirmed":
+    "Kurtarma kodunu kaydettiğini onaylamadın. Kaydetmediysen yeni bir kod oluştur; eskisi geçersiz olur.",
+  "security.recoveryConfirm": "Kaydettim",
+  "codes.copyHidden": "{issuer} kodunu kopyala",
   "security.secrets": "Gizli anahtar",
   "security.reveal": "Gizli anahtarı göster için parola iste",
   "security.revealHint":

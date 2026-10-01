@@ -269,6 +269,23 @@ export const en: Record<MessageKey, string> = {
   "security.recoveryCreated": "New recovery code saved.",
   "security.lock": "Lock",
   "security.lockHint": "When the vault should lock on its own.",
+  "security.display": "Display and clipboard",
+  "security.view": "Display",
+  "security.viewHint": "How codes look in the popup.",
+  "view.normal": "Normal",
+  "view.compact": "Compact",
+  "view.hidden": "Hidden",
+  "view.hiddenHint": "Codes stay hidden and are copied on click.",
+  "security.clipboard": "Clear clipboard",
+  "security.clipboardHint":
+    "A copied code is wiped from the clipboard after this time. Anything else you copy in the meantime is wiped too.",
+  "clipboard.30": "After 30 s",
+  "clipboard.60": "After 1 min",
+  "clipboard.0": "Never",
+  "security.recoveryUnconfirmed":
+    "You haven't confirmed saving your recovery code. If you didn't save it, create a new one; the old one stops working.",
+  "security.recoveryConfirm": "I saved it",
+  "codes.copyHidden": "Copy the {issuer} code",
   "security.secrets": "Secret keys",
   "security.reveal": "Ask for the password to show a secret key",
   "security.revealHint":

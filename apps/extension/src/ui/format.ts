@@ -2,6 +2,14 @@ import type { LockPolicy } from "../background/settings";
 import type { SnapshotReason } from "../background/snapshots";
 import type { MessageKey, Translate } from "./i18n/i18n";
 
+/** Same grouping as formatCode for numeric codes, but no digit ever reaches the DOM. */
+export function maskCode(digits: number): string {
+  const dots = "\u2022".repeat(digits);
+  if (digits < 6) return dots;
+  const head = digits === 6 ? 3 : digits - 4;
+  return `${dots.slice(0, head)} ${dots.slice(head)}`;
+}
+
 /** "492018" → "492 018", "84021937" → "8402 1937"; Steam codes stay as they are. */
 export function formatCode(code: string): string {
   if (!/^\d+$/.test(code) || code.length < 6) return code;

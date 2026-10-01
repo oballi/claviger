@@ -39,8 +39,12 @@ describe("SetupWizard", () => {
     await userEvent.click(
       screen.getByRole("checkbox", { name: "Kodu güvenli bir yere kaydettim." }),
     );
+    expect((await ui.rpc("getState", {})).recoveryCodeConfirmed).toBe(false);
     await userEvent.click(done);
     expect(screen.queryByTestId("recovery-code")).toBeNull();
+    await vi.waitFor(async () =>
+      expect((await ui.rpc("getState", {})).recoveryCodeConfirmed).toBe(true),
+    );
 
     expect(current()).toContain("Kilit tercihi");
     await userEvent.click(screen.getByRole("radio", { name: "Belirli bir süre kullanılmayınca" }));
@@ -183,7 +187,9 @@ describe("SetupWizard", () => {
     await enterPassword();
     await userEvent.click(screen.getByRole("button", { name: "Şimdilik atla" }));
     await screen.findByRole("heading", { name: "Kasan ne zaman kilitlensin?" });
-    expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1 }));
+    await vi.waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1 })),
+    );
   });
 
   it("selects a storage option by clicking its hint", async () => {

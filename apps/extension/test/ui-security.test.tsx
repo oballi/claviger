@@ -426,4 +426,44 @@ describe("SecurityScreen", () => {
     await userEvent.click(submit);
     await vi.waitFor(async () => expect((await ui.rpc("getState", {})).status).toBe("no-vault"));
   });
+  it("changes the display mode without a password", async () => {
+    const { service } = await open();
+    const display = region("Görünüm ve pano");
+    await userEvent.selectOptions(within(display).getByLabelText("Görünüm"), "Gizli");
+    expect(await screen.findByText("Kaydedildi.")).toBeTruthy();
+    expect((await service.getState()).viewMode).toBe("hidden");
+    expect(within(display).queryByLabelText("Ana parola")).toBeNull();
+  });
+
+  it("changes clipboard clearing without a password", async () => {
+    const { service, onChanged } = await open();
+    const display = region("Görünüm ve pano");
+    await userEvent.selectOptions(within(display).getByLabelText("Panoyu temizle"), "30 sn sonra");
+    expect(await screen.findByText("Kaydedildi.")).toBeTruthy();
+    expect((await service.getState()).clipboardClearSec).toBe(30);
+    expect(onChanged).toHaveBeenCalled();
+    expect(within(display).queryByLabelText("Ana parola")).toBeNull();
+  });
+
+  it("warns about an unconfirmed recovery code and confirms it", async () => {
+    const { service } = await open();
+    const warning = screen.getByText(/Kurtarma kodunu kaydettiğini onaylamadın/);
+    expect(warning).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Kaydettim" }));
+    await vi.waitFor(async () =>
+      expect((await service.getState()).recoveryCodeConfirmed).toBe(true),
+    );
+  });
+
+  it("the warning's new-code button opens the recovery panel", async () => {
+    await open();
+    const buttons = screen.getAllByRole("button", { name: "Yeni kod oluştur" });
+    await userEvent.click(buttons[0]!);
+    expect(await screen.findByText("Yeni kod oluşturunca eskisi geçersiz olur.")).toBeTruthy();
+  });
+
+  it("no warning without a recovery code", async () => {
+    await open(await harness({ recoveryCode: false }));
+    expect(screen.queryByText(/Kurtarma kodunu kaydettiğini onaylamadın/)).toBeNull();
+  });
 });

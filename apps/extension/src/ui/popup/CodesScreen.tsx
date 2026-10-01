@@ -126,10 +126,13 @@ export function CodesScreen({
     setActionError(null);
     try {
       await copy(account.code);
-      setToast(t("codes.copied", { issuer: account.issuer || account.label }));
     } catch {
       setActionError(t("codes.copyFailed"));
+      return;
     }
+    setToast(t("codes.copied", { issuer: account.issuer || account.label }));
+    // Clearing is best effort; a failed report must not turn a good copy into an error.
+    rpc("clipboardCopied", {}).catch(() => {});
   }
 
   async function nextHotp(account: AccountView) {
@@ -180,6 +183,7 @@ export function CodesScreen({
       account={account}
       large={large}
       suggested={suggested.has(account.id)}
+      mode={state.viewMode}
       onCopy={(a) => void copyCode(a)}
       onNextHotp={(a) => void nextHotp(a)}
     />

@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import type { LockPolicy } from "../../background/settings";
+import type { LockPolicy, ViewMode } from "../../background/settings";
 import type { ServiceState } from "../../background/vaultService";
 import { Button } from "../components/Button";
 import { NewPasswordFields, newPasswordProblem } from "../components/NewPasswordFields";
+import { Notice } from "../components/Notice";
 import { ReauthForm } from "../components/ReauthForm";
 import { RecoveryCodeDisplay } from "../components/RecoveryCodeDisplay";
 import { TextField } from "../components/TextField";
+import { errorMessage } from "../errors";
 import { lockPolicyLabel } from "../format";
 import { useT } from "../i18n/i18n";
 import { useUi } from "../platform";
@@ -23,6 +25,9 @@ const POLICIES: LockPolicy[] = [
 ];
 
 const policyKey = (p: LockPolicy) => (p.kind === "timeout" ? `timeout-${p.minutes}` : p.kind);
+
+const VIEW_MODES: ViewMode[] = ["normal", "compact", "hidden"];
+const CLIPBOARD_SECONDS = [30, 60, 0] as const;
 
 const selectClass =
   "h-11 rounded-full border border-line bg-bg px-3 font-sans text-[13px] text-text";
@@ -85,6 +90,17 @@ export function SecurityScreen({
     onChanged();
   }
 
+  async function savePreference(action: () => Promise<unknown>) {
+    setMessage("");
+    try {
+      await action();
+      setMessage(t("security.saved"));
+      onChanged();
+    } catch (e) {
+      setMessage(errorMessage(t, e));
+    }
+  }
+
   const cancel = (
     <div>
       <Button onClick={() => open(null)}>{t("common.cancel")}</Button>
@@ -97,6 +113,25 @@ export function SecurityScreen({
       <p role="status" className="m-0 -my-6 min-h-4 text-sm">
         {message}
       </p>
+      {state.hasRecoveryCode && !state.recoveryCodeConfirmed && !codePending ? (
+        <div className="flex flex-col gap-3">
+          <Notice label={t("security.recovery")} tone="warn">
+            {t("security.recoveryUnconfirmed")}
+          </Notice>
+          <div className="flex gap-2">
+            <Button
+              onClick={() =>
+                void savePreference(async () => {
+                  await rpc("confirmRecoveryCode", {});
+                })
+              }
+            >
+              {t("security.recoveryConfirm")}
+            </Button>
+            <Button onClick={() => open("recovery")}>{t("security.recoveryNew")}</Button>
+          </div>
+        </div>
+      ) : null}
       {codePending ? (
         <p className="m-0 text-[13px] text-warn">{t("security.saveCodeFirst")}</p>
       ) : null}
@@ -191,6 +226,7 @@ export function SecurityScreen({
               code={freshCode}
               doneLabel={t("security.recoveryDone")}
               onDone={() => {
+                rpc("confirmRecoveryCode", {}).catch(() => {});
                 setFreshCode(null);
                 done(t("security.recoveryCreated"), "recovery");
               }}
@@ -246,7 +282,56 @@ export function SecurityScreen({
         </SettingsRow>
       </SettingsSection>
 
-      <SettingsSection num="02" title={t("security.secrets")}>
+      <SettingsSection num="02" title={t("security.display")}>
+        <SettingsRow
+          title={t("security.view")}
+          description={`${t("security.viewHint")} ${state.viewMode === "hidden" ? t("view.hiddenHint") : ""}`.trim()}
+          action={
+            <select
+              aria-label={t("security.view")}
+              disabled={codePending}
+              className={selectClass}
+              value={state.viewMode}
+              onChange={(e) =>
+                void savePreference(() => rpc("setViewMode", { mode: e.target.value as ViewMode }))
+              }
+            >
+              {VIEW_MODES.map((m) => (
+                <option key={m} value={m}>
+                  {t(`view.${m}`)}
+                </option>
+              ))}
+            </select>
+          }
+        />
+        <SettingsRow
+          title={t("security.clipboard")}
+          description={t("security.clipboardHint")}
+          action={
+            <select
+              aria-label={t("security.clipboard")}
+              disabled={codePending}
+              className={selectClass}
+              value={state.clipboardClearSec}
+              onChange={(e) =>
+                void savePreference(() =>
+                  rpc("setClipboardClear", {
+                    seconds: Number(e.target.value) as (typeof CLIPBOARD_SECONDS)[number],
+                  }),
+                )
+              }
+            >
+              {CLIPBOARD_SECONDS.map((s) => (
+                <option key={s} value={s}>
+                  {t(`clipboard.${s}`)}
+                </option>
+              ))}
+            </select>
+          }
+        />
+      </SettingsSection>
+
+      <SettingsSection num="03" title={t("security.secrets")}>
         <SettingsRow
           title={t("security.reveal")}
           description={t("security.revealHint")}
@@ -288,7 +373,7 @@ export function SecurityScreen({
         </SettingsRow>
       </SettingsSection>
 
-      <SettingsSection num="03" title={t("security.danger")}>
+      <SettingsSection num="04" title={t("security.danger")}>
         <SettingsRow
           title={t("security.delete")}
           description={

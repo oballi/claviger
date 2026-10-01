@@ -32,8 +32,10 @@ describe("RecoverScreen", () => {
     expect(document.activeElement).toBe(screen.getByLabelText("Kurtarma kodu"));
     await fill(recoveryCode!);
     expect(await screen.findByRole("heading", { name: "Yeni kurtarma kodun." })).toBeTruthy();
-    expect(document.activeElement).toBe(
-      screen.getByRole("heading", { name: "Yeni kurtarma kodun." }),
+    await vi.waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("heading", { name: "Yeni kurtarma kodun." }),
+      ),
     );
     await userEvent.click(screen.getByRole("button", { name: "Kopyala" }));
     const copied = ui.copy.mock.calls[0]![0];
@@ -53,6 +55,9 @@ describe("RecoverScreen", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "Kodlarıma git" }));
     expect(onDone).toHaveBeenCalled();
+    await vi.waitFor(async () =>
+      expect((await ui.rpc("getState", {})).recoveryCodeConfirmed).toBe(true),
+    );
     await ui.rpc("lock", {});
     await expect(
       ui.rpc("unlockWithRecovery", { code: copied, newPassword: "ikinci parola cümlesi" }),
