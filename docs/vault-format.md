@@ -6,12 +6,12 @@ This document describes how otp-vault stores data so that anyone can audit it, r
 
 The vault lives in one browser storage area (`local` by default, or `sync`). Every key starts with `vault:`.
 
-| Key                 | Content                                               | Encrypted                    |
-| ------------------- | ----------------------------------------------------- | ---------------------------- |
-| `vault:header`      | Format version, vault id and key slots                | no (holds only wrapped keys) |
-| `vault:index`       | Account order and pins                                | yes                          |
-| `vault:acct:<uuid>` | One account                                           | yes                          |
-| `vault:tomb:<uuid>` | Deletion marker `{ "deletedAt": <ms> }`, kept 90 days | no                           |
+| Key                 | Content                                                                                           | Encrypted                    |
+| ------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------- |
+| `vault:header`      | Format version, vault id and key slots                                                            | no (holds only wrapped keys) |
+| `vault:index`       | Account order and pins                                                                            | yes                          |
+| `vault:acct:<uuid>` | One account                                                                                       | yes                          |
+| `vault:tomb:<uuid>` | Deletion marker `{ "deletedAt": <ms> }`, kept at least 90 days so sync can propagate the deletion | no                           |
 
 Each account is a separate item so that browser sync can merge changes per account. Keys starting with `lock:` hold lock state; they are never written to `sync` and are not part of the vault.
 

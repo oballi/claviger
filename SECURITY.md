@@ -24,9 +24,9 @@ Before 1.0.0 only the latest 0.x release receives security fixes. The support po
 What otp-vault is designed to protect against:
 
 - **Someone reading the browser's storage** (stolen disk image, synced profile, malware that copies files): every account record is encrypted with AES-256-GCM under a random data key. That key is wrapped by a key derived from the master password with Argon2id (64 MiB, 3 iterations by default) and, optionally, by a recovery code. Records are bound to their storage key with authenticated data, so swapping records is detected. The format is documented in [docs/vault-format.md](docs/vault-format.md).
-- **Web pages and other extensions:** the background service only answers messages from otp-vault's own pages. Content scripts are injected only on demand, into the matching site, to fill a code.
+- **Web pages and other extensions:** the background service only answers messages from otp-vault's own pages. otp-vault has no persistent content scripts; the planned autofill injects code only on demand, into the matching site.
 - **Online password guessing:** after three wrong passwords each attempt waits longer (2 s doubling up to 60 s). Data is never deleted because of wrong attempts.
-- **Shoulder-surfing and casual access:** showing a secret, exporting, and changing the password, lock policy, storage area or recovery code all require the password again. Each confirmation is single-use and valid for 60 seconds.
+- **Shoulder-surfing and casual access:** exporting, changing the password, lock policy, storage area or recovery code all require the password again. Showing a secret key asks too, unless the user turns that off. Each confirmation is single-use and valid for 60 seconds.
 
 Out of scope:
 

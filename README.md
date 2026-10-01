@@ -9,7 +9,7 @@
 ## Features
 
 - **Encrypted vault.** Every account is encrypted with AES-256-GCM. The key is protected by your master password (Argon2id) and, optionally, a recovery code. See [docs/vault-format.md](docs/vault-format.md).
-- **You choose when it locks.** Lock when the browser closes, also when the screen locks, after 15 min / 1 h / 4 h of inactivity, or never. Showing a secret, exporting and changing security settings always ask for the password again.
+- **You choose when it locks.** Lock when the browser closes, also when the screen locks, after 15 min / 1 h / 4 h of inactivity, or never. Exporting and changing security settings always ask for the password again; so does showing a secret key, unless you turn that off.
 - **Local first.** The vault lives in the browser's local storage by default. Browser sync is opt-in and only ever stores encrypted data.
 - **Site-aware.** Accounts can be linked to the sites they belong to, so the right code is shown first.
 - **Imports** from Google Authenticator, the Authenticator extension, Aegis, 2FAS and plain `otpauth://` links. A preview shows exactly what will be added; duplicates are skipped.

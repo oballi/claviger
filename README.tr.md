@@ -15,7 +15,7 @@
   - 15 dakika, 1 saat veya 4 saat kullanılmayınca.
   - Hiçbir zaman.
 
-  Gizli anahtarı göstermek, dışa aktarmak ve güvenlik ayarlarını değiştirmek her zaman parolayı yeniden ister.
+  Dışa aktarmak ve güvenlik ayarlarını değiştirmek her zaman parolayı yeniden ister; gizli anahtarı göstermek de, sen bunu kapatmadıkça parola ister.
 
 - **Önce yerel.** Kasa varsayılan olarak tarayıcının yerel deposunda durur. Tarayıcı eşitlemesi isteğe bağlıdır ve oraya yalnızca şifreli veri yazılır.
 - **Siteyi tanır.** Hesaplar ait oldukları sitelere bağlanabilir; doğru kod en üstte görünür.
