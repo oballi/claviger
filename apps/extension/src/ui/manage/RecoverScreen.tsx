@@ -13,10 +13,13 @@ import { PageTitle } from "./ManageFrame";
 /** Spec §5.6: the recovery code opens the vault, a new password is set and the code is rotated. */
 export function RecoverScreen({
   hasRecoveryCode,
+  onSubmitting,
   onDone,
   onCancel,
 }: {
   hasRecoveryCode: boolean | null;
+  /** Called just before the recovery request, so the host keeps this screen once the vault opens. */
+  onSubmitting?: () => void;
   onDone: () => void;
   onCancel: () => void;
 }) {
@@ -53,6 +56,7 @@ export function RecoverScreen({
     if (problem) return;
     setBusy(true);
     try {
+      onSubmitting?.();
       const result = await rpc("unlockWithRecovery", { code: code.trim(), newPassword: password });
       setCode("");
       setPassword("");

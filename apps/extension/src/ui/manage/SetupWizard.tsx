@@ -183,7 +183,14 @@ const DEFAULT_POLICY: LockPolicy = { kind: "browser-close" };
  * created at step 2 with default lock and storage; steps 3–4 then change those through
  * `reauth` with the password kept in state until step 4 is done.
  */
-export function SetupWizard({ onFinished }: { onFinished: (next: "accounts" | "backup") => void }) {
+export function SetupWizard({
+  onFinished,
+  onCreating,
+}: {
+  onFinished: (next: "accounts" | "backup") => void;
+  /** Called just before the vault is created, so the host can tell this tab from one that only watched. */
+  onCreating?: () => void;
+}) {
   const { rpc } = useUi();
   const t = useT();
   const [state, dispatch] = useReducer(setupReducer, initialSetup);
@@ -239,6 +246,7 @@ export function SetupWizard({ onFinished }: { onFinished: (next: "accounts" | "b
         go(2);
         return;
       }
+      onCreating?.();
       const result = await rpc("setup", {
         password,
         createRecoveryCode: withCode,
