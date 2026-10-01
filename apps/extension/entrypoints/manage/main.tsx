@@ -1,10 +1,9 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { StatusPlaceholder } from "../../src/ui/StatusPlaceholder";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <main style={{ fontFamily: "system-ui, sans-serif", padding: 32 }}>
-      <h1>otp-vault</h1>
-    </main>
+    <StatusPlaceholder title="otp-vault — Yönetim" />
   </StrictMode>,
 );
