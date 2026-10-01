@@ -245,4 +245,43 @@ export const en: Record<MessageKey, string> = {
   "account.copySecret": "Copy secret key",
   "account.revealWarning":
     "Anyone with this can generate your codes on another device. Don't share your screen.",
+  "security.title": "Security.",
+  "security.body":
+    "Password, lock and secret-key behaviour. Every change here asks for your master password.",
+  "security.saved": "Saved.",
+  "security.access": "Access",
+  "security.password": "Master password",
+  "security.passwordHint":
+    "The password that protects all your accounts. Changing it leaves accounts untouched; only the vault key is re-protected.",
+  "security.passwordChange": "Change password",
+  "security.passwordChanged": "Password changed.",
+  "security.recovery": "Recovery code",
+  "security.recoveryYes":
+    "The only way into your vault if you forget your password. Creating a new one invalidates the old.",
+  "security.recoveryNo":
+    "You have no recovery code. If you forget your password, you lose access to your codes.",
+  "security.recoveryNew": "Create new code",
+  "security.recoveryCreate": "Create code",
+  "security.recoveryWarning": "Creating a new code makes the old one stop working.",
+  "security.recoverySubmit": "Create",
+  "security.recoveryDone": "Done",
+  "security.recoveryCreated": "New recovery code saved.",
+  "security.lock": "Lock",
+  "security.lockHint": "When the vault should lock on its own.",
+  "security.secrets": "Secret keys",
+  "security.reveal": "Ask for the password to show a secret key",
+  "security.revealHint":
+    "Viewing an account's setup key and QR code asks for the password every time.",
+  "security.revealOffWarning":
+    "If you turn this off, anyone at this computer can copy every secret key while the vault is open.",
+  "security.danger": "Danger zone",
+  "security.delete": "Delete vault",
+  "security.deleteHint":
+    "All accounts are permanently removed from this device. Take a backup first.",
+  "security.deleteWarning": "This can't be undone.",
+  "security.deleteWord": "DELETE",
+  "security.deleteType": "Type {word} to confirm",
+  "security.deleteSubmit": "Permanently delete vault",
+  "security.deleted": "Vault deleted.",
+  "security.deleteSync": "The vault is deleted from all your synced devices.",
 };

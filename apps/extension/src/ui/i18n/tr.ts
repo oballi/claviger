@@ -241,6 +241,44 @@ export const tr = {
   "account.copySecret": "Gizli anahtarı kopyala",
   "account.revealWarning":
     "Bu bilgilerle kodların başka bir cihazda da üretilebilir. Ekranı kimseyle paylaşma.",
+  "security.title": "Güvenlik.",
+  "security.body":
+    "Parola, kilit ve gizli anahtar davranışı. Buradaki her değişiklik ana parolanı ister.",
+  "security.saved": "Kaydedildi.",
+  "security.access": "Erişim",
+  "security.password": "Ana parola",
+  "security.passwordHint":
+    "Tüm hesaplarını koruyan parola. Değiştirmek hesaplarına dokunmaz; yalnızca kasa anahtarı yeni parolayla korunur.",
+  "security.passwordChange": "Parolayı değiştir",
+  "security.passwordChanged": "Parola değiştirildi.",
+  "security.recovery": "Kurtarma kodu",
+  "security.recoveryYes":
+    "Parolanı unutursan kasanı açmanın tek yolu. Yenisini oluşturunca eskisi geçersiz olur.",
+  "security.recoveryNo": "Kurtarma kodun yok. Parolanı unutursan kodlarına erişemezsin.",
+  "security.recoveryNew": "Yeni kod oluştur",
+  "security.recoveryCreate": "Kod oluştur",
+  "security.recoveryWarning": "Yeni kod oluşturunca eskisi geçersiz olur.",
+  "security.recoverySubmit": "Oluştur",
+  "security.recoveryDone": "Tamam",
+  "security.recoveryCreated": "Yeni kurtarma kodu kaydedildi.",
+  "security.lock": "Kilit",
+  "security.lockHint": "Kasa ne zaman kendiliğinden kilitlensin.",
+  "security.secrets": "Gizli anahtar",
+  "security.reveal": "Gizli anahtarı göster için parola iste",
+  "security.revealHint":
+    "Bir hesabın kurulum anahtarını ve QR kodunu görüntülemek her seferinde parola ister.",
+  "security.revealOffWarning":
+    "Kapatırsan bu bilgisayara erişen biri kasa açıkken tüm gizli anahtarları kopyalayabilir.",
+  "security.danger": "Tehlikeli bölge",
+  "security.delete": "Kasayı sil",
+  "security.deleteHint":
+    "Tüm hesaplar bu cihazdan kalıcı olarak silinir. Önce yedek almanı öneririz.",
+  "security.deleteWarning": "Bu işlem geri alınamaz.",
+  "security.deleteWord": "SİL",
+  "security.deleteType": "Onaylamak için {word} yaz",
+  "security.deleteSubmit": "Kasayı kalıcı olarak sil",
+  "security.deleted": "Kasa silindi.",
+  "security.deleteSync": "Kasa, eşitlenen tüm cihazlarından silinir.",
 } as const;
 
 export type MessageKey = keyof typeof tr;

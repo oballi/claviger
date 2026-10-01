@@ -20,6 +20,7 @@ export async function harness(
     lockPolicy?: LockPolicy;
     tabUrl?: string;
     recoveryCode?: boolean;
+    storageArea?: "local" | "sync";
   } = {},
 ) {
   const p = memoryPlatform();
@@ -31,7 +32,7 @@ export async function harness(
       password: PASSWORD,
       createRecoveryCode: opts.recoveryCode ?? true,
       lockPolicy: opts.lockPolicy ?? { kind: "browser-close" },
-      storageArea: "local",
+      storageArea: opts.storageArea ?? "local",
     }));
     if (status === "locked") await service.lock();
   }
