@@ -48,16 +48,15 @@ export function twofasPlain(): Record<string, unknown> {
   };
 }
 
-export function twofasEncrypted(password: string): Record<string, unknown> {
+export function twofasEncrypted(
+  password: string,
+  plaintext = JSON.stringify(TWOFAS_SERVICES),
+): Record<string, unknown> {
   const salt = randomBytes(256);
   const iv = randomBytes(12);
   const key = pbkdf2Sync(Buffer.from(password, "utf8"), salt, 10_000, 32, "sha256");
   const cipher = createCipheriv("aes-256-gcm", key, iv);
-  const ct = Buffer.concat([
-    cipher.update(JSON.stringify(TWOFAS_SERVICES)),
-    cipher.final(),
-    cipher.getAuthTag(),
-  ]);
+  const ct = Buffer.concat([cipher.update(plaintext), cipher.final(), cipher.getAuthTag()]);
   return {
     services: [],
     groups: [],

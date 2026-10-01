@@ -66,8 +66,9 @@ async function decryptServices(
     const services: unknown = JSON.parse(utf8Decode(plain));
     if (!Array.isArray(services)) throw new Error("not an array");
     return services;
-  } catch (cause) {
-    throw new CoreError("corrupt-file", "2FAS payload is malformed", { cause });
+  } catch {
+    // cause eklenmez: JSON.parse hata mesajı çözülmüş düz metinden alıntı yapar.
+    throw new CoreError("corrupt-file", "2FAS payload is malformed");
   }
 }
 
@@ -81,9 +82,10 @@ export async function parseTwofas(json: unknown, password?: string): Promise<Imp
       `Unsupported 2FAS schema version ${file.data.schemaVersion}`,
     );
   }
-  const services = file.data.servicesEncrypted
-    ? await decryptServices(file.data.servicesEncrypted, password)
-    : (file.data.services ?? []);
+  const services =
+    file.data.servicesEncrypted !== undefined
+      ? await decryptServices(file.data.servicesEncrypted, password)
+      : (file.data.services ?? []);
 
   const result = emptyResult();
   services.forEach((raw, position) => {
@@ -95,7 +97,7 @@ export async function parseTwofas(json: unknown, password?: string): Promise<Imp
     const s = service.data;
     const otp: NonNullable<typeof s.otp> = s.otp ?? {};
     const issuer = s.name || otp.issuer || "";
-    const label = otp.account ?? otp.label ?? "";
+    const label = otp.account || otp.label || "";
     collect(result, position, issuer ? `${issuer}: ${label}` : label, {
       type: (otp.tokenType ?? "TOTP").toLowerCase(),
       secret: s.secret,

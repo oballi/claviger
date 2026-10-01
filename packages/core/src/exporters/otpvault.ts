@@ -93,8 +93,9 @@ export async function parseOtpvaultExport(json: unknown, password: string): Prom
     const parsed = payloadSchema.safeParse(JSON.parse(utf8Decode(plain)));
     if (!parsed.success) throw new Error("bad payload");
     body = parsed.data;
-  } catch (cause) {
-    throw new CoreError("corrupt-file", "Export payload is malformed", { cause });
+  } catch {
+    // cause eklenmez: JSON.parse hata mesajı çözülmüş düz metinden alıntı yapar.
+    throw new CoreError("corrupt-file", "Export payload is malformed");
   }
 
   const result = emptyResult();

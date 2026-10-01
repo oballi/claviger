@@ -116,3 +116,15 @@ describe("base32", () => {
     );
   });
 });
+
+describe("error messages do not echo secret characters", () => {
+  it("base32", () => {
+    try {
+      base32Decode("JBSWY3DP#");
+      expect.unreachable();
+    } catch (e) {
+      expect(isCoreError(e, "invalid-base32")).toBe(true);
+      expect((e as Error).message).not.toContain("#");
+    }
+  });
+});

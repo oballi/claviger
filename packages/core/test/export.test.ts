@@ -3,6 +3,12 @@ import { normalizeAccountInput } from "../src/account/account";
 import { exportOtpauthText } from "../src/exporters/otpauthText";
 import { exportOtpvault, isOtpvaultExport, parseOtpvaultExport } from "../src/exporters/otpvault";
 import { parseOtpauthText } from "../src/importers/otpauthText";
+import { sealBytes } from "../src/crypto/aes";
+import { utf8Encode } from "../src/encoding/bytes";
+import { isCoreError } from "../src/errors";
+import { webRandom } from "../src/ports";
+import { FAST_KDF } from "../src/testing";
+import { createPasswordKeyslot } from "../src/vault/keyslot";
 import { asyncCodeOf } from "./helpers/errors";
 import { makeDeps } from "./helpers/vault";
 
@@ -58,6 +64,30 @@ describe(".otpvault export", () => {
     expect(await asyncCodeOf(parseOtpvaultExport({ format: "otp-vault-export" }, "pw"))).toBe(
       "corrupt-file",
     );
+  });
+
+  it("does not attach decrypted plaintext to the error when the payload is not JSON", async () => {
+    const exportId = webRandom.uuid();
+    const fileKey = webRandom.bytes(32);
+    const keyslot = await createPasswordKeyslot(fileKey, "pw", exportId, webRandom, FAST_KDF);
+    const payload = await sealBytes(
+      fileKey,
+      utf8Encode("{SECRET-PLAINTEXT"),
+      `otp-vault/v1/export/${exportId}`,
+      webRandom,
+    );
+    const file = {
+      format: "otp-vault-export",
+      version: 1,
+      exportId,
+      createdAt: 0,
+      keyslots: [keyslot],
+      payload,
+    };
+    const error = await parseOtpvaultExport(file, "pw").catch((e: unknown) => e);
+    expect(isCoreError(error, "corrupt-file")).toBe(true);
+    expect((error as Error).cause).toBeUndefined();
+    expect((error as Error).message).not.toContain("SECRET-PLAINTEXT");
   });
 
   it("reports an export from a newer version as unsupported, not corrupt", async () => {

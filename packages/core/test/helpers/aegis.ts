@@ -60,7 +60,12 @@ export function aegisPlain(): Record<string, unknown> {
 
 export function aegisEncrypted(
   password: string,
-  { n = 1024, r = 8, p = 1 } = {},
+  {
+    n = 1024,
+    r = 8,
+    p = 1,
+    plaintext = JSON.stringify({ version: 3, entries: AEGIS_ENTRIES, groups: [] }),
+  } = {},
 ): Record<string, unknown> & {
   header: { slots: Record<string, unknown>[]; params: Record<string, string> };
 } {
@@ -73,10 +78,7 @@ export function aegisEncrypted(
     maxmem: 64 * 1024 * 1024,
   });
   const wrapped = gcm(kek, master);
-  const body = gcm(
-    master,
-    Buffer.from(JSON.stringify({ version: 3, entries: AEGIS_ENTRIES, groups: [] })),
-  );
+  const body = gcm(master, Buffer.from(plaintext));
   return {
     version: 1,
     header: {

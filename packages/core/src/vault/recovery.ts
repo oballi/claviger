@@ -36,7 +36,7 @@ export function parseRecoveryCode(input: string): Uint8Array {
   let bits = 0;
   for (const ch of clean) {
     const value = CROCKFORD.indexOf(ch);
-    if (value === -1) throw invalid(`Invalid character in recovery code: ${ch}`);
+    if (value === -1) throw invalid("Invalid character in recovery code");
     buffer = ((buffer << 5) | value) & 0xffff;
     bits += 5;
     if (bits >= 8) {

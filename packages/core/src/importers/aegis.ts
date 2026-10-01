@@ -110,8 +110,9 @@ async function decryptDb(
     if (!plain) throw new CoreError("corrupt-file", "Aegis vault body failed authentication");
     try {
       return JSON.parse(utf8Decode(plain));
-    } catch (cause) {
-      throw new CoreError("corrupt-file", "Aegis vault body is not valid JSON", { cause });
+    } catch {
+      // cause eklenmez: JSON.parse hata mesajı çözülmüş düz metinden alıntı yapar.
+      throw new CoreError("corrupt-file", "Aegis vault body is not valid JSON");
     }
   }
   throw new CoreError("wrong-password", "Wrong password");

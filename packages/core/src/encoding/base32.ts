@@ -34,7 +34,7 @@ export function base32Decode(input: string): Uint8Array {
   let bits = 0;
   for (const ch of clean) {
     const value = ALPHABET.indexOf(ch);
-    if (value === -1) throw new CoreError("invalid-base32", `Invalid base32 character: ${ch}`);
+    if (value === -1) throw new CoreError("invalid-base32", "Invalid base32 character");
     buffer = ((buffer << 5) | value) & 0xffff;
     bits += 5;
     if (bits >= 8) {

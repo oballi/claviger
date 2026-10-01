@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { aegisNeedsPassword, isAegisFile, parseAegis } from "../src/importers/aegis";
+import { isCoreError } from "../src/errors";
 import { asyncCodeOf } from "./helpers/errors";
 import { aegisEncrypted, aegisPlain } from "./helpers/aegis";
 
@@ -51,6 +52,14 @@ const EXPECTED = [
 ];
 
 describe("Aegis import", () => {
+  it("does not attach decrypted plaintext to the error when the body is not JSON", async () => {
+    const file = aegisEncrypted("test", { plaintext: "{SECRET-PLAINTEXT" });
+    const error = await parseAegis(file, "test").catch((e: unknown) => e);
+    expect(isCoreError(error, "corrupt-file")).toBe(true);
+    expect((error as Error).cause).toBeUndefined();
+    expect((error as Error).message).not.toContain("SECRET-PLAINTEXT");
+  });
+
   it("detects plain and encrypted vaults", () => {
     expect(isAegisFile(aegisPlain())).toBe(true);
     expect(aegisNeedsPassword(aegisPlain())).toBe(false);

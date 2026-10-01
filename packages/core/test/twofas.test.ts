@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isTwofasFile, parseTwofas, twofasNeedsPassword } from "../src/importers/twofas";
+import { isCoreError } from "../src/errors";
 import { asyncCodeOf } from "./helpers/errors";
 import { twofasEncrypted, twofasPlain } from "./helpers/twofas";
 
@@ -74,6 +75,29 @@ describe("2FAS import", () => {
     const file = twofasEncrypted("test");
     expect(await asyncCodeOf(parseTwofas(file, "nope"))).toBe("wrong-password");
     expect(await asyncCodeOf(parseTwofas(file))).toBe("wrong-password");
+  });
+
+  it("treats an empty servicesEncrypted as a corrupt encrypted payload, not a plain file", async () => {
+    const file = { ...twofasPlain(), servicesEncrypted: "" };
+    expect(await asyncCodeOf(parseTwofas(file, "x"))).toBe("corrupt-file");
+  });
+
+  it("falls back to otp.label when otp.account is empty", async () => {
+    const file = {
+      schemaVersion: 4,
+      services: [{ name: "Svc", secret: "JBSWY3DPEHPK3PXP", otp: { account: "", label: "lbl" } }],
+    };
+    const result = await parseTwofas(file);
+    expect(result.accounts[0]?.label).toBe("lbl");
+  });
+
+  it("does not attach decrypted plaintext to the error when the payload is not JSON", async () => {
+    const error = await parseTwofas(twofasEncrypted("pw", "{SECRET-PLAINTEXT"), "pw").catch(
+      (e: unknown) => e,
+    );
+    expect(isCoreError(error, "corrupt-file")).toBe(true);
+    expect((error as Error).cause).toBeUndefined();
+    expect((error as Error).message).not.toContain("SECRET-PLAINTEXT");
   });
 
   it("rejects malformed encrypted payloads and newer schema versions", async () => {
