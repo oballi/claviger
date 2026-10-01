@@ -94,6 +94,7 @@ export const tr = {
   "codes.suggested": "olası eşleşme",
   "codes.copy": "{issuer} kodunu kopyala ({code})",
   "codes.copied": "{issuer} kodu kopyalandı",
+  "codes.copyFailed": "Kopyalanamadı.",
   "codes.added": "{issuer} eklendi",
   "codes.next": "{issuer} için yeni kod üret",
   "codes.empty": "Henüz hesap yok.",

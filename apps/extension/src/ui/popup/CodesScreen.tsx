@@ -115,8 +115,13 @@ export function CodesScreen({ pollMs, onLocked }: { pollMs: number; onLocked: ()
   const listError = error && !(error instanceof RpcError && error.code === "locked");
 
   async function copyCode(account: AccountView) {
-    await copy(account.code);
-    setToast(t("codes.copied", { issuer: account.issuer || account.label }));
+    setActionError(null);
+    try {
+      await copy(account.code);
+      setToast(t("codes.copied", { issuer: account.issuer || account.label }));
+    } catch {
+      setActionError(t("codes.copyFailed"));
+    }
   }
 
   async function nextHotp(account: AccountView) {
@@ -130,8 +135,13 @@ export function CodesScreen({ pollMs, onLocked }: { pollMs: number; onLocked: ()
   }
 
   async function lock() {
-    await rpc("lock", {});
-    onLocked();
+    setActionError(null);
+    try {
+      await rpc("lock", {});
+      onLocked();
+    } catch (e) {
+      setActionError(errorMessage(t, e));
+    }
   }
 
   function onListKeyDown(event: KeyboardEvent<HTMLDivElement>) {

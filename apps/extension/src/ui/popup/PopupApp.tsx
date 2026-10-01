@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ServiceState } from "../../background/vaultService";
+import { Button } from "../components/Button";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { LockScreen } from "../components/LockScreen";
 import { StatusScreen } from "../components/StatusScreen";
@@ -28,14 +29,17 @@ export function PopupApp({ pollMs = 1000 }: { pollMs?: number }) {
   }, [refresh]);
 
   let content;
-  if (error) {
+  if (!state) {
+    // The live region exists before the first status arrives, so a later failure is announced.
     content = (
-      <p role="alert" className="m-auto px-7 text-sm text-warn">
-        {error}
-      </p>
+      <div className="m-auto flex flex-col items-center gap-4 px-7 text-center">
+        <p className="m-0 text-sm text-muted">{error ? "" : t("common.loading")}</p>
+        <p role="alert" className={error ? "m-0 text-sm text-warn" : "sr-only"}>
+          {error}
+        </p>
+        {error ? <Button onClick={() => void refresh()}>{t("common.retry")}</Button> : null}
+      </div>
     );
-  } else if (!state) {
-    content = <p className="m-auto text-sm text-muted">{t("common.loading")}</p>;
   } else if (state.status === "no-vault") {
     content = (
       <StatusScreen

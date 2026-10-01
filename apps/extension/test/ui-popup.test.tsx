@@ -87,6 +87,21 @@ describe("popup status screens", () => {
       "Eklentinin arka planına ulaşılamadı.",
     );
   });
+
+  it("retries the first status request from the error screen", async () => {
+    const { ui } = await harness();
+    let fail = true;
+    const rpc: UiPlatform["rpc"] = async (type, payload) => {
+      if (type === "getState" && fail) throw new RpcError("no-response", "x");
+      return ui.rpc(type, payload);
+    };
+    renderUi(<PopupApp pollMs={0} />, { ...ui, rpc });
+    await screen.findByText("Eklentinin arka planına ulaşılamadı.");
+    fail = false;
+    await userEvent.click(screen.getByRole("button", { name: "Tekrar dene" }));
+    expect(await screen.findByText("Henüz hesap yok.")).toBeTruthy();
+    expect(screen.queryByText("Eklentinin arka planına ulaşılamadı.")).toBeNull();
+  });
 });
 
 describe("codes screen", () => {
@@ -110,6 +125,27 @@ describe("codes screen", () => {
     await userEvent.click(await screen.findByRole("button", { name: /^GitHub kodunu kopyala/ }));
     expect(ui.copy).toHaveBeenCalledWith(githubCode);
     expect(screen.getByRole("status").textContent).toBe("GitHub kodu kopyalandı");
+  });
+
+  it("shows an error instead of failing silently when copying is refused", async () => {
+    const { ui } = await seeded();
+    ui.copy.mockRejectedValueOnce(new Error("clipboard denied"));
+    renderUi(<PopupApp pollMs={0} />, ui);
+    await userEvent.click(await screen.findByRole("button", { name: /^GitHub kodunu kopyala/ }));
+    expect(await screen.findByText("Kopyalanamadı.")).toBeTruthy();
+    expect(screen.queryByText("GitHub kodu kopyalandı")).toBeNull();
+  });
+
+  it("shows an error when locking fails", async () => {
+    const { ui } = await seeded();
+    renderUi(
+      <PopupApp pollMs={0} />,
+      override(ui, "lock", async () => {
+        throw new RpcError("no-response", "x");
+      }),
+    );
+    await userEvent.click(await screen.findByRole("button", { name: "Kilitle" }));
+    expect(await screen.findByText("Eklentinin arka planına ulaşılamadı.")).toBeTruthy();
   });
 
   it("focuses search with / from the page body and filters", async () => {
@@ -207,7 +243,9 @@ describe("codes screen", () => {
         throw new RpcError("internal", "boom");
       }),
     );
-    expect((await screen.findByRole("alert")).textContent).toBe("Beklenmeyen bir hata oluştu.");
+    expect((await screen.findByText("Beklenmeyen bir hata oluştu.")).getAttribute("role")).toBe(
+      "alert",
+    );
   });
 
   it("warns when synced storage or its index item is nearly full", async () => {

@@ -96,6 +96,7 @@ export const en: Record<MessageKey, string> = {
   "codes.suggested": "possible match",
   "codes.copy": "Copy {issuer} code ({code})",
   "codes.copied": "{issuer} code copied",
+  "codes.copyFailed": "Couldn't copy.",
   "codes.added": "{issuer} added",
   "codes.next": "New code for {issuer}",
   "codes.empty": "No accounts yet.",
