@@ -14,6 +14,11 @@ export const lockPolicySchema = z.discriminatedUnion("kind", [
 
 export type LockPolicy = z.infer<typeof lockPolicySchema>;
 
+export const viewModeSchema = z.enum(["normal", "compact", "hidden"]);
+export type ViewMode = z.infer<typeof viewModeSchema>;
+export const clipboardClearSchema = z.union([z.literal(0), z.literal(30), z.literal(60)]);
+export type ClipboardClearSec = z.infer<typeof clipboardClearSchema>;
+
 export const settingsSchema = z.object({
   lockPolicy: lockPolicySchema,
   storageArea: z.enum(["local", "sync"]),
@@ -21,6 +26,9 @@ export const settingsSchema = z.object({
   clockCheckEnabled: z.boolean(),
   revealRequiresPassword: z.boolean(),
   lastBackupAt: z.number().int().nullable(),
+  viewMode: viewModeSchema,
+  clipboardClearSec: clipboardClearSchema,
+  recoveryCodeConfirmed: z.boolean(),
 });
 
 export type Settings = z.infer<typeof settingsSchema>;
@@ -35,6 +43,10 @@ export const DEFAULT_SETTINGS: Settings = {
   clockCheckEnabled: false,
   revealRequiresPassword: true,
   lastBackupAt: null,
+  viewMode: "normal",
+  clipboardClearSec: 0,
+  // 0.0.1 users already confirmed their code during setup.
+  recoveryCodeConfirmed: true,
 };
 
 export async function loadSettings(local: StoragePort): Promise<Settings> {

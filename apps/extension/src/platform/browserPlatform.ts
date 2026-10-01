@@ -24,6 +24,10 @@ export function createBrowserPlatform(): Platform {
         await browser.alarms.clear(name);
       },
     },
+    clipboard: {
+      // Replaced in Task 7; until then no clear is ever scheduled by the UI.
+      clear: async () => {},
+    },
     clock: systemClock,
     random: webRandom,
   };

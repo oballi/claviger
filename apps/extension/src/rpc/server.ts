@@ -90,6 +90,18 @@ async function dispatch(service: VaultService, req: RpcRequest): Promise<unknown
     case "setRevealRequiresPassword":
       await service.setRevealRequiresPassword(req.token, req.value);
       return null;
+    case "setViewMode":
+      await service.setViewMode(req.mode);
+      return null;
+    case "setClipboardClear":
+      await service.setClipboardClear(req.seconds);
+      return null;
+    case "confirmRecoveryCode":
+      await service.confirmRecoveryCode();
+      return null;
+    case "clipboardCopied":
+      await service.clipboardCopied();
+      return null;
     case "exportVault":
       return service.exportVault(req.token, req.format, req.exportPassword);
     case "changePassword":

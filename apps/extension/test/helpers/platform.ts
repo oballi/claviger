@@ -1,6 +1,6 @@
 import { webRandom, type ClockPort } from "@otp-vault/core";
 import { FakeClock, FAST_KDF, MemoryStorage } from "@otp-vault/core/testing";
-import type { AlarmPort, Platform } from "../../src/platform/ports";
+import type { AlarmPort, ClipboardPort, Platform } from "../../src/platform/ports";
 
 export class FakeAlarms implements AlarmPort {
   readonly scheduled = new Map<string, number>();
@@ -16,11 +16,20 @@ export class FakeAlarms implements AlarmPort {
   }
 }
 
+export class FakeClipboard implements ClipboardPort {
+  clears = 0;
+
+  async clear(): Promise<void> {
+    this.clears++;
+  }
+}
+
 export interface TestPlatform extends Platform {
   local: MemoryStorage;
   sync: MemoryStorage;
   session: MemoryStorage;
   alarms: FakeAlarms;
+  clipboard: FakeClipboard;
   clock: FakeClock;
 }
 
@@ -31,6 +40,7 @@ export function memoryPlatform(): TestPlatform {
     sync: new MemoryStorage(),
     session: new MemoryStorage(),
     alarms: new FakeAlarms(clock),
+    clipboard: new FakeClipboard(),
     clock,
     random: webRandom,
     kdf: FAST_KDF,

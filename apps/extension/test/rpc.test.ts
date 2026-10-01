@@ -111,6 +111,8 @@ describe("envelope and sender checks", () => {
     { type: "applyClockSample", serverDate: "d".repeat(65), startMs: 0, endMs: 1 },
     { type: "importCommit", previewId: "p", indexes: Array(10001).fill(0) },
     { type: "unlockWithRecovery", code: "c".repeat(129), newPassword: "long enough password" },
+    { type: "setClipboardClear", seconds: 45 },
+    { type: "setViewMode", mode: "x" },
   ])("caps input sizes %#", async (request) => {
     const response = await handleRpcMessage(
       new VaultService(memoryPlatform()),

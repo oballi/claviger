@@ -1,6 +1,6 @@
 import "../zodConfig";
 import { z } from "zod";
-import { lockPolicySchema } from "../background/settings";
+import { clipboardClearSchema, lockPolicySchema, viewModeSchema } from "../background/settings";
 import type {
   AccountListView,
   ImportPreviewView,
@@ -81,6 +81,10 @@ export const rpcRequestSchema = z.discriminatedUnion("type", [
   // Optional: the service decides whether a token is required (revealRequiresPassword setting).
   z.object({ type: z.literal("revealSecret"), token: token.optional(), id }),
   z.object({ type: z.literal("setRevealRequiresPassword"), token, value: z.boolean() }),
+  z.object({ type: z.literal("setViewMode"), mode: viewModeSchema }),
+  z.object({ type: z.literal("setClipboardClear"), seconds: clipboardClearSchema }),
+  z.object({ type: z.literal("confirmRecoveryCode") }),
+  z.object({ type: z.literal("clipboardCopied") }),
   z.object({
     type: z.literal("exportVault"),
     token,
@@ -137,6 +141,10 @@ export interface RpcResults {
   reauth: { token: string };
   revealSecret: { uri: string };
   setRevealRequiresPassword: null;
+  setViewMode: null;
+  setClipboardClear: null;
+  confirmRecoveryCode: null;
+  clipboardCopied: null;
   exportVault: { filename: string; content: string; count: number; skipped: number };
   changePassword: null;
   createRecoveryCode: { recoveryCode: string };

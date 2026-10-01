@@ -26,6 +26,9 @@ describe("setup", () => {
       clockCheckEnabled: false,
       revealRequiresPassword: true,
       lastBackupAt: null,
+      viewMode: "normal",
+      clipboardClearSec: 0,
+      recoveryCodeConfirmed: true,
     });
   });
 

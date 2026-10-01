@@ -39,12 +39,15 @@ import {
   DEFAULT_SETTINGS,
   loadSettings,
   saveSettings,
+  type ClipboardClearSec,
   type LockPolicy,
   type Settings,
+  type ViewMode,
 } from "./settings";
 import { Throttle } from "./throttle";
 
 export const AUTOLOCK_ALARM = "autolock";
+export const CLIPBOARD_ALARM = "clipboard-clear";
 export const MIN_PASSWORD_LENGTH = 8;
 export const TOKEN_TTL_MS = 60_000;
 export const PREVIEW_TTL_MS = 10 * 60_000;
@@ -73,6 +76,9 @@ export interface ServiceState {
   clockCheckEnabled: boolean;
   revealRequiresPassword: boolean;
   lastBackupAt: number | null;
+  viewMode: ViewMode;
+  clipboardClearSec: ClipboardClearSec;
+  recoveryCodeConfirmed: boolean;
   /** Set only when the unlocked vault is empty and a non-empty local copy exists. */
   snapshotOffer: { id: string; createdAt: number; accountCount: number } | null;
 }
@@ -372,6 +378,9 @@ export class VaultService {
       clockCheckEnabled: settings.clockCheckEnabled,
       revealRequiresPassword: settings.revealRequiresPassword,
       lastBackupAt: settings.lastBackupAt,
+      viewMode: settings.viewMode,
+      clipboardClearSec: settings.clipboardClearSec,
+      recoveryCodeConfirmed: settings.recoveryCodeConfirmed,
       retryAfterMs: await this.throttle.retryAfterMs(),
     };
     const none = { hasRecoveryCode: null, accountCount: null, snapshotOffer: null };
@@ -460,6 +469,7 @@ export class VaultService {
     await saveSettings(this.p.local, {
       lockPolicy: opts.lockPolicy,
       storageArea: opts.storageArea,
+      recoveryCodeConfirmed: recoveryCode === null,
     });
     await this.activate(vault, opts.lockPolicy, epoch);
     return { recoveryCode };
@@ -515,6 +525,7 @@ export class VaultService {
         throw e;
       }
       await this.revokeInSnapshots(result.vault);
+      await saveSettings(this.p.local, { recoveryCodeConfirmed: false });
       await this.activate(result.vault, settings.lockPolicy, epoch);
       return { recoveryCode: result.recoveryCode };
     });
@@ -537,6 +548,35 @@ export class VaultService {
 
   async handleAlarm(name: string): Promise<void> {
     if (name === AUTOLOCK_ALARM) await this.lock();
+    // Read at fire time: the setting may have been switched off after the copy.
+    if (name === CLIPBOARD_ALARM && (await this.settings()).clipboardClearSec > 0) {
+      await this.p.clipboard.clear();
+    }
+  }
+
+  setViewMode(mode: ViewMode): Promise<void> {
+    return this.exclusive(async () => {
+      await saveSettings(this.p.local, { viewMode: mode });
+    });
+  }
+
+  setClipboardClear(seconds: ClipboardClearSec): Promise<void> {
+    return this.exclusive(async () => {
+      await saveSettings(this.p.local, { clipboardClearSec: seconds });
+      if (seconds === 0) await this.p.alarms.clear(CLIPBOARD_ALARM);
+    });
+  }
+
+  confirmRecoveryCode(): Promise<void> {
+    return this.exclusive(async () => {
+      await saveSettings(this.p.local, { recoveryCodeConfirmed: true });
+    });
+  }
+
+  async clipboardCopied(): Promise<void> {
+    const { clipboardClearSec } = await this.settings();
+    if (clipboardClearSec === 0) await this.p.alarms.clear(CLIPBOARD_ALARM);
+    else await this.p.alarms.create(CLIPBOARD_ALARM, clipboardClearSec / 60);
   }
 
   async handleIdleState(
@@ -824,6 +864,7 @@ export class VaultService {
       const vault = await this.spendToken(token);
       const recoveryCode = await vault.createRecoveryCode();
       await this.revokeInSnapshots(vault);
+      await saveSettings(this.p.local, { recoveryCodeConfirmed: false });
       return { recoveryCode };
     });
   }

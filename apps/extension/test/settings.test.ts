@@ -17,6 +17,9 @@ describe("settings", () => {
       clockCheckEnabled: false,
       revealRequiresPassword: true,
       lastBackupAt: null,
+      viewMode: "normal",
+      clipboardClearSec: 0,
+      recoveryCodeConfirmed: true,
     });
     expect(DEFAULT_SETTINGS.lockPolicy).toEqual({ kind: "browser-close" });
   });
@@ -54,6 +57,30 @@ describe("settings", () => {
     expect(await loadSettings(local)).toMatchObject({
       revealRequiresPassword: false,
       lastBackupAt: null,
+    });
+  });
+
+  it("loads defaults for the 0.0.1 object without the new fields", async () => {
+    const local = new MemoryStorage();
+    await local.set({ [SETTINGS_KEY]: { storageArea: "sync", lastBackupAt: 7 } });
+    expect(await loadSettings(local)).toMatchObject({
+      viewMode: "normal",
+      clipboardClearSec: 0,
+      recoveryCodeConfirmed: true,
+      storageArea: "sync",
+      lastBackupAt: 7,
+    });
+  });
+
+  it("falls back to the default for an invalid clipboard value without touching other fields", async () => {
+    const local = new MemoryStorage();
+    await local.set({
+      [SETTINGS_KEY]: { clipboardClearSec: 45, viewMode: "compact", storageArea: "sync" },
+    });
+    expect(await loadSettings(local)).toMatchObject({
+      clipboardClearSec: 0,
+      viewMode: "compact",
+      storageArea: "sync",
     });
   });
 
