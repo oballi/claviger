@@ -106,6 +106,9 @@ describe("envelope and sender checks", () => {
     { type: "addAccountManual", draft: { secret: "A", domains: Array(101).fill("a.com") } },
     { type: "addAccountManual", draft: { secret: "A", domains: ["d".repeat(254)] } },
     { type: "reorder", order: Array(10001).fill("a") },
+    { type: "reorder", order: ["a".repeat(65)] },
+    { type: "importCommit", previewId: "p".repeat(65), indexes: [0] },
+    { type: "applyClockSample", serverDate: "d".repeat(65), startMs: 0, endMs: 1 },
     { type: "importCommit", previewId: "p", indexes: Array(10001).fill(0) },
     { type: "unlockWithRecovery", code: "c".repeat(129), newPassword: "long enough password" },
   ])("caps input sizes %#", async (request) => {
