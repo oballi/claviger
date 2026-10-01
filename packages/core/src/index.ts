@@ -1,0 +1,43 @@
+export const CORE_VERSION = "0.0.1";
+
+export * from "./errors";
+export * from "./ports";
+
+export { base32Decode, base32Encode, normalizeBase32 } from "./encoding/base32";
+export { fromBase64, toBase64 } from "./encoding/base64";
+export { utf8Decode, utf8Encode } from "./encoding/bytes";
+
+export * from "./otp/types";
+export { generateCode, type GeneratedCode, type OtpParams } from "./otp/generate";
+export { secondsRemaining, totpCounter } from "./otp/totp";
+export { CLOCK_OFFSET_THRESHOLD_SEC, computeClockOffset } from "./otp/clock";
+
+export { matchAccounts, registrableDomain } from "./match/domain";
+export {
+  accountFingerprint,
+  normalizeAccountInput,
+  type Account,
+  type AccountDraft,
+  type AccountInput,
+} from "./account/account";
+export { parseOtpauthUri, toOtpauthUri } from "./uri/otpauth";
+
+export { DEFAULT_ARGON2, type Argon2Params } from "./crypto/kdf";
+export {
+  Vault,
+  type AccountPatch,
+  type CreateVaultOptions,
+  type VaultListing,
+} from "./vault/vault";
+export { isVaultKey, TOMBSTONE_TTL_MS } from "./vault/format";
+export { parseRecoveryCode } from "./vault/recovery";
+export { moveVaultData } from "./vault/migrate";
+
+export type { ImportIssue, ImportIssueReason, ImportResult } from "./importers/types";
+export { parseImport, type ImportFormat, type ImportParseOutcome } from "./importers";
+export { buildImportPreview, type PreviewItem } from "./importers/preview";
+export { parseGoogleMigrationUri, type MigrationBatch } from "./importers/googleMigration";
+export { parseOtpauthText } from "./importers/otpauthText";
+
+export { EXPORT_FORMAT, exportOtpvault } from "./exporters/otpvault";
+export { exportOtpauthText } from "./exporters/otpauthText";
