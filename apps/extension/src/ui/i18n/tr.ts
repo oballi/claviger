@@ -362,6 +362,9 @@ export const tr = {
   "format.aegis": "Aegis yedeği",
   "format.2fas": "2FAS yedeği",
   "format.otp-vault": "otp-vault yedeği",
+  "manage.found": "Kasan bulundu.",
+  "manage.corrupt":
+    "Kasa başlığı okunamadığı için kasa açılamıyor. Verilerin silinmedi. Eklentiyi kaldırırsan bu veriler de silinir; bir yedeğin yoksa eklentiyi kaldırma ve sorunu bildir.",
 } as const;
 
 export type MessageKey = keyof typeof tr;

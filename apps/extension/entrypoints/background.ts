@@ -38,6 +38,6 @@ export default defineBackground(() => {
 
   browser.runtime.onInstalled.addListener((details) => {
     if (details.reason === "install")
-      void browser.tabs.create({ url: browser.runtime.getURL("/manage.html") });
+      void browser.tabs.create({ url: `${browser.runtime.getURL("/manage.html")}#/setup` });
   });
 });

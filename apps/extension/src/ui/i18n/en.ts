@@ -368,4 +368,7 @@ export const en: Record<MessageKey, string> = {
   "format.aegis": "Aegis backup",
   "format.2fas": "2FAS backup",
   "format.otp-vault": "otp-vault backup",
+  "manage.found": "We found your vault.",
+  "manage.corrupt":
+    "The vault header can't be read, so the vault can't be opened. Nothing has been deleted. Removing the extension would delete this data; if you have no backup, keep it installed and report the problem.",
 };

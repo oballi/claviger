@@ -31,9 +31,12 @@ const selectClass =
 export function SecurityScreen({
   state,
   onChanged,
+  onDeleted,
 }: {
   state: ServiceState;
   onChanged: () => void;
+  /** Lets the host route to setup / the "found" lock screen; the vault may be adopted from the other area. */
+  onDeleted?: () => void;
 }) {
   const { rpc, isFirefox } = useUi();
   const t = useT();
@@ -326,6 +329,7 @@ export function SecurityScreen({
                 }
                 onConfirmed={async (token) => {
                   await rpc("deleteVault", { token });
+                  onDeleted?.();
                   done(t("security.deleted"), "delete");
                 }}
               />
