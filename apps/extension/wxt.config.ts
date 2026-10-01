@@ -1,8 +1,10 @@
+import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "wxt";
 
 export default defineConfig({
   modules: ["@wxt-dev/module-react"],
   imports: false,
+  vite: () => ({ plugins: [tailwindcss()] }),
   hooks: {
     // WXT 0.21.4 runs the unimport transform even with `imports: false`, treats parameters named `storage`
     // as globals and injects a `wxt/utils/storage` import into core. Hence disabled.

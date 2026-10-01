@@ -55,4 +55,25 @@ export default defineConfig(
       ],
     },
   },
+  {
+    files: ["apps/extension/src/ui/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-globals": [
+        "error",
+        { name: "chrome", message: "The UI reaches the browser only through UiPlatform." },
+        { name: "browser", message: "The UI reaches the browser only through UiPlatform." },
+      ],
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["wxt", "wxt/*"],
+              message: "The UI reaches the browser only through UiPlatform.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 );
