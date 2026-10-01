@@ -83,3 +83,38 @@ describe("recovery codes", () => {
     );
   });
 });
+
+describe("atomic header writes", () => {
+  it("unlockWithRecovery writes the header exactly once", async () => {
+    const deps = makeDeps();
+    const { recoveryCode } = await Vault.create(deps, { password: "pw", createRecoveryCode: true });
+    const original = deps.storage.set.bind(deps.storage);
+    let calls = 0;
+    deps.storage.set = async (items) => {
+      calls++;
+      return original(items);
+    };
+    await Vault.unlockWithRecovery(deps, recoveryCode!, "new");
+    expect(calls).toBe(1);
+  });
+
+  it("leaves nothing half-applied when the write fails", async () => {
+    const deps = makeDeps();
+    const { recoveryCode } = await Vault.create(deps, { password: "pw", createRecoveryCode: true });
+    const before = structuredClone(deps.storage.data.get(HEADER_KEY));
+    deps.storage.failNextSet = new Error("x");
+    await expect(Vault.unlockWithRecovery(deps, recoveryCode!, "new")).rejects.toThrow("x");
+    expect(deps.storage.data.get(HEADER_KEY)).toEqual(before);
+    await Vault.unlockWithPassword(deps, "pw");
+    await Vault.unlockWithRecovery(deps, recoveryCode!, "new");
+  });
+
+  it("refuses to write slots when the stored header belongs to another vault", async () => {
+    const deps = makeDeps();
+    const other = makeDeps();
+    const { vault } = await Vault.create(deps, { password: "pw", createRecoveryCode: false });
+    await Vault.create(other, { password: "other", createRecoveryCode: false });
+    deps.storage.data.set(HEADER_KEY, other.storage.data.get(HEADER_KEY));
+    expect(await asyncCodeOf(vault.changePassword("x"))).toBe("vault-corrupt");
+  });
+});

@@ -15,7 +15,12 @@ export async function moveVaultData(from: StoragePort, to: StoragePort): Promise
   if (Object.keys(await to.get()).some(isVaultKey)) {
     throw new CoreError("vault-exists", "The destination already contains a vault");
   }
-  await to.set(items);
+  try {
+    await to.set(items);
+  } catch (error) {
+    await to.remove(keys).catch(() => {});
+    throw error;
+  }
   const written = await to.get(keys);
   const verified = keys.every((key) => JSON.stringify(written[key]) === JSON.stringify(items[key]));
   if (!verified) {

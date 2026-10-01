@@ -133,8 +133,16 @@ export class Vault {
     const dek = await openRecoveryKeyslot(slot, secret, header.vaultId);
     if (!dek) throw new CoreError("invalid-recovery-code", "Recovery code is not correct");
     const vault = new Vault(deps, dek, header);
-    await vault.changePassword(newPassword);
-    const recoveryCode = await vault.createRecoveryCode();
+    const passwordSlot = await vault.buildPasswordSlot(newPassword);
+    const recovery = generateRecoveryCode(deps.random);
+    const recoverySlot = await createRecoveryKeyslot(
+      dek,
+      recovery.secret,
+      header.vaultId,
+      deps.random,
+    );
+    await vault.replaceKeyslots({ password: passwordSlot, recovery: recoverySlot });
+    const recoveryCode = recovery.code;
     return { vault, recoveryCode };
   }
 
@@ -144,25 +152,34 @@ export class Vault {
     return dek !== null && bytesEqual(dek, this.dek);
   }
 
-  private async replaceKeyslot(kind: Keyslot["kind"], slot: Keyslot | null): Promise<void> {
+  private async replaceKeyslots(
+    replacements: Partial<Record<Keyslot["kind"], Keyslot | null>>,
+  ): Promise<void> {
     const header = await Vault.readHeader(this.deps.storage);
-    const keyslots = header.keyslots.filter((s) => s.kind !== kind);
-    if (slot) keyslots.unshift(slot);
+    if (header.vaultId !== this.header.vaultId) {
+      throw new CoreError("vault-corrupt", "Stored vault header belongs to a different vault");
+    }
+    const replaced = Object.keys(replacements);
+    const keyslots: Keyslot[] = header.keyslots.filter((s) => !replaced.includes(s.kind));
+    for (const slot of Object.values(replacements)) if (slot) keyslots.push(slot);
     keyslots.sort((a, b) => (a.kind === "password" ? -1 : b.kind === "password" ? 1 : 0));
     const updated: VaultHeader = { ...header, keyslots };
     await this.deps.storage.set({ [HEADER_KEY]: updated });
     this.header = updated;
   }
 
-  async changePassword(newPassword: string): Promise<void> {
-    const slot = await createPasswordKeyslot(
+  private buildPasswordSlot(newPassword: string): Promise<Keyslot> {
+    return createPasswordKeyslot(
       this.dek,
       newPassword,
       this.header.vaultId,
       this.deps.random,
       this.deps.kdf ?? DEFAULT_ARGON2,
     );
-    await this.replaceKeyslot("password", slot);
+  }
+
+  async changePassword(newPassword: string): Promise<void> {
+    await this.replaceKeyslots({ password: await this.buildPasswordSlot(newPassword) });
   }
 
   hasRecoveryCode(): boolean {
@@ -177,12 +194,12 @@ export class Vault {
       this.header.vaultId,
       this.deps.random,
     );
-    await this.replaceKeyslot("recovery", slot);
+    await this.replaceKeyslots({ recovery: slot });
     return recovery.code;
   }
 
   async removeRecoveryCode(): Promise<void> {
-    await this.replaceKeyslot("recovery", null);
+    await this.replaceKeyslots({ recovery: null });
   }
 
   exportKey(): Uint8Array {

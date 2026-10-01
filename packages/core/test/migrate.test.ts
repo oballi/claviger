@@ -36,6 +36,16 @@ describe("moveVaultData", () => {
     expect(deps.storage.data.size).toBe(2);
   });
 
+  it("cleans the destination and keeps the source when the write fails", async () => {
+    const deps = makeDeps();
+    await Vault.create(deps, { password: "pw", createRecoveryCode: false });
+    const target = new MemoryStorage();
+    target.failNextSet = new Error("QUOTA_BYTES quota exceeded");
+    await expect(moveVaultData(deps.storage, target)).rejects.toThrow("QUOTA_BYTES");
+    expect(target.data.size).toBe(0);
+    expect(deps.storage.data.size).toBe(2);
+  });
+
   it("does nothing when there is no vault", async () => {
     expect(await moveVaultData(new MemoryStorage(), new MemoryStorage())).toBe(0);
   });
