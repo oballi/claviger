@@ -47,6 +47,7 @@ export function AccountsScreen({
   const [message, setMessage] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [maintenanceError, setMaintenanceError] = useState<string | null>(null);
+  const [reorderError, setReorderError] = useState<string | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
 
   const accounts = list?.accounts ?? [];
@@ -60,6 +61,7 @@ export function AccountsScreen({
 
   function changed(text: string) {
     setMessage(text);
+    setReorderError(null);
     void reload();
     onChanged();
   }
@@ -98,12 +100,12 @@ export function AccountsScreen({
     if (!dragged || q) return;
     const order = reorderByDrop(accounts, dragged, target);
     if (!order) return;
-    setMaintenanceError(null);
+    setReorderError(null);
     try {
       await rpc("reorder", { order });
       changed(t("accounts.moved", { name: nameOf(dragged) }));
     } catch (e) {
-      setMaintenanceError(errorMessage(t, e));
+      setReorderError(errorMessage(t, e));
     }
   }
 
@@ -148,6 +150,12 @@ export function AccountsScreen({
       {error ? (
         <p role="alert" className="m-0 text-sm text-warn">
           {errorMessage(t, error)}
+        </p>
+      ) : null}
+
+      {reorderError ? (
+        <p role="alert" className="m-0 text-sm text-warn">
+          {reorderError}
         </p>
       ) : null}
 
@@ -217,118 +225,123 @@ export function AccountsScreen({
         </section>
       ) : null}
 
-      <table className="w-full table-fixed border-collapse text-left text-sm">
-        <colgroup>
-          <col style={{ width: "32px" }} />
-          <col style={{ width: "18%" }} />
-          <col style={{ width: "27%" }} />
-          <col style={{ width: "27%" }} />
-          <col style={{ width: "9%" }} />
-          <col style={{ width: "96px" }} />
-        </colgroup>
-        <caption className="sr-only">{t("accounts.title")}</caption>
-        <thead>
-          <tr className="border-b border-line text-xs text-muted">
-            <td />
-            <th scope="col" className="pb-2.5 font-normal">
-              {t("add.issuer")}
-            </th>
-            <th scope="col" className="pb-2.5 font-normal">
-              {t("add.label")}
-            </th>
-            <th scope="col" className="pb-2.5 font-normal">
-              {t("accounts.site")}
-            </th>
-            <th scope="col" className="pb-2.5 font-normal">
-              {t("add.type")}
-            </th>
-            <th scope="col" className="pb-2.5 font-normal">
-              <span className="sr-only">{t("accounts.actions")}</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {list && rows.length === 0 ? (
-            <tr>
-              <td colSpan={6} className="py-6 text-muted">
-                {q ? t("accounts.noMatch") : t("codes.empty")}
-                {!q && state.snapshotOffer ? (
-                  <Button
-                    variant="link"
-                    onClick={() => openManage("backup")}
-                    className="mt-3 block justify-start text-[13px]"
-                  >
-                    {t("snapshots.offer", { count: state.snapshotOffer.accountCount })}
-                  </Button>
-                ) : null}
-              </td>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[680px] table-fixed border-collapse text-left text-sm">
+          <colgroup>
+            <col style={{ width: "32px" }} />
+            <col style={{ width: "18%" }} />
+            <col style={{ width: "27%" }} />
+            <col style={{ width: "27%" }} />
+            <col style={{ width: "9%" }} />
+            <col style={{ width: "96px" }} />
+          </colgroup>
+          <caption className="sr-only">{t("accounts.title")}</caption>
+          <thead>
+            <tr className="border-b border-line text-xs text-muted">
+              <th scope="col" className="pb-2.5 font-normal">
+                <span className="sr-only">{t("accounts.dragColumn")}</span>
+              </th>
+              <th scope="col" className="pb-2.5 font-normal">
+                {t("add.issuer")}
+              </th>
+              <th scope="col" className="pb-2.5 font-normal">
+                {t("add.label")}
+              </th>
+              <th scope="col" className="pb-2.5 font-normal">
+                {t("accounts.site")}
+              </th>
+              <th scope="col" className="pb-2.5 font-normal">
+                {t("add.type")}
+              </th>
+              <th scope="col" className="pb-2.5 font-normal">
+                <span className="sr-only">{t("accounts.actions")}</span>
+              </th>
             </tr>
-          ) : null}
-          {rows.map((a) => {
-            const name = a.issuer || a.label;
-            const editName =
-              a.issuer && a.label ? `${a.issuer} (${a.label})` : name || t("add.unnamed");
-            return (
-              <tr
-                key={a.id}
-                className="h-14 border-b border-hair"
-                onDragOver={(e) => {
-                  if (!q && dragging && sameGroup(dragging, a.id)) e.preventDefault();
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  void drop(a.id);
-                }}
-              >
-                <td>
-                  {q ? null : (
-                    // Mouse-only; keyboard users reorder with the move buttons in the edit dialog.
-                    <button
-                      type="button"
-                      draggable
-                      aria-label={t("accounts.dragHandle", { name: editName })}
-                      onDragStart={(e) => {
-                        setDragging(a.id);
-                        e.dataTransfer?.setData("text/plain", a.id);
-                      }}
-                      onDragEnd={() => setDragging(null)}
-                      className="flex h-11 w-8 cursor-grab items-center justify-center border-0 bg-transparent p-0 text-muted"
+          </thead>
+          <tbody>
+            {list && rows.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="py-6 text-muted">
+                  {q ? t("accounts.noMatch") : t("codes.empty")}
+                  {!q && state.snapshotOffer ? (
+                    <Button
+                      variant="link"
+                      onClick={() => openManage("backup")}
+                      className="mt-3 block justify-start text-[13px]"
                     >
-                      <Icon name="grip" size={16} />
-                    </button>
-                  )}
-                </td>
-                <td className="pr-4">
-                  <span className="flex min-w-0 items-center gap-2.5">
-                    <span className="min-w-0 truncate">{name}</span>
-                    {a.pinned ? (
-                      <span className="rounded-full border border-line px-[7px] py-px font-mono text-[10px] text-muted">
-                        {t("accounts.pinnedBadge")}
-                      </span>
-                    ) : null}
-                  </span>
-                </td>
-                <td className="truncate pr-4 text-muted">{a.issuer ? a.label : ""}</td>
-                <td
-                  className={`truncate pr-4 font-mono text-xs ${a.domains.length ? "" : "text-muted"}`}
-                >
-                  {a.domains.length ? a.domains.join(", ") : t("accounts.unbound")}
-                </td>
-                <td className="pr-4 font-mono text-xs text-muted">{typeLabel(a.type)}</td>
-                <td className="text-right">
-                  <Button
-                    variant="link"
-                    aria-label={t("accounts.edit", { name: editName })}
-                    onClick={() => setEditing(a.id)}
-                  >
-                    {t("account.edit")}
-                  </Button>
+                      {t("snapshots.offer", { count: state.snapshotOffer.accountCount })}
+                    </Button>
+                  ) : null}
                 </td>
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            ) : null}
+            {rows.map((a) => {
+              const name = a.issuer || a.label;
+              const editName =
+                a.issuer && a.label ? `${a.issuer} (${a.label})` : name || t("add.unnamed");
+              return (
+                <tr
+                  key={a.id}
+                  className="h-14 border-b border-hair"
+                  onDragOver={(e) => {
+                    if (!q && dragging && sameGroup(dragging, a.id)) e.preventDefault();
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    void drop(a.id);
+                  }}
+                >
+                  <td>
+                    {q ? null : (
+                      // Mouse-only and not a button (Firefox will not drag buttons); keyboard users use the move buttons in the edit dialog.
+                      <span
+                        draggable="true"
+                        aria-hidden="true"
+                        data-testid="drag-handle"
+                        title={t("accounts.dragHandle", { name: editName })}
+                        onDragStart={(e) => {
+                          setDragging(a.id);
+                          e.dataTransfer?.setData("text/plain", a.id);
+                        }}
+                        onDragEnd={() => setDragging(null)}
+                        className="flex h-11 w-8 cursor-grab items-center justify-center text-muted"
+                      >
+                        <Icon name="grip" size={16} />
+                      </span>
+                    )}
+                  </td>
+                  <td className="pr-4">
+                    <span className="flex min-w-0 items-center gap-2.5">
+                      <span className="min-w-0 truncate">{name}</span>
+                      {a.pinned ? (
+                        <span className="rounded-full border border-line px-[7px] py-px font-mono text-[10px] text-muted">
+                          {t("accounts.pinnedBadge")}
+                        </span>
+                      ) : null}
+                    </span>
+                  </td>
+                  <td className="truncate pr-4 text-muted">{a.issuer ? a.label : ""}</td>
+                  <td
+                    className={`truncate pr-4 font-mono text-xs ${a.domains.length ? "" : "text-muted"}`}
+                  >
+                    {a.domains.length ? a.domains.join(", ") : t("accounts.unbound")}
+                  </td>
+                  <td className="pr-4 font-mono text-xs text-muted">{typeLabel(a.type)}</td>
+                  <td className="text-right">
+                    <Button
+                      variant="link"
+                      aria-label={t("accounts.edit", { name: editName })}
+                      onClick={() => setEditing(a.id)}
+                    >
+                      {t("account.edit")}
+                    </Button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
       <dl className="m-0 grid grid-cols-1 border-y border-hair sm:grid-cols-3">
         <div className="flex flex-col gap-1.5 py-5 pr-6">

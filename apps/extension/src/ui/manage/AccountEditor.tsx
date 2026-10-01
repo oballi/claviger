@@ -58,6 +58,19 @@ export function AccountEditor({
     focusAfter.current = null;
   }, [mode]);
 
+  const [busy, setBusy] = useState(false);
+
+  // A move/pin can disable the focused button; hand focus to the pin button so it never falls to <body>.
+  useEffect(() => {
+    if (busy || mode !== "main") return;
+    const active = document.activeElement;
+    const lost =
+      !active ||
+      active === document.body ||
+      (active instanceof HTMLButtonElement && active.disabled);
+    if (lost) root.current?.querySelector<HTMLElement>('[data-action="pin"]')?.focus();
+  }, [busy, mode, canMove.up, canMove.down]);
+
   function back(from: Mode) {
     focusAfter.current = from;
     setMode("main");
@@ -65,22 +78,28 @@ export function AccountEditor({
 
   async function run(action: () => Promise<unknown>, message: string, keepOpen = false) {
     setError(null);
+    if (keepOpen) setBusy(true);
     try {
       await action();
       (keepOpen ? onMoved : onChanged)(message);
     } catch (e) {
       setError(errorMessage(t, e));
+    } finally {
+      if (keepOpen) setBusy(false);
     }
   }
 
   function move(delta: -1 | 1) {
     setError(null);
-    onMove(delta).then(
-      (moved) => {
-        if (moved) onMoved(t("accounts.moved", { name }));
-      },
-      (e) => setError(errorMessage(t, e)),
-    );
+    setBusy(true);
+    onMove(delta)
+      .then(
+        (moved) => {
+          if (moved) onMoved(t("accounts.moved", { name }));
+        },
+        (e) => setError(errorMessage(t, e)),
+      )
+      .finally(() => setBusy(false));
   }
 
   function save(event: FormEvent) {
@@ -159,6 +178,8 @@ export function AccountEditor({
             </dl>
             <div className="flex flex-wrap gap-2">
               <Button
+                data-action="pin"
+                disabled={busy}
                 onClick={() =>
                   void run(
                     () => rpc("setPinned", { id: account.id, pinned: !account.pinned }),
@@ -171,14 +192,13 @@ export function AccountEditor({
               >
                 {account.pinned ? t("account.unpin") : t("account.pin")}
               </Button>
-              <Button disabled={!canMove.up} onClick={() => move(-1)}>
+              <Button disabled={busy || !canMove.up} onClick={() => move(-1)}>
                 {t("account.moveUp")}
               </Button>
-              <Button disabled={!canMove.down} onClick={() => move(1)}>
+              <Button disabled={busy || !canMove.down} onClick={() => move(1)}>
                 {t("account.moveDown")}
               </Button>
               <Button
-                data-action="reveal"
                 onClick={() => {
                   setError(null);
                   setMode("reveal");

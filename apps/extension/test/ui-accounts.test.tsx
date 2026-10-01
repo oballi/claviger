@@ -29,6 +29,9 @@ async function open(h: Harness) {
   return onChanged;
 }
 
+const handleOf = async (issuer: string) =>
+  within(await screen.findByText(issuer).then((n) => n.closest("tr")!)).getByTestId("drag-handle");
+
 const names = async (h: Harness) =>
   (await h.ui.rpc("listAccounts", {})).accounts.map((a) => a.issuer);
 
@@ -126,7 +129,7 @@ describe("AccountsScreen", () => {
     for (const [i, issuer] of ["A", "B", "C"].entries())
       await h.ui.rpc("addAccountManual", { draft: { secret: secrets[i]!, issuer } });
     renderUi(<AccountsScreen state={await h.ui.rpc("getState", {})} onChanged={() => {}} />, h.ui);
-    const handle = await screen.findByLabelText("A hesabını sürükle");
+    const handle = await handleOf("A");
     const rowC = screen.getByText("C").closest("tr")!;
     fireEvent.dragStart(handle);
     fireEvent.dragOver(rowC);
@@ -135,12 +138,80 @@ describe("AccountsScreen", () => {
     await screen.findByText("A taşındı.");
   });
 
+  it("drags upward, ignores cross-group hover and resets on dragend", async () => {
+    const h = await seeded();
+    await h.ui.rpc("setPinned", {
+      id: (await h.ui.rpc("listAccounts", {})).accounts[2]!.id,
+      pinned: true,
+    });
+    await open(h);
+    const rowOf = (n: string) => screen.getByText(n).closest("tr")!;
+    const bank = await handleOf("Bank");
+    fireEvent.dragStart(bank);
+    expect(fireEvent.dragOver(rowOf("Deno"))).toBe(true);
+    expect(fireEvent.dragOver(rowOf("GitHub"))).toBe(false);
+    fireEvent.dragEnd(bank);
+    fireEvent.drop(rowOf("GitHub"));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(await names(h)).toEqual(["GitHub", "Bank", "Deno"]);
+    fireEvent.dragStart(await handleOf("Bank"));
+    fireEvent.drop(rowOf("GitHub"));
+    await vi.waitFor(async () => expect(await names(h)).toEqual(["Bank", "GitHub", "Deno"]));
+  });
+
+  it("shows a drop error in a healthy vault", async () => {
+    const h = await seeded();
+    const failing = {
+      ...h.ui,
+      rpc: (async (type: string, payload: unknown) => {
+        if (type === "reorder") throw new Error("boom");
+        return h.ui.rpc(type as never, payload as never);
+      }) as typeof h.ui.rpc,
+    };
+    renderUi(
+      <AccountsScreen state={await h.ui.rpc("getState", {})} onChanged={() => {}} />,
+      failing,
+    );
+    const handle = await handleOf("GitHub");
+    fireEvent.dragStart(handle);
+    fireEvent.drop(screen.getByText("Deno").closest("tr")!);
+    expect(await screen.findByRole("alert")).toBeTruthy();
+  });
+
+  it("does not reorder on drop while searching", async () => {
+    const h = await seeded();
+    await open(h);
+    const handle = await handleOf("GitHub");
+    fireEvent.dragStart(handle);
+    await userEvent.type(screen.getByRole("searchbox", { name: "Hesap ara" }), "e");
+    fireEvent.drop(screen.getByText("Deno").closest("tr")!);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(await names(h)).toEqual(["GitHub", "Bank", "Deno"]);
+  });
+
+  it("keeps focus in the dialog when the focused move button becomes disabled", async () => {
+    const h = await seeded();
+    await open(h);
+    await userEvent.click(screen.getByRole("button", { name: /Bank.*hesabını düzenle/ }));
+    const up = screen.getByRole("button", { name: "Yukarı taşı" });
+    up.focus();
+    await userEvent.click(up);
+    await screen.findByText("Bank taşındı.");
+    await vi.waitFor(() => expect(up).toHaveProperty("disabled", true));
+    await vi.waitFor(() => {
+      const dialog = screen.getByRole("dialog", { name: "Bank" });
+      expect(dialog.contains(document.activeElement)).toBe(true);
+      expect(document.activeElement).not.toBe(document.body);
+      expect((document.activeElement as HTMLButtonElement).disabled).toBe(false);
+    });
+  });
+
   it("hides drag handles while searching", async () => {
     const h = await seeded();
     await open(h);
-    expect(screen.getAllByLabelText(/hesabını sürükle/)).toHaveLength(3);
+    expect(screen.getAllByTestId("drag-handle")).toHaveLength(3);
     await userEvent.type(screen.getByRole("searchbox", { name: "Hesap ara" }), "bank");
-    expect(screen.queryByLabelText(/hesabını sürükle/)).toBeNull();
+    expect(screen.queryAllByTestId("drag-handle")).toHaveLength(0);
   });
 
   it("keeps the edit dialog open after pinning and moving", async () => {
