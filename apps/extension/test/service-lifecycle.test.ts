@@ -1,4 +1,4 @@
-import { toBase64, Vault } from "@otp-vault/core";
+import { base32Encode, normalizeAccountInput, toBase64, Vault } from "@otp-vault/core";
 import { describe, expect, it, vi } from "vitest";
 import { PERSISTED_KEY, SESSION_KEY } from "../src/background/keyCache";
 import { saveSettings } from "../src/background/settings";
@@ -19,6 +19,7 @@ describe("setup", () => {
       lockPolicy: { kind: "browser-close" },
       storageArea: "local",
       hasRecoveryCode: null,
+      accountCount: null,
       retryAfterMs: 0,
       clockOffsetSec: 0,
       clockCheckEnabled: false,
@@ -325,6 +326,28 @@ describe("races and header status", () => {
     expect((await new VaultService(restartBrowser(p)).getState()).status).toBe("unsupported");
     p.local.data.set("vault:header", { format: 1 });
     expect((await new VaultService(restartBrowser(p)).getState()).status).toBe("corrupt");
+  });
+
+  it("counts accounts without decrypting while locked, ignoring deleted ones", async () => {
+    const { p, service } = await unlockedService();
+    const vault = await (service as unknown as { requireVault(): Promise<Vault> }).requireVault();
+    const added = [];
+    for (const issuer of ["a", "b", "c"]) {
+      added.push(
+        await vault.addAccount(
+          normalizeAccountInput({
+            secret: base32Encode(p.random.bytes(20)),
+            issuer,
+            label: issuer,
+          }),
+        ),
+      );
+      p.clock.advance(1000);
+    }
+    await vault.deleteAccount(added[0]!.id);
+    await service.lock();
+    expect((await service.getState()).accountCount).toBe(2);
+    expect((await new VaultService(restartBrowser(p)).getState()).accountCount).toBe(2);
   });
 
   it("reports hasRecoveryCode while locked", async () => {

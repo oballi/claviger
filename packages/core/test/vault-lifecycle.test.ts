@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { normalizeAccountInput } from "../src/account/account";
+import { base32Encode } from "../src/encoding/base32";
 import { webRandom } from "../src/ports";
 import { HEADER_KEY, INDEX_KEY } from "../src/vault/format";
 import { Vault } from "../src/vault/vault";
@@ -92,16 +94,25 @@ describe("Vault.inspect", () => {
     expect(await Vault.inspect(makeDeps().storage)).toEqual({
       status: "missing",
       hasRecoveryCode: null,
+      accountCount: null,
     });
   });
 
   it("reports whether a recovery code exists without unlocking", async () => {
     const withCode = makeDeps();
     await Vault.create(withCode, { ...opts, createRecoveryCode: true });
-    expect(await Vault.inspect(withCode.storage)).toEqual({ status: "ok", hasRecoveryCode: true });
+    expect(await Vault.inspect(withCode.storage)).toEqual({
+      status: "ok",
+      hasRecoveryCode: true,
+      accountCount: 0,
+    });
     const without = makeDeps();
     await Vault.create(without, { ...opts, createRecoveryCode: false });
-    expect(await Vault.inspect(without.storage)).toEqual({ status: "ok", hasRecoveryCode: false });
+    expect(await Vault.inspect(without.storage)).toEqual({
+      status: "ok",
+      hasRecoveryCode: false,
+      accountCount: 0,
+    });
   });
 
   it("reports newer and corrupt headers as statuses", async () => {
@@ -112,8 +123,33 @@ describe("Vault.inspect", () => {
     expect(await Vault.inspect(deps.storage)).toEqual({
       status: "unsupported",
       hasRecoveryCode: null,
+      accountCount: null,
     });
     deps.storage.data.set(HEADER_KEY, { format: 1 });
-    expect(await Vault.inspect(deps.storage)).toEqual({ status: "corrupt", hasRecoveryCode: null });
+    expect(await Vault.inspect(deps.storage)).toEqual({
+      status: "corrupt",
+      hasRecoveryCode: null,
+      accountCount: null,
+    });
+  });
+
+  it("counts live accounts without decrypting, skipping tombstoned ones", async () => {
+    const deps = makeDeps();
+    const { vault } = await Vault.create(deps, { ...opts, createRecoveryCode: false });
+    const accounts = [];
+    for (const name of ["a", "b", "c"]) {
+      accounts.push(
+        await vault.addAccount(
+          normalizeAccountInput({
+            secret: base32Encode(webRandom.bytes(20)),
+            issuer: name,
+            label: name,
+          }),
+        ),
+      );
+      deps.clock.advance(1000);
+    }
+    await vault.deleteAccount(accounts[1]!.id);
+    expect((await Vault.inspect(deps.storage)).accountCount).toBe(2);
   });
 });

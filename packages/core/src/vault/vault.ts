@@ -89,20 +89,44 @@ export class Vault {
     return HEADER_KEY in (await storage.get([HEADER_KEY]));
   }
 
-  /** Header-only status check; never unlocks and never throws for unsupported or corrupt headers. */
+  /**
+   * Plaintext-only status check; never unlocks. The count uses only unencrypted fields, so a
+   * replayed record older than its tombstone is excluded here the same way listAccounts does.
+   */
   static async inspect(storage: StoragePort): Promise<{
     status: "missing" | "ok" | "unsupported" | "corrupt";
     hasRecoveryCode: boolean | null;
+    accountCount: number | null;
   }> {
     try {
       const header = await Vault.readHeader(storage);
-      return { status: "ok", hasRecoveryCode: header.keyslots.some((s) => s.kind === "recovery") };
+      const all = await storage.get();
+      const tombs = new Map<string, number>();
+      for (const [key, value] of Object.entries(all)) {
+        if (!key.startsWith(TOMB_PREFIX)) continue;
+        const tomb = tombSchema.safeParse(value);
+        if (tomb.success) tombs.set(key.slice(TOMB_PREFIX.length), tomb.data.deletedAt);
+      }
+      let accountCount = 0;
+      for (const [key, value] of Object.entries(all)) {
+        if (!key.startsWith(ACCOUNT_PREFIX)) continue;
+        const record = encryptedRecordSchema.safeParse(value);
+        if (!record.success) continue;
+        const deletedAt = tombs.get(key.slice(ACCOUNT_PREFIX.length));
+        if (deletedAt !== undefined && record.data.updatedAt <= deletedAt) continue;
+        accountCount++;
+      }
+      return {
+        status: "ok",
+        hasRecoveryCode: header.keyslots.some((s) => s.kind === "recovery"),
+        accountCount,
+      };
     } catch (e) {
+      const none = { hasRecoveryCode: null, accountCount: null };
       if (e instanceof CoreError) {
-        if (e.code === "vault-not-found") return { status: "missing", hasRecoveryCode: null };
-        if (e.code === "unsupported-format")
-          return { status: "unsupported", hasRecoveryCode: null };
-        if (e.code === "vault-corrupt") return { status: "corrupt", hasRecoveryCode: null };
+        if (e.code === "vault-not-found") return { status: "missing", ...none };
+        if (e.code === "unsupported-format") return { status: "unsupported", ...none };
+        if (e.code === "vault-corrupt") return { status: "corrupt", ...none };
       }
       throw e;
     }

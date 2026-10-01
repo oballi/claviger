@@ -14,7 +14,10 @@ export interface ServiceState {
   status: ServiceStatus;
   lockPolicy: LockPolicy;
   storageArea: StorageAreaName;
+  /** Known while locked too (read from the plaintext header); null when there is no readable vault. */
   hasRecoveryCode: boolean | null;
+  /** Live account records, counted without decrypting; null when there is no readable vault. */
+  accountCount: number | null;
   retryAfterMs: number;
   clockOffsetSec: number;
   clockCheckEnabled: boolean;
@@ -155,25 +158,36 @@ export class VaultService {
       clockCheckEnabled: settings.clockCheckEnabled,
       retryAfterMs: await this.throttle.retryAfterMs(),
     };
-    if (!exists) return { ...base, status: "no-vault", hasRecoveryCode: null };
+    const none = { hasRecoveryCode: null, accountCount: null };
+    if (!exists) return { ...base, status: "no-vault", ...none };
     let vault: Vault | null;
     try {
       vault = await this.ensureLoaded();
     } catch (e) {
-      if (isCoreError(e, "unsupported-format"))
-        return { ...base, status: "unsupported", hasRecoveryCode: null };
-      if (isCoreError(e, "vault-corrupt"))
-        return { ...base, status: "corrupt", hasRecoveryCode: null };
+      if (isCoreError(e, "unsupported-format")) return { ...base, status: "unsupported", ...none };
+      if (isCoreError(e, "vault-corrupt")) return { ...base, status: "corrupt", ...none };
       throw e;
     }
-    if (vault) return { ...base, status: "unlocked", hasRecoveryCode: vault.hasRecoveryCode() };
-    // Locked: read the header alone so unsupported/corrupt and the recovery flag are still reported.
+    // Header-only read: reports unsupported/corrupt, the recovery flag and the count even while locked.
     const info = await Vault.inspect(this.area(settings.storageArea));
-    if (info.status === "unsupported" || info.status === "corrupt") {
-      return { ...base, status: info.status, hasRecoveryCode: null };
+    if (vault) {
+      return {
+        ...base,
+        status: "unlocked",
+        hasRecoveryCode: vault.hasRecoveryCode(),
+        accountCount: info.accountCount,
+      };
     }
-    if (info.status === "missing") return { ...base, status: "no-vault", hasRecoveryCode: null };
-    return { ...base, status: "locked", hasRecoveryCode: info.hasRecoveryCode };
+    if (info.status === "unsupported" || info.status === "corrupt") {
+      return { ...base, status: info.status, ...none };
+    }
+    if (info.status === "missing") return { ...base, status: "no-vault", ...none };
+    return {
+      ...base,
+      status: "locked",
+      hasRecoveryCode: info.hasRecoveryCode,
+      accountCount: info.accountCount,
+    };
   }
 
   async setup(opts: {
