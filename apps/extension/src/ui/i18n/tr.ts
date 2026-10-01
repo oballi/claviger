@@ -366,6 +366,37 @@ export const tr = {
   "manage.found": "Kasan bulundu.",
   "manage.corrupt":
     "Kasa başlığı okunamadığı için kasa açılamıyor. Verilerin silinmedi. Eklentiyi kaldırırsan bu veriler de silinir; bir yedeğin yoksa eklentiyi kaldırma ve sorunu bildir.",
+  "snapshots.title": "Otomatik kopyalar",
+  "snapshots.body":
+    "Her gün ve riskli işlemlerden önce bu cihazda şifreli bir kopya alınır. Son 7 kopya tutulur.",
+  "snapshots.none": "Henüz kopya yok.",
+  "snapshots.row": "{reason} · {count} hesap",
+  "snapshots.otherVault": "başka bir kasa",
+  "snapshots.restore": "Geri yükle",
+  "snapshots.restoreNote": "Yalnızca eksik hesaplar eklenir; hiçbir şey silinmez.",
+  "snapshots.oldPassword": "Bu kopyanın parolası",
+  "snapshots.oldPasswordHint": "Kopya başka bir kasaya ait. O kasanın ana parolasını gir.",
+  "snapshots.wrongOldPassword": "Bu kopyanın parolası yanlış.",
+  "snapshots.result": "{added} hesap eklendi, {skipped} zaten vardı.",
+  "snapshots.resultUnreadable": "{count} hesap okunamadı.",
+  "snapshots.offer": "Otomatik kopyadan geri yükle ({count} hesap)",
+  "snapshots.reason.daily": "Günlük",
+  "snapshots.reason.before-import": "İçe aktarmadan önce",
+  "snapshots.reason.before-delete": "Silmeden önce",
+  "snapshots.reason.before-move": "Taşımadan önce",
+  "snapshots.reason.before-restore": "Geri yüklemeden önce",
+  "snapshots.reason.before-rebuild": "Onarmadan önce",
+  "snapshots.reason.before-recovery": "Kurtarmadan önce",
+  "corrupt.moveBody":
+    "Bozuk veriyi silmeden kenara alıp yeni bir kasa kurabilirsin. Sonra Yedekleme sayfasından eski bir yedeği veya otomatik kopyayı geri yükleyebilirsin.",
+  "corrupt.word": "KENARA AL",
+  "corrupt.type": "Onaylamak için {word} yaz",
+  "corrupt.submit": "Kenara al ve yeni kasa kur",
+  "corrupt.syncWarning":
+    "Bu kasa eşitleniyor; kenara almak diğer cihazlardaki kopyayı da kaldırabilir.",
+  "error.not-found": "Bu kopya artık yok.",
+  "error.snapshot-password-required": "Bu kopya başka bir kasaya ait; parolasını gir.",
+  "error.same-name": "Aynı adlı bir hesap zaten var.",
 } as const;
 
 export type MessageKey = keyof typeof tr;

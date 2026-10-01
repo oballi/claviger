@@ -72,7 +72,7 @@ export function PopupApp({ pollMs = 1000 }: { pollMs?: number }) {
       />
     );
   } else {
-    content = <CodesScreen pollMs={pollMs} onLocked={() => void refresh()} />;
+    content = <CodesScreen state={state} pollMs={pollMs} onLocked={() => void refresh()} />;
   }
 
   return (

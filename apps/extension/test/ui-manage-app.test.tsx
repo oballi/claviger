@@ -296,16 +296,17 @@ describe("ManageApp", () => {
     expect(await screen.findByRole("heading", { name: "Kasa kilitli." })).toBeTruthy();
   });
 
-  it("explains a damaged vault without offering destructive actions", async () => {
+  it("explains a damaged vault and offers the typed move-aside", async () => {
     const { ui } = await harness();
     renderUi(<ManageApp pollMs={0} />, withStatus(ui, "corrupt"));
     expect(await screen.findByText(/Verilerin silinmedi/)).toBeTruthy();
-    expect(screen.queryByRole("button")).toBeNull();
+    expect(await screen.findByText(/kenara alıp yeni bir kasa/)).toBeTruthy();
   });
 
   it("explains a vault from a newer version", async () => {
     const { ui } = await harness();
     renderUi(<ManageApp pollMs={0} />, withStatus(ui, "unsupported"));
     expect(await screen.findByRole("heading", { name: "Güncelleme gerekli." })).toBeTruthy();
+    expect(screen.queryByText(/kenara alıp yeni bir kasa/)).toBeNull();
   });
 });

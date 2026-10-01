@@ -22,7 +22,7 @@ export function AccountsScreen({
   onChanged: () => void;
   pollMs?: number;
 }) {
-  const { rpc } = useUi();
+  const { rpc, openManage } = useUi();
   const t = useT();
   const locale = useLocale();
   const { list, error, reload } = useAccountList(undefined, pollMs);
@@ -223,6 +223,15 @@ export function AccountsScreen({
             <tr>
               <td colSpan={5} className="py-6 text-muted">
                 {q ? t("accounts.noMatch") : t("codes.empty")}
+                {!q && state.snapshotOffer ? (
+                  <Button
+                    variant="link"
+                    onClick={() => openManage("backup")}
+                    className="mt-3 block justify-start text-[13px]"
+                  >
+                    {t("snapshots.offer", { count: state.snapshotOffer.accountCount })}
+                  </Button>
+                ) : null}
               </td>
             </tr>
           ) : null}

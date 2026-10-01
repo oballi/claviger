@@ -6,6 +6,7 @@ import { errorMessage } from "../errors";
 import { useT } from "../i18n/i18n";
 import { useUi, type ManageRoute } from "../platform";
 import { AccountsScreen } from "./AccountsScreen";
+import { CorruptScreen } from "./CorruptScreen";
 import { BackupScreen, type ImportSource } from "./BackupScreen";
 import { ImportScreen } from "./ImportScreen";
 import { ManageFrame, PageTitle } from "./ManageFrame";
@@ -136,6 +137,12 @@ export function ManageApp({ pollMs = 2000 }: { pollMs?: number }) {
         >
           {state.status === "corrupt" ? t("manage.corrupt") : t("status.unsupported.body")}
         </PageTitle>
+        {state.status === "corrupt" ? (
+          <CorruptScreen
+            storageArea={state.storageArea}
+            onDone={() => void refresh().then(() => navigate("setup"))}
+          />
+        ) : null}
       </ManageFrame>
     );
   } else if (route === "recover" && (state.status === "locked" || (keepRecover && unlocked))) {

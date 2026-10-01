@@ -1,5 +1,6 @@
 import type { LockPolicy } from "../background/settings";
-import type { Translate } from "./i18n/i18n";
+import type { SnapshotReason } from "../background/snapshots";
+import type { MessageKey, Translate } from "./i18n/i18n";
 
 /** "492018" → "492 018", "84021937" → "8402 1937"; Steam codes stay as they are. */
 export function formatCode(code: string): string {
@@ -36,3 +37,6 @@ export function formatDate(locale: string, ms: number): string {
 export const isoDate = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
 export const typeLabel = (type: string) => (type === "steam" ? "Steam" : type.toUpperCase());
+
+export const snapshotReasonLabel = (t: Translate, reason: SnapshotReason) =>
+  t(`snapshots.reason.${reason}` as MessageKey);

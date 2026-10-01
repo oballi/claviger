@@ -372,4 +372,36 @@ export const en: Record<MessageKey, string> = {
   "manage.found": "We found your vault.",
   "manage.corrupt":
     "The vault header can't be read, so the vault can't be opened. Nothing has been deleted. Removing the extension would delete this data; if you have no backup, keep it installed and report the problem.",
+  "snapshots.title": "Automatic copies",
+  "snapshots.body":
+    "An encrypted copy is kept on this device every day and before risky changes. The last 7 are kept.",
+  "snapshots.none": "No copies yet.",
+  "snapshots.row": "{reason} · {count} accounts",
+  "snapshots.otherVault": "another vault",
+  "snapshots.restore": "Restore",
+  "snapshots.restoreNote": "Only missing accounts are added; nothing is deleted.",
+  "snapshots.oldPassword": "Password of this copy",
+  "snapshots.oldPasswordHint":
+    "This copy belongs to another vault. Enter that vault's master password.",
+  "snapshots.wrongOldPassword": "Wrong password for this copy.",
+  "snapshots.result": "{added} added, {skipped} already there.",
+  "snapshots.resultUnreadable": "{count} could not be read.",
+  "snapshots.offer": "Restore from an automatic copy ({count} accounts)",
+  "snapshots.reason.daily": "Daily",
+  "snapshots.reason.before-import": "Before import",
+  "snapshots.reason.before-delete": "Before delete",
+  "snapshots.reason.before-move": "Before move",
+  "snapshots.reason.before-restore": "Before restore",
+  "snapshots.reason.before-rebuild": "Before repair",
+  "snapshots.reason.before-recovery": "Before recovery",
+  "corrupt.moveBody":
+    "You can move the damaged data aside without deleting it and set up a new vault. Then restore a backup or an automatic copy from the Backup page.",
+  "corrupt.word": "MOVE ASIDE",
+  "corrupt.type": "Type {word} to confirm",
+  "corrupt.submit": "Move aside and set up a new vault",
+  "corrupt.syncWarning":
+    "This vault is synced; moving it aside may also remove it from your other devices.",
+  "error.not-found": "This copy no longer exists.",
+  "error.snapshot-password-required": "This copy belongs to another vault; enter its password.",
+  "error.same-name": "An account with the same name already exists.",
 };

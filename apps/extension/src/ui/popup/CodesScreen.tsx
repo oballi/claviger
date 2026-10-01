@@ -7,7 +7,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
-import type { AccountView, StorageUsageView } from "../../background/vaultService";
+import type { AccountView, ServiceState, StorageUsageView } from "../../background/vaultService";
 import { RpcError } from "../../rpc/client";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
@@ -49,7 +49,15 @@ function quotaPercent(usage: StorageUsageView | null): number | null {
   return ratio >= 0.8 ? Math.round(ratio * 100) : null;
 }
 
-export function CodesScreen({ pollMs, onLocked }: { pollMs: number; onLocked: () => void }) {
+export function CodesScreen({
+  state,
+  pollMs,
+  onLocked,
+}: {
+  state: ServiceState;
+  pollMs: number;
+  onLocked: () => void;
+}) {
   const { rpc, copy, activeTabUrl, openManage } = useUi();
   const t = useT();
   const locale = useLocale();
@@ -251,6 +259,15 @@ export function CodesScreen({ pollMs, onLocked }: { pollMs: number; onLocked: ()
         {list && accounts.length === 0 ? (
           <div className="flex flex-col items-start gap-4 pt-10">
             <p className="m-0 text-sm text-muted">{t("codes.empty")}</p>
+            {state.snapshotOffer ? (
+              <Button
+                variant="link"
+                onClick={() => openManage("backup")}
+                className="justify-start text-[13px]"
+              >
+                {t("snapshots.offer", { count: state.snapshotOffer.accountCount })}
+              </Button>
+            ) : null}
             <Button variant="primary" onClick={() => setAdding(true)}>
               {t("codes.add")}
             </Button>

@@ -16,6 +16,7 @@ import { formatDate, isoDate } from "../format";
 import { useLocale, useT } from "../i18n/i18n";
 import { useUi } from "../platform";
 import { PageTitle, SettingsRow, SettingsSection } from "./ManageFrame";
+import { SnapshotsSection } from "./SnapshotsSection";
 
 export const MAX_IMPORT_CHARS = 5_000_000;
 
@@ -462,6 +463,8 @@ export function BackupScreen({
           ) : null}
         </SettingsRow>
       </SettingsSection>
+
+      <SnapshotsSection num="04" onChanged={onChanged} />
     </div>
   );
 }

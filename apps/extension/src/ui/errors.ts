@@ -19,6 +19,9 @@ const KNOWN: Record<string, MessageKey> = {
   "corrupt-file": "error.corrupt-file",
   "already-set-up": "error.already-set-up",
   "no-response": "error.no-response",
+  "not-found": "error.not-found",
+  "snapshot-password-required": "error.snapshot-password-required",
+  "same-name": "error.same-name",
 };
 
 /** Maps an RPC failure to user-facing text; unknown errors never leak their internal message. */
