@@ -59,9 +59,30 @@ describe("adding and listing", () => {
     await expect(vault.addAccounts([input("A"), input("B")])).rejects.toThrow("QUOTA_BYTES");
     expect(await vault.listAccounts()).toEqual(before);
   });
+
+  it("makes exactly one storage.set call for a multi-account batch", async () => {
+    const original = deps.storage.set.bind(deps.storage);
+    let calls = 0;
+    deps.storage.set = async (items) => {
+      calls++;
+      return original(items);
+    };
+    await vault.addAccounts([input("A"), input("B")]);
+    expect(calls).toBe(1);
+  });
 });
 
 describe("sync-shaped data", () => {
+  it("does not resurrect a deleted account from an old ciphertext with a bumped outer updatedAt", async () => {
+    const a = await vault.addAccount(input("Replay"));
+    const oldRecord = deps.storage.data.get(accountKey(a.id)) as { updatedAt: number };
+    deps.clock.advance(1000);
+    await vault.deleteAccount(a.id);
+    const { deletedAt } = deps.storage.data.get(tombKey(a.id)) as { deletedAt: number };
+    deps.storage.data.set(accountKey(a.id), { ...oldRecord, updatedAt: deletedAt + 10 });
+    expect((await vault.listAccounts()).accounts).toEqual([]);
+  });
+
   it("keeps indexed accounts first and appends unknown ones by createdAt (added on another device)", async () => {
     const x = await vault.addAccount(input("X"));
     deps.clock.advance(5);

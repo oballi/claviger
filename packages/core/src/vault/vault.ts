@@ -285,6 +285,8 @@ export class Vault {
         unreadable.push(id);
         continue;
       }
+      // Dış updatedAt AAD ile korunmaz; eski şifreli metin tekrar oynatılabilir. Doğrulanmış iç değer de tombstone'dan yeni olmalı.
+      if (deletedAt !== undefined && account.updatedAt <= deletedAt) continue;
       accounts.push(account);
     }
 
