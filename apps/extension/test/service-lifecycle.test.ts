@@ -20,6 +20,7 @@ describe("setup", () => {
       storageArea: "local",
       hasRecoveryCode: null,
       accountCount: null,
+      snapshotOffer: null,
       retryAfterMs: 0,
       clockOffsetSec: 0,
       clockCheckEnabled: false,

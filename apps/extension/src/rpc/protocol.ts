@@ -57,6 +57,13 @@ export const rpcRequestSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("lock") }),
   z.object({ type: z.literal("listSnapshots") }),
+  z.object({
+    type: z.literal("restoreSnapshot"),
+    token,
+    id: z.string().min(1).max(128),
+    password: password.optional(),
+  }),
+  z.object({ type: z.literal("quarantineVault") }),
   z.object({ type: z.literal("listAccounts"), pageUrl: url.optional() }),
   z.object({ type: z.literal("addAccountUri"), uri: url, sourceUrl: url.optional() }),
   z.object({
@@ -116,6 +123,8 @@ export interface RpcResults {
   unlockWithRecovery: { recoveryCode: string };
   lock: null;
   listSnapshots: SnapshotInfo[];
+  restoreSnapshot: { added: number; skipped: number; unreadable: number };
+  quarantineVault: { moved: number };
   listAccounts: AccountListView;
   addAccountUri: { id: string };
   addAccountManual: { id: string };

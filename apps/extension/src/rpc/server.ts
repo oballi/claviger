@@ -55,6 +55,10 @@ async function dispatch(service: VaultService, req: RpcRequest): Promise<unknown
       return null;
     case "listSnapshots":
       return service.listSnapshots();
+    case "restoreSnapshot":
+      return service.restoreSnapshot(req.token, req.id, req.password);
+    case "quarantineVault":
+      return service.quarantineVault();
     case "listAccounts":
       return service.listAccounts({ pageUrl: req.pageUrl });
     case "addAccountUri":

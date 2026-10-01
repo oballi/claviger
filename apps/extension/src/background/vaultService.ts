@@ -27,7 +27,7 @@ import {
 } from "@otp-vault/core";
 import type { Platform, StorageAreaName } from "../platform/ports";
 import { ServiceError } from "./errors";
-import { canonicalJson, SnapshotStore, type SnapshotReason } from "./snapshots";
+import { canonicalJson, recordsStorage, SnapshotStore, type SnapshotReason } from "./snapshots";
 import { KeyCache, MANUAL_LOCK_KEY, PERSISTED_KEY } from "./keyCache";
 import {
   DEFAULT_SETTINGS,
@@ -65,6 +65,8 @@ export interface ServiceState {
   clockCheckEnabled: boolean;
   revealRequiresPassword: boolean;
   lastBackupAt: number | null;
+  /** Set only when the unlocked vault is empty and a non-empty local copy exists. */
+  snapshotOffer: { id: string; createdAt: number; accountCount: number } | null;
 }
 
 export interface SnapshotInfo {
@@ -353,7 +355,7 @@ export class VaultService {
       lastBackupAt: settings.lastBackupAt,
       retryAfterMs: await this.throttle.retryAfterMs(),
     };
-    const none = { hasRecoveryCode: null, accountCount: null };
+    const none = { hasRecoveryCode: null, accountCount: null, snapshotOffer: null };
     if (!exists) return { ...base, status: "no-vault", ...none };
     // Queued: a copy taken mid-write could hold a half-changed vault or a revoked keyslot.
     if (this.dailyDue()) await this.exclusive(() => this.dailySnapshot());
@@ -378,6 +380,7 @@ export class VaultService {
         status: "unlocked",
         hasRecoveryCode: vault.hasRecoveryCode(),
         accountCount: info.accountCount,
+        snapshotOffer: info.accountCount === 0 ? await this.snapshotOffer() : null,
       };
     }
     if (info.status === "missing") return { ...base, status: "no-vault", ...none };
@@ -386,7 +389,19 @@ export class VaultService {
       status: "locked",
       hasRecoveryCode: info.hasRecoveryCode,
       accountCount: info.accountCount,
+      snapshotOffer: null,
     };
+  }
+
+  private async snapshotOffer(): Promise<ServiceState["snapshotOffer"]> {
+    try {
+      const found = (await this.snapshots.list()).find((s) => s.accountCount > 0);
+      return found
+        ? { id: found.id, createdAt: found.createdAt, accountCount: found.accountCount }
+        : null;
+    } catch {
+      return null;
+    }
   }
 
   async setup(opts: {
@@ -633,6 +648,83 @@ export class VaultService {
       throw new ServiceError("invalid-token", "Please confirm your password again");
     }
     return vault;
+  }
+
+  private checkTokenValid(token: string): void {
+    const expiresAt = this.tokens.get(token);
+    if (expiresAt === undefined || expiresAt < this.p.clock.now()) {
+      throw new ServiceError("invalid-token", "Please confirm your password again");
+    }
+  }
+
+  restoreSnapshot(
+    token: string,
+    id: string,
+    password?: string,
+  ): Promise<{ added: number; skipped: number; unreadable: number }> {
+    return this.exclusive(async () => {
+      const snap = await this.snapshots.get(id);
+      if (!snap) throw new ServiceError("not-found", "The local copy no longer exists");
+      const current = await this.requireVault();
+      const sameVault = snap.vaultId === current.vaultId;
+      let vault: Vault;
+      let opened: Vault;
+      const deps = this.deps(recordsStorage(snap.records));
+      if (sameVault) {
+        vault = await this.spendToken(token);
+        try {
+          opened = await Vault.fromKey(deps, vault.exportKey());
+        } catch (e) {
+          if (isCoreError(e, "wrong-password"))
+            throw new ServiceError("invalid-request", "The local copy cannot be opened");
+          throw e;
+        }
+      } else {
+        // The token stays usable until the old password is right, so a typo does not cost a re-auth.
+        if (password === undefined) {
+          throw new ServiceError(
+            "snapshot-password-required",
+            "This copy belongs to another vault",
+          );
+        }
+        this.checkTokenValid(token);
+        await this.checkThrottle();
+        try {
+          opened = await Vault.unlockWithPassword(deps, password);
+        } catch (e) {
+          if (isCoreError(e, "wrong-password")) return this.failAttempt();
+          throw e;
+        }
+        // Not throttle.reset(): the old password is not this vault's password.
+        vault = await this.spendToken(token);
+      }
+      const listing = await opened.listAccounts();
+      await this.snapshot("before-restore");
+      const { added, duplicates } = await vault.addAccounts(listing.accounts);
+      return {
+        added: added.length,
+        skipped: duplicates.length,
+        unreadable: listing.unreadable.length,
+      };
+    });
+  }
+
+  quarantineVault(): Promise<{ moved: number }> {
+    return this.exclusive(async () => {
+      const { settings } = await this.locateVault();
+      const active = this.area(settings.storageArea);
+      if ((await Vault.inspect(active)).status !== "corrupt") {
+        throw new ServiceError("invalid-request", "Only a corrupt vault can be moved aside");
+      }
+      this.lockEpoch++;
+      this.loading = null;
+      this.vault = null;
+      this.onLock();
+      const moved = await this.snapshots.quarantine(active);
+      await this.keys.forget();
+      await this.p.alarms.clear(AUTOLOCK_ALARM);
+      return { moved };
+    });
   }
 
   async revealSecret(token: string | undefined, id: string): Promise<{ uri: string }> {

@@ -6,7 +6,9 @@ export type ServiceErrorCode =
   | "invalid-token"
   | "already-set-up"
   | "preview-expired"
-  | "invalid-request";
+  | "invalid-request"
+  | "not-found"
+  | "snapshot-password-required";
 
 export class ServiceError extends Error {
   readonly code: ServiceErrorCode;
