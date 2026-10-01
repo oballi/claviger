@@ -53,8 +53,19 @@ describe("Vault lifecycle", () => {
   it("reports a missing or corrupt vault", async () => {
     const deps = makeDeps();
     expect(await asyncCodeOf(Vault.unlockWithPassword(deps, "x"))).toBe("vault-not-found");
-    await deps.storage.set({ [HEADER_KEY]: { format: 99 } });
+    await deps.storage.set({ [HEADER_KEY]: { format: 1 } });
     expect(await asyncCodeOf(Vault.unlockWithPassword(deps, "x"))).toBe("vault-corrupt");
+    await deps.storage.set({ [HEADER_KEY]: { format: "1" } });
+    expect(await asyncCodeOf(Vault.unlockWithPassword(deps, "x"))).toBe("vault-corrupt");
+  });
+
+  it("reports a vault from a newer version as unsupported, not corrupt", async () => {
+    const deps = makeDeps();
+    const { vault } = await Vault.create(deps, { password: "pw", createRecoveryCode: false });
+    const header = deps.storage.data.get(HEADER_KEY) as Record<string, unknown>;
+    deps.storage.data.set(HEADER_KEY, { ...header, format: 2, somethingNew: true });
+    expect(await asyncCodeOf(Vault.unlockWithPassword(deps, "pw"))).toBe("unsupported-format");
+    expect(await asyncCodeOf(Vault.fromKey(deps, vault.exportKey()))).toBe("unsupported-format");
   });
 
   it("restores from an exported key and rejects foreign keys", async () => {

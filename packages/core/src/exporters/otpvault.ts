@@ -6,6 +6,7 @@ import { utf8Decode, utf8Encode } from "../encoding/bytes";
 import { CoreError } from "../errors";
 import { collect, emptyResult, type ImportResult } from "../importers/types";
 import type { VaultDeps } from "../ports";
+import { isNewerVersion } from "../vault/format";
 import {
   createPasswordKeyslot,
   keyslotSchema,
@@ -74,6 +75,8 @@ export function isOtpvaultExport(json: unknown): boolean {
 }
 
 export async function parseOtpvaultExport(json: unknown, password: string): Promise<ImportResult> {
+  if (isNewerVersion(json, "version"))
+    throw new CoreError("unsupported-format", "This export was created by a newer version");
   const file = exportSchema.safeParse(json);
   if (!file.success)
     throw new CoreError("corrupt-file", "Export file is malformed or uses unsafe parameters");

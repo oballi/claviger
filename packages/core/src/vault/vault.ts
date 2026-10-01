@@ -18,6 +18,7 @@ import {
   headerSchema,
   INDEX_KEY,
   indexSchema,
+  isNewerVersion,
   TOMB_PREFIX,
   tombKey,
   tombSchema,
@@ -46,6 +47,8 @@ export interface VaultListing {
   accounts: Account[];
   pinned: string[];
   unreadable: string[];
+  /** `vault:index` var ama çözülemiyor; yazmalar `rebuildIndex()` çağrılana dek `vault-corrupt` ile reddedilir. */
+  indexDamaged: boolean;
 }
 
 export type AccountPatch = Partial<
@@ -236,6 +239,8 @@ export class Vault {
   protected static async readHeader(storage: StoragePort): Promise<VaultHeader> {
     const raw = (await storage.get([HEADER_KEY]))[HEADER_KEY];
     if (raw === undefined) throw new CoreError("vault-not-found", "No vault found");
+    if (isNewerVersion(raw, "format"))
+      throw new CoreError("unsupported-format", "This vault was created by a newer version");
     const parsed = headerSchema.safeParse(raw);
     if (!parsed.success) throw new CoreError("vault-corrupt", "Vault header is corrupt");
     return parsed.data;
@@ -248,7 +253,8 @@ export class Vault {
   }
 
   /**
-   * DEK bu kasaya mı ait? Önce index, index yoksa (ör. sync'te henüz gelmemiş) ilk hesap kaydı denenir.
+   * DEK bu kasaya mı ait? Önce index, sonra hesap kayıtları denenir; biri açılırsa yeterlidir (index
+   * bozuk veya sync'te henüz gelmemiş olabilir). false: kayıt var ama hiçbiri açılmadı.
    * null: kontrol edilecek şifreli veri yok (boş kasa) → kabul edilir.
    */
   private async indexOpens(): Promise<boolean | null> {
@@ -259,12 +265,23 @@ export class Vault {
         .filter((k) => k.startsWith(ACCOUNT_PREFIX))
         .sort(),
     ];
+    let parsedAny = false;
     for (const key of keys) {
       const record = encryptedRecordSchema.safeParse(all[key]);
       if (!record.success) continue;
-      return (await openBytes(this.dek, record.data, recordAad(key))) !== null;
+      parsedAny = true;
+      if ((await openBytes(this.dek, record.data, recordAad(key))) !== null) return true;
     }
-    return null;
+    return parsedAny ? false : null;
+  }
+
+  /** Ham index değerini açar. undefined: index yok; null: var ama çözülemiyor (hasarlı). */
+  private async openIndex(raw: unknown): Promise<VaultIndex | null | undefined> {
+    if (raw === undefined) return undefined;
+    if (isNewerVersion(raw, "v"))
+      throw new CoreError("unsupported-format", "Vault index was written by a newer version");
+    const record = encryptedRecordSchema.safeParse(raw);
+    return record.success ? decryptRecord(this.dek, INDEX_KEY, record.data, indexSchema) : null;
   }
 
   /**
@@ -273,12 +290,8 @@ export class Vault {
    * sıralama ve sabitlemeler sessizce silinmesin.
    */
   protected async readIndex({ strict = false }: { strict?: boolean } = {}): Promise<VaultIndex> {
-    const raw = (await this.deps.storage.get([INDEX_KEY]))[INDEX_KEY];
-    if (raw === undefined) return { ...EMPTY_INDEX };
-    const record = encryptedRecordSchema.safeParse(raw);
-    const index = record.success
-      ? await decryptRecord(this.dek, INDEX_KEY, record.data, indexSchema)
-      : null;
+    const index = await this.openIndex((await this.deps.storage.get([INDEX_KEY]))[INDEX_KEY]);
+    if (index === undefined) return { ...EMPTY_INDEX };
     if (index) return index;
     if (strict) throw new CoreError("vault-corrupt", "Vault index cannot be decrypted");
     return { ...EMPTY_INDEX };
@@ -303,7 +316,8 @@ export class Vault {
 
   async listAccounts(): Promise<VaultListing> {
     const all = await this.deps.storage.get();
-    const index = await this.readIndex();
+    const opened = await this.openIndex(all[INDEX_KEY]);
+    const index = opened ?? EMPTY_INDEX;
 
     const tombs = new Map<string, number>();
     for (const [key, value] of Object.entries(all)) {
@@ -317,6 +331,9 @@ export class Vault {
     for (const [key, value] of Object.entries(all)) {
       if (!key.startsWith(ACCOUNT_PREFIX)) continue;
       const id = key.slice(ACCOUNT_PREFIX.length);
+      // Daha yeni bir istemcinin kaydı: bu sürüm kasaya dokunmamalı (okunamaz diye silinmesin).
+      if (isNewerVersion(value, "v"))
+        throw new CoreError("unsupported-format", "Vault contains records from a newer version");
       const record = encryptedRecordSchema.safeParse(value);
       if (!record.success) {
         unreadable.push(id);
@@ -349,7 +366,22 @@ export class Vault {
       accounts,
       pinned: index.pinned.filter((id) => ids.has(id)),
       unreadable: unreadable.sort(),
+      indexDamaged: opened === null,
     };
+  }
+
+  /**
+   * Hasarlı index'i okumadan yenisini yazar: sıra okunabilir hesapların createdAt/id sırası,
+   * sabitlemeler boş. Bozuk index yüzünden kilitlenen yazmaları yeniden açar.
+   */
+  rebuildIndex(): Promise<void> {
+    return this.exclusive(async () => {
+      const { accounts } = await this.listAccounts();
+      const order = [...accounts]
+        .sort((x, y) => x.createdAt - y.createdAt || x.id.localeCompare(y.id))
+        .map((a) => a.id);
+      await this.writeIndex({ order, pinned: [], updatedAt: this.nextUpdatedAt(0) });
+    });
   }
 
   addAccounts(inputs: AccountInput[]): Promise<{ added: Account[]; duplicates: AccountInput[] }> {
@@ -415,6 +447,8 @@ export class Vault {
     const raw = (await this.deps.storage.get([key]))[key];
     const record = encryptedRecordSchema.safeParse(raw);
     if (raw === undefined) throw new CoreError("account-not-found", `Account ${id} not found`);
+    if (isNewerVersion(raw, "v"))
+      throw new CoreError("unsupported-format", `Account ${id} was written by a newer version`);
     if (!record.success) throw new CoreError("vault-corrupt", `Account ${id} is corrupt`);
     const account = await decryptRecord(this.dek, key, record.data, accountSchema);
     if (!account || account.id !== id)
@@ -515,19 +549,34 @@ export class Vault {
     });
   }
 
+  /** Kayıt `deletedAt` tarihli tombstone tarafından gizleniyor mu? (listAccounts ile aynı kural) */
+  private async hiddenBy(key: string, raw: unknown, deletedAt: number): Promise<boolean> {
+    const record = encryptedRecordSchema.safeParse(raw);
+    if (!record.success) return false;
+    if (record.data.updatedAt <= deletedAt) return true;
+    const account = await decryptRecord(this.dek, key, record.data, accountSchema);
+    return account !== null && account.updatedAt <= deletedAt;
+  }
+
   purgeTombstones(maxAgeMs = TOMBSTONE_TTL_MS): Promise<number> {
     return this.exclusive(async () => {
       const all = await this.deps.storage.get();
       const cutoff = this.deps.clock.now() - maxAgeMs;
-      const expired = Object.entries(all)
-        .filter(([key, value]) => {
-          if (!key.startsWith(TOMB_PREFIX)) return false;
-          const tomb = tombSchema.safeParse(value);
-          return tomb.success && tomb.data.deletedAt < cutoff;
-        })
-        .map(([key]) => key);
-      if (expired.length) await this.deps.storage.remove(expired);
-      return expired.length;
+      const toRemove: string[] = [];
+      let purged = 0;
+      for (const [key, value] of Object.entries(all)) {
+        if (!key.startsWith(TOMB_PREFIX)) continue;
+        const tomb = tombSchema.safeParse(value);
+        if (!tomb.success || tomb.data.deletedAt >= cutoff) continue;
+        purged++;
+        toRemove.push(key);
+        // Tombstone'un gizlediği eski kopya da gitmeli; yoksa tombstone silinince geri dirilir (spec §7).
+        const recordKey = accountKey(key.slice(TOMB_PREFIX.length));
+        if (await this.hiddenBy(recordKey, all[recordKey], tomb.data.deletedAt))
+          toRemove.push(recordKey);
+      }
+      if (toRemove.length) await this.deps.storage.remove(toRemove);
+      return purged;
     });
   }
 }

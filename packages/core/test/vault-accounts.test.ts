@@ -226,7 +226,12 @@ describe("ordering and pinning", () => {
     const a = await vault.addAccount(input("A"));
     await vault.setPinned(a.id, true);
     await vault.deleteAccount(a.id);
-    expect(await vault.listAccounts()).toEqual({ accounts: [], pinned: [], unreadable: [] });
+    expect(await vault.listAccounts()).toEqual({
+      accounts: [],
+      pinned: [],
+      unreadable: [],
+      indexDamaged: false,
+    });
   });
 });
 
@@ -257,6 +262,24 @@ describe("restoring from a cached key", () => {
   });
 });
 
+describe("records from a newer version", () => {
+  it("refuses to list a vault that contains a newer account record", async () => {
+    const a = await vault.addAccount(input("A"));
+    const record = deps.storage.data.get(accountKey(a.id)) as Record<string, unknown>;
+    deps.storage.data.set(accountKey(a.id), { ...record, v: 2 });
+    expect(await asyncCodeOf(vault.listAccounts())).toBe("unsupported-format");
+    expect(await asyncCodeOf(vault.getAccount(a.id))).toBe("unsupported-format");
+  });
+
+  it("refuses to read or write a newer index", async () => {
+    const a = await vault.addAccount(input("A"));
+    const index = deps.storage.data.get(INDEX_KEY) as Record<string, unknown>;
+    deps.storage.data.set(INDEX_KEY, { ...index, v: 2 });
+    expect(await asyncCodeOf(vault.listAccounts())).toBe("unsupported-format");
+    expect(await asyncCodeOf(vault.setPinned(a.id, true))).toBe("unsupported-format");
+  });
+});
+
 describe("corrupt index", () => {
   it("still lists accounts but refuses writes that would wipe order and pins", async () => {
     const a = await vault.addAccount(input("A"));
@@ -264,6 +287,40 @@ describe("corrupt index", () => {
     expect((await vault.listAccounts()).accounts.map((x) => x.id)).toEqual([a.id]);
     expect(await asyncCodeOf(vault.setPinned(a.id, true))).toBe("vault-corrupt");
     expect(await asyncCodeOf(vault.addAccount(input("B")))).toBe("vault-corrupt");
+  });
+
+  it("reports the damage and can rebuild the index from readable accounts", async () => {
+    const a = await vault.addAccount(input("A"));
+    deps.clock.advance(10);
+    const b = await vault.addAccount(input("B"));
+    await vault.reorder([b.id, a.id]);
+    expect((await vault.listAccounts()).indexDamaged).toBe(false);
+    deps.storage.data.set(INDEX_KEY, { v: 1, iv: "AAAAAAAAAAAAAAAA", ct: "AAAA", updatedAt: 0 });
+    expect((await vault.listAccounts()).indexDamaged).toBe(true);
+    expect(await asyncCodeOf(vault.addAccount(input("C")))).toBe("vault-corrupt");
+
+    await vault.rebuildIndex();
+    const rebuilt = await vault.listAccounts();
+    expect(rebuilt.indexDamaged).toBe(false);
+    expect(rebuilt.accounts.map((x) => x.id)).toEqual([a.id, b.id]);
+    expect(rebuilt.pinned).toEqual([]);
+    const c = await vault.addAccount(input("C"));
+    expect((await vault.listAccounts()).accounts.map((x) => x.id)).toEqual([a.id, b.id, c.id]);
+  });
+
+  it("treats a non-record index value as damaged", async () => {
+    deps.storage.data.set(INDEX_KEY, "garbage");
+    expect((await vault.listAccounts()).indexDamaged).toBe(true);
+    await vault.rebuildIndex();
+    expect((await vault.listAccounts()).indexDamaged).toBe(false);
+  });
+
+  it("restores from the cached key while the index is damaged but an account opens", async () => {
+    await vault.addAccount(input("A"));
+    deps.storage.data.set(INDEX_KEY, { v: 1, iv: "AAAAAAAAAAAAAAAA", ct: "AAAA", updatedAt: 0 });
+    const restored = await Vault.fromKey(deps, vault.exportKey());
+    expect((await restored.listAccounts()).indexDamaged).toBe(true);
+    expect(await asyncCodeOf(Vault.fromKey(deps, webRandom.bytes(32)))).toBe("wrong-password");
   });
 });
 
@@ -275,5 +332,48 @@ describe("tombstone purge", () => {
     deps.clock.advance(TOMBSTONE_TTL_MS + 10);
     expect(await vault.purgeTombstones()).toBe(1);
     expect(deps.storage.data.has(tombKey(a.id))).toBe(false);
+  });
+
+  it("removes a stale record next to an expired tombstone so it cannot resurrect", async () => {
+    const a = await vault.addAccount(input("A"));
+    const stale = deps.storage.data.get(accountKey(a.id));
+    await vault.deleteAccount(a.id);
+    deps.storage.data.set(accountKey(a.id), stale); // eski kopya sync ile geri geldi
+    deps.clock.advance(TOMBSTONE_TTL_MS + 10);
+    expect(await vault.purgeTombstones()).toBe(1);
+    expect(deps.storage.data.has(accountKey(a.id))).toBe(false);
+    expect((await vault.listAccounts()).accounts).toHaveLength(0);
+  });
+
+  it("removes a stale record whose outer updatedAt was bumped past the tombstone", async () => {
+    const a = await vault.addAccount(input("A"));
+    const stale = deps.storage.data.get(accountKey(a.id)) as { updatedAt: number };
+    await vault.deleteAccount(a.id);
+    const { deletedAt } = deps.storage.data.get(tombKey(a.id)) as { deletedAt: number };
+    deps.storage.data.set(accountKey(a.id), { ...stale, updatedAt: deletedAt + 10 });
+    deps.clock.advance(TOMBSTONE_TTL_MS + 10);
+    await vault.purgeTombstones();
+    expect(deps.storage.data.has(accountKey(a.id))).toBe(false);
+    expect((await vault.listAccounts()).accounts).toHaveLength(0);
+  });
+
+  it("keeps a record that was re-saved after the tombstone", async () => {
+    const a = await vault.addAccount(input("A"));
+    await vault.deleteAccount(a.id);
+    const { deletedAt } = deps.storage.data.get(tombKey(a.id)) as { deletedAt: number };
+    const resaved = { ...a, updatedAt: deletedAt + 5 };
+    deps.storage.data.set(
+      accountKey(a.id),
+      await encryptRecord(
+        vault.exportKey(),
+        accountKey(a.id),
+        resaved,
+        resaved.updatedAt,
+        webRandom,
+      ),
+    );
+    deps.clock.advance(TOMBSTONE_TTL_MS + 10);
+    await vault.purgeTombstones();
+    expect((await vault.listAccounts()).accounts).toEqual([resaved]);
   });
 });

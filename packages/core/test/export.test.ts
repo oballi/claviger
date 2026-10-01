@@ -60,6 +60,13 @@ describe(".otpvault export", () => {
     );
   });
 
+  it("reports an export from a newer version as unsupported, not corrupt", async () => {
+    const json = JSON.parse(await exportOtpvault(accounts, "pw", makeDeps()));
+    expect(await asyncCodeOf(parseOtpvaultExport({ ...json, version: 2 }, "pw"))).toBe(
+      "unsupported-format",
+    );
+  });
+
   it("does not claim other JSON", () => {
     expect(isOtpvaultExport({ version: 1 })).toBe(false);
     expect(isOtpvaultExport(null)).toBe(false);

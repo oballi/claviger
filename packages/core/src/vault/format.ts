@@ -7,6 +7,18 @@ export const ACCOUNT_PREFIX = "vault:acct:";
 export const TOMB_PREFIX = "vault:tomb:";
 export const TOMBSTONE_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 
+/**
+ * Sürüm kuralı: header, kayıt, index veya tombstone düzeninde geriye uyumsuz HER değişiklik header
+ * `format` değerini artırmalıdır; böylece eski istemciler kasaya dokunmadan kilit açmada durur.
+ * Bilinen sürümden büyük bir sürüm alanı "bozuk" değil `unsupported-format` olarak raporlanır
+ * (kullanıcı kasayı silmeye yönlendirilmemeli).
+ */
+export const isNewerVersion = (raw: unknown, field: string, current = 1): boolean =>
+  typeof raw === "object" &&
+  raw !== null &&
+  typeof (raw as Record<string, unknown>)[field] === "number" &&
+  ((raw as Record<string, unknown>)[field] as number) > current;
+
 export const accountKey = (id: string) => `${ACCOUNT_PREFIX}${id}`;
 export const tombKey = (id: string) => `${TOMB_PREFIX}${id}`;
 export const isVaultKey = (key: string) => key.startsWith("vault:");
