@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { Icon } from "../components/Icon";
 import { useT } from "../i18n/i18n";
 import type { ManageRoute } from "../platform";
@@ -60,16 +60,24 @@ export function ManageFrame({
 export function PageTitle({
   title,
   count,
+  headingRef,
   children,
 }: {
   title: string;
   count?: number;
+  headingRef?: Ref<HTMLHeadingElement>;
   children?: ReactNode;
 }) {
   return (
     <div className="flex max-w-[640px] flex-col gap-3">
       <div className="flex items-baseline gap-4">
-        <h1 className="m-0 text-[44px] leading-none font-medium tracking-tight">{title}</h1>
+        <h1
+          ref={headingRef}
+          tabIndex={headingRef ? -1 : undefined}
+          className="m-0 text-[44px] leading-none font-medium tracking-tight outline-none"
+        >
+          {title}
+        </h1>
         {count !== undefined ? <span className="font-mono text-sm text-muted">{count}</span> : null}
       </div>
       {children ? <div className="text-[15px] leading-relaxed text-muted">{children}</div> : null}

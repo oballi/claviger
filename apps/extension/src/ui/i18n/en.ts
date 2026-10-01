@@ -186,4 +186,15 @@ export const en: Record<MessageKey, string> = {
   "setup.account.added": "{name} added.",
   "setup.account.skip": "Skip for now and finish",
   "setup.account.finish": "Finish setup",
+  "recover.title": "Unlock with your recovery code.",
+  "recover.body":
+    "Enter the recovery code you saved during setup and choose a new master password.",
+  "recover.code": "Recovery code",
+  "recover.newPassword": "New master password",
+  "recover.submit": "Unlock vault",
+  "recover.none":
+    "No recovery code was created for this vault. Without your password, your codes can't be accessed.",
+  "recover.freshTitle": "Your new recovery code.",
+  "recover.fresh": "Your old recovery code no longer works. Save the new one.",
+  "recover.done": "Go to my codes",
 };

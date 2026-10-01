@@ -183,6 +183,16 @@ export const tr = {
   "setup.account.added": "{name} eklendi.",
   "setup.account.skip": "Şimdilik atla, kurulumu bitir",
   "setup.account.finish": "Kurulumu bitir",
+  "recover.title": "Kurtarma koduyla aç.",
+  "recover.body": "Kurulumda kaydettiğin kurtarma kodunu gir ve yeni bir ana parola belirle.",
+  "recover.code": "Kurtarma kodu",
+  "recover.newPassword": "Yeni ana parola",
+  "recover.submit": "Kasayı aç",
+  "recover.none":
+    "Bu kasa için kurtarma kodu oluşturulmamış. Parolanı hatırlamıyorsan kodlarına erişilemez.",
+  "recover.freshTitle": "Yeni kurtarma kodun.",
+  "recover.fresh": "Eski kurtarma kodun artık geçersiz. Yeni kodunu kaydet.",
+  "recover.done": "Kodlarıma git",
 } as const;
 
 export type MessageKey = keyof typeof tr;
