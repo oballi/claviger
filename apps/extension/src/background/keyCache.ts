@@ -33,13 +33,14 @@ export class KeyCache {
   }
 
   async load(policy: LockPolicy): Promise<Uint8Array | null> {
+    if (policy.kind !== "never") {
+      await this.p.local.remove([PERSISTED_KEY]);
+    }
     const session = await this.p.session.get([SESSION_KEY, MANUAL_LOCK_KEY]);
+    if (session[MANUAL_LOCK_KEY] === true) return null;
     const fromSession = decodeKey(session[SESSION_KEY]);
     if (fromSession) return fromSession;
-    if (session[MANUAL_LOCK_KEY] === true) return null;
     if (policy.kind !== "never") {
-      // Politika "never" değilken diskte kalmış bir kopya (ör. bozuk ayarlar) asla kullanılmaz.
-      await this.p.local.remove([PERSISTED_KEY]);
       return null;
     }
     return decodeKey((await this.p.local.get([PERSISTED_KEY]))[PERSISTED_KEY]);
@@ -47,8 +48,8 @@ export class KeyCache {
 
   /** Elle kilit: tarayıcı yeniden açılana dek kalıcı anahtar da kullanılmaz. */
   async lock(): Promise<void> {
-    await this.p.session.remove([SESSION_KEY]);
     await this.p.session.set({ [MANUAL_LOCK_KEY]: true });
+    await this.p.session.remove([SESSION_KEY]);
   }
 
   async forget(): Promise<void> {

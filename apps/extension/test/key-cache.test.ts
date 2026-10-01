@@ -69,4 +69,42 @@ describe("KeyCache", () => {
     await p.session.set({ [SESSION_KEY]: 42 });
     expect(await new KeyCache(p).load(BROWSER_CLOSE)).toBeNull();
   });
+
+  it("deletes persisted key when loading with non-never policy even if session key is present", async () => {
+    const p = memoryPlatform();
+    const cache = new KeyCache(p);
+    await cache.store(dek, NEVER);
+    expect(p.local.data.has(PERSISTED_KEY)).toBe(true);
+    expect(p.session.data.has(SESSION_KEY)).toBe(true);
+    // Load with different policy should delete persisted key but return session key
+    const loaded = await cache.load(BROWSER_CLOSE);
+    expect(Array.from(loaded!)).toEqual(Array.from(dek));
+    expect(p.local.data.has(PERSISTED_KEY)).toBe(false);
+  });
+
+  it("honours manual lock flag even when session key is present", async () => {
+    const p = memoryPlatform();
+    const cache = new KeyCache(p);
+    await cache.store(dek, NEVER);
+    expect(p.session.data.has(SESSION_KEY)).toBe(true);
+    // Manually set the lock flag while session key is present
+    await p.session.set({ [MANUAL_LOCK_KEY]: true });
+    expect(await cache.load(NEVER)).toBeNull();
+  });
+
+  it("treats a 31-byte base64-decoded key as corrupt", async () => {
+    const p = memoryPlatform();
+    const key31 = Uint8Array.from({ length: 31 }, (_, i) => i);
+    const encoded31 = toBase64(key31);
+    await p.session.set({ [SESSION_KEY]: encoded31 });
+    expect(await new KeyCache(p).load(BROWSER_CLOSE)).toBeNull();
+  });
+
+  it("treats corrupt persisted key as absent under never policy", async () => {
+    const p = memoryPlatform();
+    await p.local.set({ [PERSISTED_KEY]: "!!not base64!!" });
+    expect(await new KeyCache(p).load(NEVER)).toBeNull();
+    await p.local.set({ [PERSISTED_KEY]: 42 });
+    expect(await new KeyCache(p).load(NEVER)).toBeNull();
+  });
 });

@@ -29,7 +29,8 @@ export class Throttle {
 
   async retryAfterMs(): Promise<number> {
     const { failures, lastFailureAt } = await this.read();
-    return Math.max(0, delayAfter(failures) - (this.clock.now() - lastFailureAt));
+    const elapsed = Math.max(0, this.clock.now() - lastFailureAt);
+    return Math.max(0, delayAfter(failures) - elapsed);
   }
 
   async recordFailure(): Promise<void> {

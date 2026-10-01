@@ -49,4 +49,22 @@ describe("Throttle", () => {
     await storage.set({ [ATTEMPTS_KEY]: { failures: "many" } });
     expect(await new Throttle(storage, new FakeClock()).retryAfterMs()).toBe(0);
   });
+
+  it("clamps elapsed time and never waits longer than delayAfter despite clock skew", async () => {
+    const storage = new MemoryStorage();
+    const clock = new FakeClock();
+    const throttle = new Throttle(storage, clock);
+    for (let i = 0; i < 3; i++) {
+      await throttle.recordFailure();
+    }
+    expect(await throttle.retryAfterMs()).toBe(2000);
+    // Simulate clock backward jump
+    clock.advance(-1000 * 60 * 60 * 24); // jump back 1 day
+    expect(await throttle.retryAfterMs()).toBeLessThanOrEqual(2000);
+    // Simulate lastFailureAt in the future
+    await storage.set({
+      [ATTEMPTS_KEY]: { failures: 3, lastFailureAt: clock.now() + 1000000 },
+    });
+    expect(await throttle.retryAfterMs()).toBeLessThanOrEqual(2000);
+  });
 });
