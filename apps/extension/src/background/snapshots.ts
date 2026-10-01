@@ -167,6 +167,13 @@ export class SnapshotStore {
     return count;
   }
 
+  async removeVault(vaultId: string): Promise<void> {
+    const keys = (await this.list())
+      .filter((s) => s.vaultId === vaultId)
+      .map((s) => SNAPSHOT_PREFIX + s.id);
+    if (keys.length) await this.local.remove(keys);
+  }
+
   async quarantine(source: StoragePort): Promise<number> {
     const records = vaultRecords(await source.get());
     if (Object.keys(records).length === 0) return 0;

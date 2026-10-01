@@ -53,6 +53,8 @@ async function dispatch(service: VaultService, req: RpcRequest): Promise<unknown
     case "lock":
       await service.lock();
       return null;
+    case "listSnapshots":
+      return service.listSnapshots();
     case "listAccounts":
       return service.listAccounts({ pageUrl: req.pageUrl });
     case "addAccountUri":

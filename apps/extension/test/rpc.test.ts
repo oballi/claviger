@@ -346,3 +346,24 @@ describe("client", () => {
     expect((await call("getState", {})).status).toBe("no-vault");
   });
 });
+
+describe("listSnapshots rpc", () => {
+  it("returns a list for a trusted sender and forbids an untrusted one", async () => {
+    const service = new VaultService(memoryPlatform());
+    const call = clientFor(service);
+    await call("setup", {
+      password: PASSWORD,
+      createRecoveryCode: false,
+      lockPolicy: { kind: "browser-close" },
+      storageArea: "local",
+    });
+    expect(Array.isArray(await call("listSnapshots", {}))).toBe(true);
+    const response = await handleRpcMessage(
+      service,
+      { channel: RPC_CHANNEL, request: { type: "listSnapshots" } },
+      { id: "ext-id", url: "https://evil.example/" },
+      ctx,
+    );
+    expect(response).toMatchObject({ ok: false, error: { code: "forbidden" } });
+  });
+});

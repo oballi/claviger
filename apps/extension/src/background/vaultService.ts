@@ -5,6 +5,7 @@ import {
   exportOtpauthText,
   exportOtpvault,
   generateCode,
+  HEADER_KEY,
   isVaultKey,
   moveVaultData,
   parseImport,
@@ -26,6 +27,7 @@ import {
 } from "@otp-vault/core";
 import type { Platform, StorageAreaName } from "../platform/ports";
 import { ServiceError } from "./errors";
+import { SnapshotStore, type SnapshotReason } from "./snapshots";
 import { KeyCache, MANUAL_LOCK_KEY, PERSISTED_KEY } from "./keyCache";
 import {
   DEFAULT_SETTINGS,
@@ -41,6 +43,7 @@ export const MIN_PASSWORD_LENGTH = 8;
 export const TOKEN_TTL_MS = 60_000;
 export const PREVIEW_TTL_MS = 10 * 60_000;
 export const MAX_CLOCK_OFFSET_SEC = 12 * 3600;
+export const DAILY_CHECK_MS = 60 * 60_000;
 export const SYNC_QUOTA_BYTES = 102_400;
 export const SYNC_ITEM_QUOTA_BYTES = 8_192;
 
@@ -62,6 +65,14 @@ export interface ServiceState {
   clockCheckEnabled: boolean;
   revealRequiresPassword: boolean;
   lastBackupAt: number | null;
+}
+
+export interface SnapshotInfo {
+  id: string;
+  createdAt: number;
+  reason: SnapshotReason;
+  accountCount: number;
+  sameVault: boolean;
 }
 
 export interface AccountView {
@@ -126,6 +137,9 @@ export class VaultService {
   protected vault: Vault | null = null;
   protected readonly keys: KeyCache;
   protected readonly throttle: Throttle;
+  protected readonly snapshots: SnapshotStore;
+  // In memory only: a restart repeats the check, and dedupe makes a second copy harmless.
+  private lastDailyCheck: number | null = null;
   private queue: Promise<unknown> = Promise.resolve();
   // Bumped by lock() so async work that started before it cannot reinstate an unlocked vault.
   private lockEpoch = 0;
@@ -136,6 +150,50 @@ export class VaultService {
   constructor(protected readonly p: Platform) {
     this.keys = new KeyCache(p);
     this.throttle = new Throttle(p.local, p.clock);
+    this.snapshots = new SnapshotStore(p.local, p.clock, p.random);
+  }
+
+  /** Best effort: a failed copy must never block the operation it protects. */
+  private async snapshot(reason: SnapshotReason): Promise<void> {
+    try {
+      await this.snapshots.take(this.area((await this.settings()).storageArea), reason);
+    } catch {
+      // Ignored on purpose.
+    }
+  }
+
+  private async dailySnapshot(): Promise<void> {
+    const now = this.p.clock.now();
+    const last = this.lastDailyCheck;
+    if (last !== null && now >= last && now - last < DAILY_CHECK_MS) return;
+    this.lastDailyCheck = now;
+    try {
+      await this.snapshots.takeDaily(this.area((await this.settings()).storageArea));
+    } catch {
+      // Ignored on purpose.
+    }
+  }
+
+  /** Keyslot changes keep the DEK, so copies must not keep keyslots the user just revoked. Not best effort. */
+  private async revokeInSnapshots(vault: Vault): Promise<void> {
+    try {
+      const area = this.area((await this.settings()).storageArea);
+      const header = (await area.get([HEADER_KEY]))[HEADER_KEY];
+      await this.snapshots.rekey(vault.vaultId, header);
+    } catch {
+      await this.snapshots.removeVault(vault.vaultId);
+    }
+  }
+
+  async listSnapshots(): Promise<SnapshotInfo[]> {
+    const vault = await this.requireVault();
+    return (await this.snapshots.list()).map((s) => ({
+      id: s.id,
+      createdAt: s.createdAt,
+      reason: s.reason,
+      accountCount: s.accountCount,
+      sameVault: s.vaultId === vault.vaultId,
+    }));
   }
 
   /**
@@ -266,6 +324,7 @@ export class VaultService {
     };
     const none = { hasRecoveryCode: null, accountCount: null };
     if (!exists) return { ...base, status: "no-vault", ...none };
+    await this.dailySnapshot();
     let vault: Vault | null;
     try {
       vault = await this.ensureLoaded();
@@ -348,6 +407,12 @@ export class VaultService {
       if (!(await this.activate(vault, settings.lockPolicy, epoch))) {
         throw new ServiceError("locked", "The vault was locked meanwhile");
       }
+      await this.dailySnapshot();
+      try {
+        await vault.purgeTombstones();
+      } catch {
+        // Housekeeping only; never fails an unlock.
+      }
     });
   }
 
@@ -358,6 +423,7 @@ export class VaultService {
       await this.checkThrottle();
       const { settings, exists } = await this.locateVault();
       if (!exists) throw new ServiceError("no-vault", "No vault has been set up");
+      await this.snapshot("before-recovery");
       let result: { vault: Vault; recoveryCode: string };
       try {
         result = await Vault.unlockWithRecovery(
@@ -369,6 +435,7 @@ export class VaultService {
         if (isCoreError(e, "invalid-recovery-code")) await this.throttle.recordFailure();
         throw e;
       }
+      await this.revokeInSnapshots(result.vault);
       await this.activate(result.vault, settings.lockPolicy, epoch);
       return { recoveryCode: result.recoveryCode };
     });
@@ -465,7 +532,9 @@ export class VaultService {
 
   deleteAccount(id: string): Promise<void> {
     return this.exclusive(async () => {
-      await (await this.requireVault()).deleteAccount(id);
+      const vault = await this.requireVault();
+      await this.snapshot("before-delete");
+      await vault.deleteAccount(id);
     });
   }
 
@@ -483,7 +552,9 @@ export class VaultService {
 
   rebuildIndex(): Promise<void> {
     return this.exclusive(async () => {
-      await (await this.requireVault()).rebuildIndex();
+      const vault = await this.requireVault();
+      await this.snapshot("before-rebuild");
+      await vault.rebuildIndex();
     });
   }
 
@@ -573,14 +644,19 @@ export class VaultService {
     assertPassword(newPassword);
     // Queued: a storage move swaps this.vault, and a rewrite against the old area would be lost.
     await this.exclusive(async () => {
-      await (await this.spendToken(token)).changePassword(newPassword);
+      const vault = await this.spendToken(token);
+      await vault.changePassword(newPassword);
+      await this.revokeInSnapshots(vault);
     });
   }
 
   createRecoveryCode(token: string): Promise<{ recoveryCode: string }> {
-    return this.exclusive(async () => ({
-      recoveryCode: await (await this.spendToken(token)).createRecoveryCode(),
-    }));
+    return this.exclusive(async () => {
+      const vault = await this.spendToken(token);
+      const recoveryCode = await vault.createRecoveryCode();
+      await this.revokeInSnapshots(vault);
+      return { recoveryCode };
+    });
   }
 
   setLockPolicy(token: string, policy: LockPolicy): Promise<void> {
@@ -600,6 +676,7 @@ export class VaultService {
       const vault = await this.spendToken(token);
       const { storageArea } = await this.settings();
       if (storageArea === area) return;
+      await this.snapshot("before-move");
       const target = this.area(area);
       try {
         await moveVaultData(this.area(storageArea), target);
@@ -627,6 +704,7 @@ export class VaultService {
       const active = this.area((await this.settings()).storageArea);
       const keys = Object.keys(await active.get()).filter(isVaultKey);
       if (keys.length > 0) await active.remove(keys);
+      await this.snapshots.removeAll();
       await this.keys.forget();
       await this.p.session.remove([MANUAL_LOCK_KEY]);
       await this.throttle.reset();
@@ -691,6 +769,7 @@ export class VaultService {
     if (!preview || preview.expiresAt < this.p.clock.now()) {
       throw new ServiceError("preview-expired", "The import preview expired; please start again");
     }
+    await this.snapshot("before-import");
     const chosen = [...new Set(indexes)]
       .filter((i) => Number.isInteger(i) && i >= 0 && i < preview.accounts.length)
       .map((i) => preview.accounts[i]!);

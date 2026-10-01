@@ -5,6 +5,7 @@ import type {
   AccountListView,
   ImportPreviewView,
   ServiceState,
+  SnapshotInfo,
   StorageUsageView,
 } from "../background/vaultService";
 
@@ -55,6 +56,7 @@ export const rpcRequestSchema = z.discriminatedUnion("type", [
     newPassword: password,
   }),
   z.object({ type: z.literal("lock") }),
+  z.object({ type: z.literal("listSnapshots") }),
   z.object({ type: z.literal("listAccounts"), pageUrl: url.optional() }),
   z.object({ type: z.literal("addAccountUri"), uri: url, sourceUrl: url.optional() }),
   z.object({
@@ -113,6 +115,7 @@ export interface RpcResults {
   unlock: null;
   unlockWithRecovery: { recoveryCode: string };
   lock: null;
+  listSnapshots: SnapshotInfo[];
   listAccounts: AccountListView;
   addAccountUri: { id: string };
   addAccountManual: { id: string };
