@@ -89,6 +89,25 @@ export class Vault {
     return HEADER_KEY in (await storage.get([HEADER_KEY]));
   }
 
+  /** Header-only status check; never unlocks and never throws for unsupported or corrupt headers. */
+  static async inspect(storage: StoragePort): Promise<{
+    status: "missing" | "ok" | "unsupported" | "corrupt";
+    hasRecoveryCode: boolean | null;
+  }> {
+    try {
+      const header = await Vault.readHeader(storage);
+      return { status: "ok", hasRecoveryCode: header.keyslots.some((s) => s.kind === "recovery") };
+    } catch (e) {
+      if (e instanceof CoreError) {
+        if (e.code === "vault-not-found") return { status: "missing", hasRecoveryCode: null };
+        if (e.code === "unsupported-format")
+          return { status: "unsupported", hasRecoveryCode: null };
+        if (e.code === "vault-corrupt") return { status: "corrupt", hasRecoveryCode: null };
+      }
+      throw e;
+    }
+  }
+
   static async create(
     deps: VaultDeps,
     opts: CreateVaultOptions,

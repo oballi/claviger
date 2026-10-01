@@ -35,6 +35,9 @@ export class VaultService {
   protected readonly keys: KeyCache;
   protected readonly throttle: Throttle;
   private queue: Promise<unknown> = Promise.resolve();
+  // Bumped by lock() so async work that started before it cannot reinstate an unlocked vault.
+  private lockEpoch = 0;
+  private loading: Promise<Vault | null> | null = null;
 
   constructor(protected readonly p: Platform) {
     this.keys = new KeyCache(p);
@@ -75,17 +78,29 @@ export class VaultService {
     return { settings, exists: false };
   }
 
-  private async ensureLoaded(): Promise<Vault | null> {
-    if (this.vault) return this.vault;
+  private ensureLoaded(): Promise<Vault | null> {
+    if (this.vault) return Promise.resolve(this.vault);
+    if (this.loading) return this.loading;
+    const load: Promise<Vault | null> = this.loadFromCache(this.lockEpoch).finally(() => {
+      if (this.loading === load) this.loading = null;
+    });
+    this.loading = load;
+    return load;
+  }
+
+  private async loadFromCache(epoch: number): Promise<Vault | null> {
     const { storageArea, lockPolicy } = await this.settings();
     const dek = await this.keys.load(lockPolicy);
-    if (!dek) return null;
+    if (!dek || epoch !== this.lockEpoch) return null;
     try {
-      this.vault = await Vault.fromKey(this.deps(this.area(storageArea)), dek);
-      return this.vault;
+      const vault = await Vault.fromKey(this.deps(this.area(storageArea)), dek);
+      if (epoch !== this.lockEpoch) return null;
+      this.vault = vault;
+      return vault;
     } catch (e) {
       if (isCoreError(e, "wrong-password") || isCoreError(e, "vault-not-found")) {
-        await this.keys.forget();
+        // A newer unlock may have stored a good key meanwhile; only forget our own stale one.
+        if (epoch === this.lockEpoch) await this.keys.forget();
         return null;
       }
       throw e;
@@ -111,7 +126,9 @@ export class VaultService {
       await this.p.alarms.create(AUTOLOCK_ALARM, lockPolicy.minutes);
   }
 
-  private async activate(vault: Vault, policy: LockPolicy): Promise<void> {
+  private async activate(vault: Vault, policy: LockPolicy, epoch: number): Promise<void> {
+    if (epoch !== this.lockEpoch)
+      throw new ServiceError("locked", "The vault was locked meanwhile");
     this.vault = vault;
     await this.keys.store(vault.exportKey(), policy);
     await this.throttle.reset();
@@ -149,11 +166,14 @@ export class VaultService {
         return { ...base, status: "corrupt", hasRecoveryCode: null };
       throw e;
     }
-    return {
-      ...base,
-      status: vault ? "unlocked" : "locked",
-      hasRecoveryCode: vault ? vault.hasRecoveryCode() : null,
-    };
+    if (vault) return { ...base, status: "unlocked", hasRecoveryCode: vault.hasRecoveryCode() };
+    // Locked: read the header alone so unsupported/corrupt and the recovery flag are still reported.
+    const info = await Vault.inspect(this.area(settings.storageArea));
+    if (info.status === "unsupported" || info.status === "corrupt") {
+      return { ...base, status: info.status, hasRecoveryCode: null };
+    }
+    if (info.status === "missing") return { ...base, status: "no-vault", hasRecoveryCode: null };
+    return { ...base, status: "locked", hasRecoveryCode: info.hasRecoveryCode };
   }
 
   async setup(opts: {
@@ -163,6 +183,16 @@ export class VaultService {
     storageArea: StorageAreaName;
   }): Promise<{ recoveryCode: string | null }> {
     assertPassword(opts.password);
+    return this.exclusive(() => this.doSetup(opts));
+  }
+
+  private async doSetup(opts: {
+    password: string;
+    createRecoveryCode: boolean;
+    lockPolicy: LockPolicy;
+    storageArea: StorageAreaName;
+  }): Promise<{ recoveryCode: string | null }> {
+    const epoch = this.lockEpoch;
     if ((await Vault.exists(this.p.local)) || (await Vault.exists(this.p.sync))) {
       throw new ServiceError("already-set-up", "A vault already exists");
     }
@@ -174,12 +204,13 @@ export class VaultService {
       lockPolicy: opts.lockPolicy,
       storageArea: opts.storageArea,
     });
-    await this.activate(vault, opts.lockPolicy);
+    await this.activate(vault, opts.lockPolicy, epoch);
     return { recoveryCode };
   }
 
   unlock(password: string): Promise<void> {
     return this.exclusive(async () => {
+      const epoch = this.lockEpoch;
       await this.checkThrottle();
       const { settings, exists } = await this.locateVault();
       if (!exists) throw new ServiceError("no-vault", "No vault has been set up");
@@ -193,13 +224,14 @@ export class VaultService {
         if (isCoreError(e, "wrong-password")) return this.failAttempt();
         throw e;
       }
-      await this.activate(vault, settings.lockPolicy);
+      await this.activate(vault, settings.lockPolicy, epoch);
     });
   }
 
   async unlockWithRecovery(code: string, newPassword: string): Promise<{ recoveryCode: string }> {
     assertPassword(newPassword);
     return this.exclusive(async () => {
+      const epoch = this.lockEpoch;
       await this.checkThrottle();
       const { settings, exists } = await this.locateVault();
       if (!exists) throw new ServiceError("no-vault", "No vault has been set up");
@@ -214,12 +246,14 @@ export class VaultService {
         if (isCoreError(e, "invalid-recovery-code")) await this.throttle.recordFailure();
         throw e;
       }
-      await this.activate(result.vault, settings.lockPolicy);
+      await this.activate(result.vault, settings.lockPolicy, epoch);
       return { recoveryCode: result.recoveryCode };
     });
   }
 
   async lock(): Promise<void> {
+    this.lockEpoch++;
+    this.loading = null;
     this.vault = null;
     this.onLock();
     await this.keys.lock();

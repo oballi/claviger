@@ -259,3 +259,98 @@ describe("lock policies", () => {
     expect((await screen.service.getState()).status).toBe("locked");
   });
 });
+
+describe("races and header status", () => {
+  function deferred() {
+    let release!: () => void;
+    const promise = new Promise<void>((resolve) => (release = resolve));
+    return { promise, release };
+  }
+
+  it("stays locked when lock() runs while a cached key is being loaded", async () => {
+    const { p } = await unlockedService();
+    const service = new VaultService(p);
+    const gate = deferred();
+    const original = Vault.fromKey;
+    const started = deferred();
+    const spy = vi.spyOn(Vault, "fromKey").mockImplementation(async (deps, dek) => {
+      started.release();
+      await gate.promise;
+      return original.call(Vault, deps, dek);
+    });
+    const pending = service.getState();
+    await started.promise;
+    await service.lock();
+    gate.release();
+    expect((await pending).status).toBe("locked");
+    expect((await service.getState()).status).toBe("locked");
+    spy.mockRestore();
+  });
+
+  it("shares one load between parallel getState calls", async () => {
+    const { p } = await unlockedService();
+    const service = new VaultService(p);
+    const spy = vi.spyOn(Vault, "fromKey");
+    const states = await Promise.all([service.getState(), service.getState(), service.getState()]);
+    expect(states.every((s) => s.status === "unlocked")).toBe(true);
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
+  });
+
+  it("rejects an unlock that was overtaken by lock() and stays locked", async () => {
+    const { service } = await unlockedService();
+    await service.lock();
+    const gate = deferred();
+    const original = Vault.unlockWithPassword;
+    const started = deferred();
+    const spy = vi.spyOn(Vault, "unlockWithPassword").mockImplementation(async (deps, password) => {
+      started.release();
+      await gate.promise;
+      return original.call(Vault, deps, password);
+    });
+    const pending = service.unlock(PASSWORD);
+    const outcome = codeOf(pending);
+    await started.promise;
+    await service.lock();
+    gate.release();
+    expect(await outcome).toBe("locked");
+    expect((await service.getState()).status).toBe("locked");
+    spy.mockRestore();
+  });
+
+  it("reports unsupported and corrupt headers while locked after a browser restart", async () => {
+    const { p } = await unlockedService();
+    const header = p.local.data.get("vault:header") as Record<string, unknown>;
+    p.local.data.set("vault:header", { ...header, format: 2 });
+    expect((await new VaultService(restartBrowser(p)).getState()).status).toBe("unsupported");
+    p.local.data.set("vault:header", { format: 1 });
+    expect((await new VaultService(restartBrowser(p)).getState()).status).toBe("corrupt");
+  });
+
+  it("reports hasRecoveryCode while locked", async () => {
+    const withCode = await unlockedService();
+    expect(await new VaultService(restartBrowser(withCode.p)).getState()).toMatchObject({
+      status: "locked",
+      hasRecoveryCode: true,
+    });
+    const p = memoryPlatform();
+    await new VaultService(p).setup({ ...setupOpts, password: PASSWORD });
+    expect(await new VaultService(restartBrowser(p)).getState()).toMatchObject({
+      status: "locked",
+      hasRecoveryCode: false,
+    });
+  });
+
+  it("lets exactly one of two parallel setups win", async () => {
+    for (const second of ["local", "sync"] as const) {
+      const service = new VaultService(memoryPlatform());
+      const results = await Promise.allSettled([
+        service.setup({ ...setupOpts, password: PASSWORD }),
+        service.setup({ ...setupOpts, password: PASSWORD, storageArea: second }),
+      ]);
+      expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+      const rejected = results.find((r) => r.status === "rejected") as PromiseRejectedResult;
+      expect((rejected.reason as { code: string }).code).toBe("already-set-up");
+    }
+  });
+});

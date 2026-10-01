@@ -84,3 +84,36 @@ describe("Vault lifecycle", () => {
     expect(vault.exportKey().some((b) => b !== 0)).toBe(true);
   });
 });
+
+describe("Vault.inspect", () => {
+  const opts = { password: "pw-123456" };
+
+  it("reports a missing vault", async () => {
+    expect(await Vault.inspect(makeDeps().storage)).toEqual({
+      status: "missing",
+      hasRecoveryCode: null,
+    });
+  });
+
+  it("reports whether a recovery code exists without unlocking", async () => {
+    const withCode = makeDeps();
+    await Vault.create(withCode, { ...opts, createRecoveryCode: true });
+    expect(await Vault.inspect(withCode.storage)).toEqual({ status: "ok", hasRecoveryCode: true });
+    const without = makeDeps();
+    await Vault.create(without, { ...opts, createRecoveryCode: false });
+    expect(await Vault.inspect(without.storage)).toEqual({ status: "ok", hasRecoveryCode: false });
+  });
+
+  it("reports newer and corrupt headers as statuses", async () => {
+    const deps = makeDeps();
+    await Vault.create(deps, { ...opts, createRecoveryCode: false });
+    const header = deps.storage.data.get(HEADER_KEY) as Record<string, unknown>;
+    deps.storage.data.set(HEADER_KEY, { ...header, format: 2 });
+    expect(await Vault.inspect(deps.storage)).toEqual({
+      status: "unsupported",
+      hasRecoveryCode: null,
+    });
+    deps.storage.data.set(HEADER_KEY, { format: 1 });
+    expect(await Vault.inspect(deps.storage)).toEqual({ status: "corrupt", hasRecoveryCode: null });
+  });
+});
