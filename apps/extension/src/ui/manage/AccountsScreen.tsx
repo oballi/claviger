@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { AccountView, ServiceState } from "../../background/vaultService";
 import { AccountForm } from "../components/AccountForm";
 import { Button } from "../components/Button";
@@ -16,14 +16,30 @@ import { PageTitle } from "./ManageFrame";
 export function AccountsScreen({
   state,
   onChanged,
+  pollMs = 3000,
 }: {
   state: ServiceState;
   onChanged: () => void;
+  pollMs?: number;
 }) {
   const { rpc } = useUi();
   const t = useT();
   const locale = useLocale();
-  const { list, error, reload } = useAccountList(undefined, 0);
+  const { list, error, reload } = useAccountList(undefined, pollMs);
+
+  // Accounts are also added from the popup; a long-open tab would otherwise keep the old list.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void reload();
+    };
+    const onFocus = () => void reload();
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [reload]);
   const [query, setQuery] = useState("");
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
@@ -53,14 +69,15 @@ export function AccountsScreen({
     return { up: group[index - 1], down: group[index + 1] };
   }
 
-  async function move(account: AccountView, delta: -1 | 1) {
+  async function move(account: AccountView, delta: -1 | 1): Promise<boolean> {
     const other = delta === -1 ? neighbours(account).up : neighbours(account).down;
-    if (!other) return;
+    if (!other) return false;
     const order = accounts.map((a) => a.id);
     const i = order.indexOf(account.id);
     const j = order.indexOf(other.id);
     [order[i], order[j]] = [order[j]!, order[i]!];
     await rpc("reorder", { order });
+    return true;
   }
 
   async function maintenance(action: () => Promise<unknown>, text: string) {

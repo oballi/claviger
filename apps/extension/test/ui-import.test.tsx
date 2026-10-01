@@ -2,6 +2,8 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { LocaleProvider } from "../src/ui/i18n/i18n";
+import { UiProvider } from "../src/ui/platform";
 import { ImportScreen } from "../src/ui/manage/ImportScreen";
 import { harness, renderUi, type Harness } from "./helpers/ui";
 import { PASSWORD } from "./helpers/service";
@@ -36,6 +38,32 @@ describe("ImportScreen", () => {
     expect((await ui.rpc("listAccounts", {})).accounts.map((a) => a.issuer)).toEqual(["Acme"]);
     await userEvent.click(screen.getByRole("button", { name: "Hesaplara git" }));
     expect(onDone).toHaveBeenCalled();
+  });
+
+  it("ignores a late preview response for a source that was replaced", async () => {
+    const h = await harness();
+    let releaseFirst = () => {};
+    const gate = new Promise<void>((r) => (releaseFirst = r));
+    const rpc: typeof h.ui.rpc = async (type, payload) => {
+      if (type === "importPreview" && (payload as unknown as { text: string }).text === ACME)
+        await gate;
+      return h.ui.rpc(type, payload);
+    };
+    const ui = { ...h.ui, rpc };
+    const node = (text: string) => (
+      <ImportScreen source={{ text, name: null }} onDone={vi.fn()} onCancel={vi.fn()} />
+    );
+    const view = renderUi(node(ACME), ui);
+    view.rerender(
+      <UiProvider value={ui}>
+        <LocaleProvider locale="tr">{node(BANK)}</LocaleProvider>
+      </UiProvider>,
+    );
+    await screen.findByRole("checkbox", { name: "Bank (ali) hesabını seç" });
+    releaseFirst();
+    await new Promise((r) => setTimeout(r, 30));
+    expect(screen.getByRole("checkbox", { name: "Bank (ali) hesabını seç" })).toBeTruthy();
+    expect(screen.queryByRole("checkbox", { name: "Acme (bob) hesabını seç" })).toBeNull();
   });
 
   it("marks accounts that are already in the vault", async () => {

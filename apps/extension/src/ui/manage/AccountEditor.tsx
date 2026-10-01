@@ -28,7 +28,8 @@ export function AccountEditor({
   account: AccountView;
   revealRequiresPassword: boolean;
   canMove: { up: boolean; down: boolean };
-  onMove: (delta: -1 | 1) => Promise<void>;
+  /** Resolves to false when there was no neighbour to swap with. */
+  onMove: (delta: -1 | 1) => Promise<boolean>;
   onClose: () => void;
   onChanged: (message: string) => void;
 }) {
@@ -52,6 +53,16 @@ export function AccountEditor({
     } catch (e) {
       setError(errorMessage(t, e));
     }
+  }
+
+  function move(delta: -1 | 1) {
+    setError(null);
+    onMove(delta).then(
+      (moved) => {
+        if (moved) onChanged(t("accounts.moved", { name }));
+      },
+      (e) => setError(errorMessage(t, e)),
+    );
   }
 
   function save(event: FormEvent) {
@@ -140,16 +151,10 @@ export function AccountEditor({
             >
               {account.pinned ? t("account.unpin") : t("account.pin")}
             </Button>
-            <Button
-              disabled={!canMove.up}
-              onClick={() => void run(() => onMove(-1), t("accounts.moved", { name }))}
-            >
+            <Button disabled={!canMove.up} onClick={() => move(-1)}>
               {t("account.moveUp")}
             </Button>
-            <Button
-              disabled={!canMove.down}
-              onClick={() => void run(() => onMove(1), t("accounts.moved", { name }))}
-            >
+            <Button disabled={!canMove.down} onClick={() => move(1)}>
               {t("account.moveDown")}
             </Button>
             <Button

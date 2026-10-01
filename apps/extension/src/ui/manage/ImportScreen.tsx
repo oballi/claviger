@@ -37,7 +37,7 @@ export function ImportScreen({
   const [busy, setBusy] = useState(false);
 
   const preview = useCallback(
-    async (filePassword?: string) => {
+    async (filePassword?: string, guard: { ignore: boolean } = { ignore: false }) => {
       setBusy(true);
       setError(null);
       try {
@@ -47,6 +47,7 @@ export function ImportScreen({
             ? { text: source.text }
             : { text: source.text, password: filePassword },
         );
+        if (guard.ignore) return;
         if (result.status === "unrecognized") {
           setError(t("import.unrecognized"));
           setStage({ kind: "failed" });
@@ -62,18 +63,24 @@ export function ImportScreen({
           });
         }
       } catch (e) {
+        if (guard.ignore) return;
         setError(errorMessage(t, e));
         setPassword("");
         setStage((s) => (s.kind === "password" ? s : { kind: "failed" }));
       } finally {
-        setBusy(false);
+        if (!guard.ignore) setBusy(false);
       }
     },
     [rpc, source.text, t],
   );
 
+  // A slow response for a replaced source must not overwrite the newer preview.
   useEffect(() => {
-    void preview();
+    const guard = { ignore: false };
+    void preview(undefined, guard);
+    return () => {
+      guard.ignore = true;
+    };
   }, [preview]);
 
   async function commit(current: Extract<Stage, { kind: "preview" }>) {

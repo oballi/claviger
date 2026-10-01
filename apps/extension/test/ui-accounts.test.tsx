@@ -2,6 +2,7 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { AccountEditor } from "../src/ui/manage/AccountEditor";
 import { AccountsScreen } from "../src/ui/manage/AccountsScreen";
 import { harness, renderUi, type Harness } from "./helpers/ui";
 import { PASSWORD } from "./helpers/service";
@@ -114,6 +115,62 @@ describe("AccountsScreen", () => {
     await userEvent.click(screen.getByRole("button", { name: /Deno.*hesabını düzenle/ }));
     expect(screen.getByRole("button", { name: "Yukarı taşı" })).toHaveProperty("disabled", true);
     expect(screen.getByRole("button", { name: "Aşağı taşı" })).toHaveProperty("disabled", true);
+  });
+
+  it("disables moving past either end of the list", async () => {
+    const h = await seeded();
+    await open(h);
+    await userEvent.click(screen.getByRole("button", { name: /GitHub.*hesabını düzenle/ }));
+    expect(screen.getByRole("button", { name: "Yukarı taşı" })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Aşağı taşı" })).toHaveProperty("disabled", false);
+    await userEvent.click(screen.getByRole("button", { name: "Kapat" }));
+    await userEvent.click(screen.getByRole("button", { name: /Deno.*hesabını düzenle/ }));
+    expect(screen.getByRole("button", { name: "Aşağı taşı" })).toHaveProperty("disabled", true);
+  });
+
+  it("does not report a move that did not happen", async () => {
+    const h = await seeded();
+    const [account] = (await h.ui.rpc("listAccounts", {})).accounts;
+    const onChanged = vi.fn();
+    renderUi(
+      <AccountEditor
+        account={account!}
+        revealRequiresPassword={false}
+        canMove={{ up: true, down: true }}
+        onMove={async () => false}
+        onClose={() => {}}
+        onChanged={onChanged}
+      />,
+      h.ui,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Aşağı taşı" }));
+    expect(onChanged).not.toHaveBeenCalled();
+    expect(screen.queryByText(/taşındı/)).toBeNull();
+  });
+
+  it("shows accounts added elsewhere when the window regains focus or becomes visible", async () => {
+    const h = await seeded();
+    await open(h);
+    await h.ui.rpc("addAccountManual", { draft: { secret: "NBSWY3DPFQQHO33S", issuer: "Later" } });
+    expect(screen.queryByText("Later")).toBeNull();
+    window.dispatchEvent(new Event("focus"));
+    expect(await screen.findByText("Later")).toBeTruthy();
+    await h.ui.rpc("addAccountManual", {
+      draft: { secret: "ORSXG5BAON2HE2LO", issuer: "Visible" },
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+    expect(await screen.findByText("Visible")).toBeTruthy();
+  });
+
+  it("polls for accounts added elsewhere", async () => {
+    const h = await seeded();
+    renderUi(
+      <AccountsScreen state={await h.ui.rpc("getState", {})} onChanged={vi.fn()} pollMs={20} />,
+      h.ui,
+    );
+    await screen.findByText("GitHub");
+    await h.ui.rpc("addAccountManual", { draft: { secret: "KRUGKIDROVUWG2ZA", issuer: "Polled" } });
+    expect(await screen.findByText("Polled")).toBeTruthy();
   });
 
   it("deletes only after confirmation", async () => {
