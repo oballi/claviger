@@ -5,6 +5,7 @@ import {
   type Account,
   type AccountInput,
 } from "../account/account";
+import { bytesEqual } from "../encoding/bytes";
 import { openBytes } from "../crypto/aes";
 import { DEFAULT_ARGON2 } from "../crypto/kdf";
 import { CoreError } from "../errors";
@@ -28,11 +29,13 @@ import {
   createPasswordKeyslot,
   createRecoveryKeyslot,
   openPasswordKeyslot,
+  openRecoveryKeyslot,
   type Keyslot,
   type PasswordKeyslot,
+  type RecoveryKeyslot,
 } from "./keyslot";
 import { decryptRecord, encryptRecord, recordAad } from "./records";
-import { generateRecoveryCode } from "./recovery";
+import { generateRecoveryCode, parseRecoveryCode } from "./recovery";
 
 export interface CreateVaultOptions {
   password: string;
@@ -116,6 +119,70 @@ export class Vault {
       throw new CoreError("wrong-password", "The cached key does not open this vault");
     }
     return vault;
+  }
+
+  static async unlockWithRecovery(
+    deps: VaultDeps,
+    code: string,
+    newPassword: string,
+  ): Promise<{ vault: Vault; recoveryCode: string }> {
+    const secret = parseRecoveryCode(code);
+    const header = await Vault.readHeader(deps.storage);
+    const slot = header.keyslots.find((s): s is RecoveryKeyslot => s.kind === "recovery");
+    if (!slot) throw new CoreError("invalid-recovery-code", "This vault has no recovery code");
+    const dek = await openRecoveryKeyslot(slot, secret, header.vaultId);
+    if (!dek) throw new CoreError("invalid-recovery-code", "Recovery code is not correct");
+    const vault = new Vault(deps, dek, header);
+    await vault.changePassword(newPassword);
+    const recoveryCode = await vault.createRecoveryCode();
+    return { vault, recoveryCode };
+  }
+
+  async verifyPassword(password: string): Promise<boolean> {
+    const header = await Vault.readHeader(this.deps.storage);
+    const dek = await openPasswordKeyslot(Vault.passwordSlot(header), password, header.vaultId);
+    return dek !== null && bytesEqual(dek, this.dek);
+  }
+
+  private async replaceKeyslot(kind: Keyslot["kind"], slot: Keyslot | null): Promise<void> {
+    const header = await Vault.readHeader(this.deps.storage);
+    const keyslots = header.keyslots.filter((s) => s.kind !== kind);
+    if (slot) keyslots.unshift(slot);
+    keyslots.sort((a, b) => (a.kind === "password" ? -1 : b.kind === "password" ? 1 : 0));
+    const updated: VaultHeader = { ...header, keyslots };
+    await this.deps.storage.set({ [HEADER_KEY]: updated });
+    this.header = updated;
+  }
+
+  async changePassword(newPassword: string): Promise<void> {
+    const slot = await createPasswordKeyslot(
+      this.dek,
+      newPassword,
+      this.header.vaultId,
+      this.deps.random,
+      this.deps.kdf ?? DEFAULT_ARGON2,
+    );
+    await this.replaceKeyslot("password", slot);
+  }
+
+  hasRecoveryCode(): boolean {
+    return this.header.keyslots.some((s) => s.kind === "recovery");
+  }
+
+  async createRecoveryCode(): Promise<string> {
+    const recovery = generateRecoveryCode(this.deps.random);
+    const slot = await createRecoveryKeyslot(
+      this.dek,
+      recovery.secret,
+      this.header.vaultId,
+      this.deps.random,
+    );
+    await this.replaceKeyslot("recovery", slot);
+    return recovery.code;
+  }
+
+  async removeRecoveryCode(): Promise<void> {
+    await this.replaceKeyslot("recovery", null);
   }
 
   exportKey(): Uint8Array {
