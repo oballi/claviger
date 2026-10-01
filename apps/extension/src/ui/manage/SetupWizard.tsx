@@ -1,4 +1,12 @@
-import { useId, useState, type FormEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useReducer,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import type { LockPolicy } from "../../background/settings";
 import { RpcError } from "../../rpc/client";
 import { AccountForm } from "../components/AccountForm";
@@ -13,10 +21,24 @@ import { useT } from "../i18n/i18n";
 import { useUi } from "../platform";
 import { WizardFrame } from "./WizardFrame";
 
-function Heading({ title, body }: { title: string; body: string }) {
+function Heading({
+  title,
+  body,
+  hRef,
+}: {
+  title: string;
+  body: string;
+  hRef: React.RefObject<HTMLHeadingElement | null>;
+}) {
   return (
     <div className="flex flex-col gap-3">
-      <h1 className="m-0 text-[40px] leading-tight font-medium tracking-tight">{title}</h1>
+      <h1
+        ref={hRef}
+        tabIndex={-1}
+        className="m-0 outline-none text-[40px] leading-tight font-medium tracking-tight"
+      >
+        {title}
+      </h1>
       <p className="m-0 text-[15px] leading-relaxed text-muted">{body}</p>
     </div>
   );
@@ -39,33 +61,30 @@ function Choice({
 }) {
   const id = useId();
   return (
-    <div className="flex items-start gap-4 border-t border-hair py-4">
+    <label className="flex min-h-11 cursor-pointer items-start gap-4 border-t border-hair py-4">
       <input
-        id={id}
         type="radio"
         name={name}
         checked={checked}
         onChange={onSelect}
+        aria-labelledby={`${id}-title`}
         aria-describedby={`${id}-hint`}
         className="mt-1 h-4 w-4 accent-[var(--ov-text)]"
       />
-      <div className="flex flex-col gap-1">
-        <label
-          htmlFor={id}
-          className="flex cursor-pointer items-center gap-2 text-[15px] font-medium"
-        >
+      <span className="flex flex-col gap-1">
+        <span id={`${id}-title`} className="flex items-center gap-2 text-[15px] font-medium">
           {title}
           {badge ? (
             <span className="rounded-full border border-line px-[7px] py-px font-mono text-[10px] font-normal text-muted">
               {badge}
             </span>
           ) : null}
-        </label>
+        </span>
         <span id={`${id}-hint`} className="text-[13px] leading-normal text-muted">
           {hint}
         </span>
-      </div>
-    </div>
+      </span>
+    </label>
   );
 }
 
@@ -106,6 +125,57 @@ function NumberedOption({
   );
 }
 
+export interface SetupState {
+  step: number;
+  password: string;
+  confirm: string;
+  created: boolean;
+  recoveryCode: string | null;
+}
+
+export type SetupAction =
+  | { type: "go"; step: number }
+  | { type: "password"; value: string }
+  | { type: "confirm"; value: string }
+  | { type: "created"; recoveryCode: string | null }
+  | { type: "codeDone" }
+  | { type: "storageDone" }
+  | { type: "handover" };
+
+export const initialSetup: SetupState = {
+  step: 0,
+  password: "",
+  confirm: "",
+  created: false,
+  recoveryCode: null,
+};
+
+/** Pure transitions so the password lifetime and the one-time code handling can be unit-tested. */
+export function setupReducer(state: SetupState, action: SetupAction): SetupState {
+  switch (action.type) {
+    case "go":
+      return { ...state, step: action.step };
+    case "password":
+      return { ...state, password: action.value };
+    case "confirm":
+      return { ...state, confirm: action.value };
+    case "created":
+      return {
+        ...state,
+        created: true,
+        confirm: "",
+        recoveryCode: action.recoveryCode,
+        step: action.recoveryCode ? 1 : 2,
+      };
+    case "codeDone":
+      return { ...state, recoveryCode: null, step: 2 };
+    case "storageDone":
+      return { ...state, password: "", step: 4 };
+    case "handover":
+      return { ...state, password: "" };
+  }
+}
+
 const DEFAULT_POLICY: LockPolicy = { kind: "browser-close" };
 
 /**
@@ -116,11 +186,8 @@ const DEFAULT_POLICY: LockPolicy = { kind: "browser-close" };
 export function SetupWizard({ onFinished }: { onFinished: (next: "accounts" | "backup") => void }) {
   const { rpc } = useUi();
   const t = useT();
-  const [step, setStep] = useState(0);
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [created, setCreated] = useState(false);
-  const [recoveryCode, setRecoveryCode] = useState<string | null>(null);
+  const [state, dispatch] = useReducer(setupReducer, initialSetup);
+  const { step, password, confirm, created, recoveryCode } = state;
   const [policy, setPolicy] = useState<LockPolicy>(DEFAULT_POLICY);
   const [area, setArea] = useState<"local" | "sync">("local");
   const [error, setError] = useState<string | null>(null);
@@ -128,9 +195,15 @@ export function SetupWizard({ onFinished }: { onFinished: (next: "accounts" | "b
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState<string | null>(null);
 
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  // Keyboard and screen-reader users must land on the new step, not on a removed button.
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, [step, recoveryCode !== null]);
+
   function go(next: number) {
     setError(null);
-    setStep(next);
+    dispatch({ type: "go", step: next });
   }
 
   async function run(action: () => Promise<void>) {
@@ -142,7 +215,7 @@ export function SetupWizard({ onFinished }: { onFinished: (next: "accounts" | "b
       // The vault locked mid-setup (autolock, screen lock): drop the held password and hand over
       // to the lock screen; the vault and recovery code already exist.
       if (e instanceof RpcError && e.code === "locked" && created) {
-        setPassword("");
+        dispatch({ type: "handover" });
         onFinished("accounts");
         return;
       }
@@ -161,16 +234,19 @@ export function SetupWizard({ onFinished }: { onFinished: (next: "accounts" | "b
 
   const create = (withCode: boolean) =>
     run(async () => {
+      // A second click must not call setup again (it would fail and hide the shown code).
+      if (created) {
+        go(2);
+        return;
+      }
       const result = await rpc("setup", {
         password,
         createRecoveryCode: withCode,
         lockPolicy: DEFAULT_POLICY,
         storageArea: "local",
       });
-      setCreated(true);
-      setConfirm("");
-      if (result.recoveryCode) setRecoveryCode(result.recoveryCode);
-      else go(2);
+      setError(null);
+      dispatch({ type: "created", recoveryCode: result.recoveryCode ?? null });
     });
 
   const applyPolicy = () =>
@@ -188,8 +264,8 @@ export function SetupWizard({ onFinished }: { onFinished: (next: "accounts" | "b
         const { token } = await rpc("reauth", { password });
         await rpc("setStorageArea", { token, area });
       }
-      setPassword("");
-      go(4);
+      setError(null);
+      dispatch({ type: "storageDone" });
     });
 
   const alert = (
@@ -213,13 +289,17 @@ export function SetupWizard({ onFinished }: { onFinished: (next: "accounts" | "b
     case 0:
       body = (
         <>
-          <Heading title={t("setup.password.title")} body={t("setup.password.body")} />
+          <Heading
+            hRef={headingRef}
+            title={t("setup.password.title")}
+            body={t("setup.password.body")}
+          />
           <form id="setup-password" onSubmit={submitPassword} noValidate>
             <NewPasswordFields
               password={password}
               confirm={confirm}
-              onPassword={setPassword}
-              onConfirm={setConfirm}
+              onPassword={(value) => dispatch({ type: "password", value })}
+              onConfirm={(value) => dispatch({ type: "confirm", value })}
               error={error}
             />
           </form>
@@ -239,19 +319,27 @@ export function SetupWizard({ onFinished }: { onFinished: (next: "accounts" | "b
     case 1:
       body = recoveryCode ? (
         <>
-          <Heading title={t("setup.recovery.title")} body={t("setup.recovery.body")} />
+          <Heading
+            hRef={headingRef}
+            title={t("setup.recovery.title")}
+            body={t("setup.recovery.body")}
+          />
           <RecoveryCodeDisplay
             code={recoveryCode}
             doneLabel={t("common.continue")}
             onDone={() => {
-              setRecoveryCode(null);
-              go(2);
+              setError(null);
+              dispatch({ type: "codeDone" });
             }}
           />
         </>
       ) : (
         <>
-          <Heading title={t("setup.recovery.title")} body={t("setup.recovery.body")} />
+          <Heading
+            hRef={headingRef}
+            title={t("setup.recovery.title")}
+            body={t("setup.recovery.body")}
+          />
           <div className="flex flex-wrap gap-3">
             <Button variant="primary" disabled={busy} onClick={() => void create(true)}>
               {t("setup.recovery.create")}
@@ -267,7 +355,7 @@ export function SetupWizard({ onFinished }: { onFinished: (next: "accounts" | "b
         </>
       );
       footer = created ? (
-        enterHint
+        <span />
       ) : (
         <Button onClick={() => go(0)}>
           <Icon name="back" size={15} />
@@ -278,7 +366,7 @@ export function SetupWizard({ onFinished }: { onFinished: (next: "accounts" | "b
     case 2:
       body = (
         <>
-          <Heading title={t("setup.lock.title")} body={t("setup.lock.body")} />
+          <Heading hRef={headingRef} title={t("setup.lock.title")} body={t("setup.lock.body")} />
           <LockPolicyOptions value={policy} onChange={setPolicy} />
           {alert}
         </>
@@ -293,7 +381,11 @@ export function SetupWizard({ onFinished }: { onFinished: (next: "accounts" | "b
     case 3:
       body = (
         <>
-          <Heading title={t("setup.storage.title")} body={t("setup.storage.body")} />
+          <Heading
+            hRef={headingRef}
+            title={t("setup.storage.title")}
+            body={t("setup.storage.body")}
+          />
           <fieldset className="m-0 flex flex-col border-0 border-b border-hair p-0">
             <legend className="sr-only">{t("setup.step.storage")}</legend>
             <Choice
@@ -326,7 +418,11 @@ export function SetupWizard({ onFinished }: { onFinished: (next: "accounts" | "b
     default:
       body = (
         <>
-          <Heading title={t("setup.account.title")} body={t("setup.account.body")} />
+          <Heading
+            hRef={headingRef}
+            title={t("setup.account.title")}
+            body={t("setup.account.body")}
+          />
           {added ? (
             <p role="status" className="m-0 text-sm">
               {t("setup.account.added", { name: added })}

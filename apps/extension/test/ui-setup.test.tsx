@@ -2,7 +2,7 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { SetupWizard } from "../src/ui/manage/SetupWizard";
+import { SetupWizard, setupReducer, initialSetup } from "../src/ui/manage/SetupWizard";
 import { harness, renderUi } from "./helpers/ui";
 
 const NEW_PASSWORD = "kirmizi bisiklet ruzgar";
@@ -142,5 +142,92 @@ describe("SetupWizard", () => {
         "Bu tarayıcıda zaten bir kasa var. Sayfayı yenile.",
       ),
     );
+  });
+
+  it("has no Back button once the vault exists", async () => {
+    await start();
+    await enterPassword();
+    await userEvent.click(screen.getByRole("button", { name: "Şimdilik atla" }));
+    for (let i = 0; i < 2; i++) {
+      await screen.findByRole("button", { name: "Devam" });
+      expect(screen.queryByRole("button", { name: "Geri" })).toBeNull();
+      await userEvent.click(screen.getByRole("button", { name: "Devam" }));
+    }
+    await screen.findByRole("heading", { name: "İlk hesabını ekle." });
+    expect(screen.queryByRole("button", { name: "Geri" })).toBeNull();
+  });
+
+  it("hands over to the lock screen when the vault locks at step 3", async () => {
+    const { ui, onFinished } = await start();
+    await enterPassword();
+    await userEvent.click(screen.getByRole("button", { name: "Şimdilik atla" }));
+    await screen.findByRole("heading", { name: "Kasan ne zaman kilitlensin?" });
+    await userEvent.click(screen.getByRole("radio", { name: "Belirli bir süre kullanılmayınca" }));
+    await ui.rpc("lock", {});
+    await userEvent.click(screen.getByRole("button", { name: "Devam" }));
+    await vi.waitFor(() => expect(onFinished).toHaveBeenCalledWith("accounts"));
+  });
+
+  it("calls setup once on a double click", async () => {
+    const h = await harness({ status: "no-vault" });
+    const rpc = vi.fn(h.ui.rpc);
+    renderUi(<SetupWizard onFinished={vi.fn()} />, { ...h.ui, rpc: rpc as typeof h.ui.rpc });
+    await enterPassword();
+    await userEvent.dblClick(screen.getByRole("button", { name: "Kod oluştur" }));
+    await screen.findByTestId("recovery-code");
+    expect(rpc.mock.calls.filter((c) => c[0] === "setup")).toHaveLength(1);
+  });
+
+  it("moves focus to the heading on step changes", async () => {
+    await start();
+    await enterPassword();
+    await userEvent.click(screen.getByRole("button", { name: "Şimdilik atla" }));
+    await screen.findByRole("heading", { name: "Kasan ne zaman kilitlensin?" });
+    expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1 }));
+  });
+
+  it("selects a storage option by clicking its hint", async () => {
+    await start();
+    await enterPassword();
+    await userEvent.click(screen.getByRole("button", { name: "Şimdilik atla" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Devam" }));
+    await userEvent.click(await screen.findByText(/Şifreli kasa, tarayıcı hesabınla/));
+    expect(screen.getByRole("radio", { name: "Tarayıcı senkronizasyonu" })).toHaveProperty(
+      "checked",
+      true,
+    );
+  });
+
+  it("does not show the Enter hint on the recovery code screen", async () => {
+    await start();
+    await enterPassword();
+    await userEvent.click(screen.getByRole("button", { name: "Kod oluştur" }));
+    await screen.findByTestId("recovery-code");
+    expect(screen.queryByText("Enter ile devam")).toBeNull();
+  });
+});
+
+describe("setupReducer", () => {
+  const typed = { ...initialSetup, password: "secret-pass", confirm: "secret-pass" };
+
+  it("clears the password when storage is applied", () => {
+    const s = setupReducer({ ...typed, created: true, step: 3 }, { type: "storageDone" });
+    expect(s).toMatchObject({ password: "", step: 4 });
+  });
+
+  it("clears the password on a locked handover", () => {
+    expect(setupReducer({ ...typed, created: true, step: 2 }, { type: "handover" }).password).toBe(
+      "",
+    );
+  });
+
+  it("keeps the recovery code until the user continues, then drops it", () => {
+    const a = setupReducer(typed, { type: "created", recoveryCode: "AAAA-BBBB" });
+    expect(a).toMatchObject({ created: true, confirm: "", recoveryCode: "AAAA-BBBB", step: 1 });
+    expect(setupReducer(a, { type: "codeDone" })).toMatchObject({ recoveryCode: null, step: 2 });
+  });
+
+  it("goes straight to the lock step when no code was created", () => {
+    expect(setupReducer(typed, { type: "created", recoveryCode: null }).step).toBe(2);
   });
 });
