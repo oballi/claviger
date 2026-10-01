@@ -102,8 +102,8 @@ export class VaultService {
       return vault;
     } catch (e) {
       if (isCoreError(e, "wrong-password") || isCoreError(e, "vault-not-found")) {
-        // A newer unlock may have stored a good key meanwhile; only forget our own stale one.
-        if (epoch === this.lockEpoch) await this.keys.forget();
+        // A concurrent unlock may already have stored a good key; forgetting now would erase it.
+        if (epoch === this.lockEpoch && !this.vault) await this.keys.forget();
         return null;
       }
       throw e;
@@ -129,13 +129,14 @@ export class VaultService {
       await this.p.alarms.create(AUTOLOCK_ALARM, lockPolicy.minutes);
   }
 
-  private async activate(vault: Vault, policy: LockPolicy, epoch: number): Promise<void> {
-    if (epoch !== this.lockEpoch)
-      throw new ServiceError("locked", "The vault was locked meanwhile");
+  /** Returns false (and stays locked) if lock() ran since `epoch`; callers decide whether that is an error. */
+  private async activate(vault: Vault, policy: LockPolicy, epoch: number): Promise<boolean> {
+    if (epoch !== this.lockEpoch) return false;
     this.vault = vault;
     await this.keys.store(vault.exportKey(), policy);
     await this.throttle.reset();
     await this.scheduleAutolock(policy);
+    return true;
   }
 
   protected async checkThrottle(): Promise<void> {
@@ -238,7 +239,10 @@ export class VaultService {
         if (isCoreError(e, "wrong-password")) return this.failAttempt();
         throw e;
       }
-      await this.activate(vault, settings.lockPolicy, epoch);
+      // A plain unlock persists nothing, so being overtaken by lock() is an error.
+      if (!(await this.activate(vault, settings.lockPolicy, epoch))) {
+        throw new ServiceError("locked", "The vault was locked meanwhile");
+      }
     });
   }
 

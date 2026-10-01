@@ -152,4 +152,18 @@ describe("Vault.inspect", () => {
     await vault.deleteAccount(accounts[1]!.id);
     expect((await Vault.inspect(deps.storage)).accountCount).toBe(2);
   });
+
+  it("does not count a replayed record that sits next to its tombstone", async () => {
+    const deps = makeDeps();
+    const { vault } = await Vault.create(deps, { ...opts, createRecoveryCode: false });
+    const account = await vault.addAccount(
+      normalizeAccountInput({ secret: base32Encode(webRandom.bytes(20)), issuer: "a", label: "a" }),
+    );
+    const key = `vault:acct:${account.id}`;
+    const old = deps.storage.data.get(key);
+    deps.clock.advance(1000);
+    await vault.deleteAccount(account.id);
+    deps.storage.data.set(key, old);
+    expect((await Vault.inspect(deps.storage)).accountCount).toBe(0);
+  });
 });

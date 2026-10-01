@@ -319,6 +319,76 @@ describe("races and header status", () => {
     spy.mockRestore();
   });
 
+  it("keeps the recovery code when lock() lands while setup is still running", async () => {
+    const service = new VaultService(memoryPlatform());
+    const gate = deferred();
+    const started = deferred();
+    const original = Vault.create;
+    const spy = vi.spyOn(Vault, "create").mockImplementation(async (deps, o) => {
+      started.release();
+      await gate.promise;
+      return original.call(Vault, deps, o);
+    });
+    const pending = service.setup({ ...setupOpts, password: PASSWORD, createRecoveryCode: true });
+    await started.promise;
+    await service.lock();
+    gate.release();
+    const { recoveryCode } = await pending;
+    expect(recoveryCode).not.toBeNull();
+    expect((await service.getState()).status).toBe("locked");
+    spy.mockRestore();
+  });
+
+  it("keeps the new recovery code when lock() lands during recovery unlock", async () => {
+    const { service, recoveryCode } = await unlockedService();
+    await service.lock();
+    const gate = deferred();
+    const started = deferred();
+    const original = Vault.unlockWithRecovery;
+    const spy = vi.spyOn(Vault, "unlockWithRecovery").mockImplementation(async (deps, c, pw) => {
+      started.release();
+      await gate.promise;
+      return original.call(Vault, deps, c, pw);
+    });
+    const pending = service.unlockWithRecovery(recoveryCode!, "brand new password");
+    await started.promise;
+    await service.lock();
+    gate.release();
+    const { recoveryCode: next } = await pending;
+    expect(next).toMatch(/^[0-9A-Z]{4}(-[0-9A-Z]{4}){7}$/);
+    expect((await service.getState()).status).toBe("locked");
+    spy.mockRestore();
+    await service.unlock("brand new password");
+    await service.lock();
+    await service.unlockWithRecovery(next, "another new password");
+  });
+
+  it("does not erase a good session key when a stale cached key fails late", async () => {
+    const { p } = await unlockedService();
+    const service = new VaultService(p);
+    p.session.data.set(SESSION_KEY, toBase64(p.random.bytes(32)));
+    const gate = deferred();
+    const started = deferred();
+    const original = Vault.fromKey;
+    const spy = vi.spyOn(Vault, "fromKey").mockImplementation(async (deps, dek) => {
+      started.release();
+      await gate.promise;
+      return original.call(Vault, deps, dek);
+    });
+    const pending = service.getState();
+    await started.promise;
+    const good = (async () => {
+      await service.unlock(PASSWORD);
+    })();
+    await good;
+    const goodKey = p.session.data.get(SESSION_KEY);
+    gate.release();
+    await pending;
+    expect(p.session.data.get(SESSION_KEY)).toBe(goodKey);
+    spy.mockRestore();
+    expect((await new VaultService(p).getState()).status).toBe("unlocked");
+  });
+
   it("reports unsupported and corrupt headers while locked after a browser restart", async () => {
     const { p } = await unlockedService();
     const header = p.local.data.get("vault:header") as Record<string, unknown>;

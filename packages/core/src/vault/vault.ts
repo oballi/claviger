@@ -90,8 +90,8 @@ export class Vault {
   }
 
   /**
-   * Plaintext-only status check; never unlocks. The count uses only unencrypted fields, so a
-   * replayed record older than its tombstone is excluded here the same way listAccounts does.
+   * Plaintext-only status check; never unlocks. accountCount is an unauthenticated estimate from
+   * plaintext timestamps (listAccounts is authoritative), for display only.
    */
   static async inspect(storage: StoragePort): Promise<{
     status: "missing" | "ok" | "unsupported" | "corrupt";
