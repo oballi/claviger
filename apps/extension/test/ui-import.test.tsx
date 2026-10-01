@@ -124,4 +124,36 @@ describe("ImportScreen", () => {
     expect(screen.getByLabelText("Dosya parolası")).toHaveProperty("value", "");
     expect(screen.queryByRole("table")).toBeNull();
   });
+
+  it("counts new, duplicate and broken entries separately", async () => {
+    const h = await harness();
+    await h.ui.rpc("addAccountUri", { uri: ACME });
+    const third = "otpauth://totp/Mail:cy?secret=MFRGGZDFMZTWQ2LK&issuer=Mail";
+    await open([ACME, BANK, third, BROKEN].join("\n"), "codes.txt", h);
+    await screen.findByRole("table");
+    for (const [label, n] of [
+      ["yeni hesap", "2"],
+      ["zaten kayıtlı", "1"],
+      ["aktarılamıyor", "1"],
+    ] as const) {
+      expect(within(screen.getByText(label).parentElement!).getByText(n)).toBeTruthy();
+    }
+  });
+
+  it("shows type labels, status dots and keeps issuer/label cells on error rows", async () => {
+    const steam = "otpauth://steam/Valve:gabe?secret=JBSWY3DPEHPK3PXP&issuer=Valve";
+    await open([ACME, steam, BROKEN].join("\n"));
+    const table = await screen.findByRole("table");
+    const valve = within(table).getByText("Valve").closest("tr")!;
+    expect(within(valve).getByText("Steam")).toBeTruthy();
+    expect(
+      within(table).getByText("Acme").closest("tr")!.querySelector("[aria-hidden]"),
+    ).toBeTruthy();
+    const broken = within(table).getByText("Broken:x").closest("tr")!;
+    expect(broken.querySelectorAll("td")).toHaveLength(5);
+    expect(broken.querySelector("td[colspan]")).toBeNull();
+    expect(broken.querySelector("td:last-child [aria-hidden=true]")).toBeTruthy();
+    const dot = (row: Element) => row.querySelector("td:last-child [aria-hidden=true]")!.className;
+    expect(dot(valve)).not.toBe(dot(broken));
+  });
 });

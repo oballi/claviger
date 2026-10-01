@@ -34,3 +34,5 @@ export function formatDate(locale: string, ms: number): string {
 }
 
 export const isoDate = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+
+export const typeLabel = (type: string) => (type === "steam" ? "Steam" : type.toUpperCase());

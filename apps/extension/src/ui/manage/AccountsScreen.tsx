@@ -5,11 +5,11 @@ import { Button } from "../components/Button";
 import { Dialog } from "../components/Dialog";
 import { Icon } from "../components/Icon";
 import { errorMessage } from "../errors";
-import { formatDate, lockPolicyLabel } from "../format";
+import { formatDate, lockPolicyLabel, typeLabel } from "../format";
 import { useAccountList } from "../hooks";
 import { useLocale, useT } from "../i18n/i18n";
 import { useUi } from "../platform";
-import { AccountEditor, typeLabel } from "./AccountEditor";
+import { AccountEditor } from "./AccountEditor";
 import { PageTitle } from "./ManageFrame";
 
 /** Design board "Yönetim — hesaplar". */

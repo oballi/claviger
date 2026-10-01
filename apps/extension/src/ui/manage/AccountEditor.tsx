@@ -8,12 +8,11 @@ import { QrCode } from "../components/QrCode";
 import { ReauthForm } from "../components/ReauthForm";
 import { TextField } from "../components/TextField";
 import { errorMessage } from "../errors";
+import { typeLabel } from "../format";
 import { useT } from "../i18n/i18n";
 import { useUi } from "../platform";
 
 type Mode = "main" | "delete" | "reveal";
-
-export const typeLabel = (type: string) => (type === "steam" ? "Steam" : type.toUpperCase());
 
 const groupSecret = (secret: string) => secret.match(/.{1,4}/g)?.join(" ") ?? secret;
 

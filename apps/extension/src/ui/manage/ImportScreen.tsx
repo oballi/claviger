@@ -7,6 +7,7 @@ import { Icon } from "../components/Icon";
 import { TextField } from "../components/TextField";
 import { errorMessage } from "../errors";
 import { useT } from "../i18n/i18n";
+import { typeLabel } from "../format";
 import { useUi } from "../platform";
 import type { ImportSource } from "./BackupScreen";
 
@@ -215,8 +216,16 @@ export function ImportScreen({
                   </td>
                   <td className="pr-4">{item.issuer}</td>
                   <td className="pr-4">{item.label}</td>
-                  <td className="pr-4 font-mono text-xs">{item.type.toUpperCase()}</td>
-                  <td>{duplicate ? t("import.status.duplicate") : t("import.status.new")}</td>
+                  <td className="pr-4 font-mono text-xs">{typeLabel(item.type)}</td>
+                  <td>
+                    <span className="inline-flex items-center gap-2">
+                      <span
+                        aria-hidden="true"
+                        className={`h-1.5 w-1.5 rounded-full border border-current ${duplicate ? "" : "bg-current"}`}
+                      />
+                      {duplicate ? t("import.status.duplicate") : t("import.status.new")}
+                    </span>
+                  </td>
                 </tr>
               );
             })}
@@ -232,10 +241,15 @@ export function ImportScreen({
                     className="h-4 w-4"
                   />
                 </td>
-                <td className="pr-4" colSpan={3}>
-                  {issue.name || `#${issue.position + 1}`}
+                <td className="pr-4">{issue.name || `#${issue.position + 1}`}</td>
+                <td className="pr-4" />
+                <td className="pr-4" />
+                <td className="text-warn">
+                  <span className="inline-flex items-center gap-2">
+                    <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
+                    {t(`import.issue.${issue.reason}`)}
+                  </span>
                 </td>
-                <td className="text-warn">{t(`import.issue.${issue.reason}`)}</td>
               </tr>
             ))}
           </tbody>
