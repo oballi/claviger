@@ -133,6 +133,26 @@ describe("Vault.inspect", () => {
     });
   });
 
+  it("reports a newer account or index record as unsupported", async () => {
+    const deps = makeDeps();
+    const { vault } = await Vault.create(deps, { ...opts, createRecoveryCode: false });
+    await vault.addAccount(
+      normalizeAccountInput({ secret: base32Encode(webRandom.bytes(20)), issuer: "a", label: "a" }),
+    );
+    const none = { hasRecoveryCode: null, accountCount: null };
+    const index = deps.storage.data.get(INDEX_KEY);
+    deps.storage.data.set(INDEX_KEY, { ...(index as object), v: 2 });
+    expect(await Vault.inspect(deps.storage)).toEqual({ status: "unsupported", ...none });
+    deps.storage.data.set(INDEX_KEY, index);
+    deps.storage.data.set("vault:acct:00000000-0000-4000-8000-000000000000", {
+      v: 2,
+      iv: "x",
+      ct: "y",
+      updatedAt: 1,
+    });
+    expect(await Vault.inspect(deps.storage)).toEqual({ status: "unsupported", ...none });
+  });
+
   it("counts live accounts without decrypting, skipping tombstoned ones", async () => {
     const deps = makeDeps();
     const { vault } = await Vault.create(deps, { ...opts, createRecoveryCode: false });

@@ -74,6 +74,12 @@ function withStorageLock<T>(storage: StoragePort, fn: () => Promise<T>): Promise
   return run;
 }
 
+export interface VaultInspection {
+  status: "missing" | "ok" | "unsupported" | "corrupt";
+  hasRecoveryCode: boolean | null;
+  accountCount: number | null;
+}
+
 export class Vault {
   private constructor(
     private readonly deps: VaultDeps,
@@ -93,14 +99,15 @@ export class Vault {
    * Plaintext-only status check; never unlocks. accountCount is an unauthenticated estimate from
    * plaintext timestamps (listAccounts is authoritative), for display only.
    */
-  static async inspect(storage: StoragePort): Promise<{
-    status: "missing" | "ok" | "unsupported" | "corrupt";
-    hasRecoveryCode: boolean | null;
-    accountCount: number | null;
-  }> {
+  static async inspect(storage: StoragePort): Promise<VaultInspection> {
     try {
       const header = await Vault.readHeader(storage);
       const all = await storage.get();
+      // A newer record would make listAccounts/export refuse, so the vault is not usable either.
+      for (const [key, value] of Object.entries(all)) {
+        if ((key === INDEX_KEY || key.startsWith(ACCOUNT_PREFIX)) && isNewerVersion(value, "v"))
+          throw new CoreError("unsupported-format", "Newer vault record");
+      }
       const tombs = new Map<string, number>();
       for (const [key, value] of Object.entries(all)) {
         if (!key.startsWith(TOMB_PREFIX)) continue;
