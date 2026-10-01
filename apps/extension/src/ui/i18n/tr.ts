@@ -41,6 +41,24 @@ export const tr = {
   "error.already-set-up": "Bu tarayıcıda zaten bir kasa var. Sayfayı yenile.",
   "error.no-response": "Eklentinin arka planına ulaşılamadı.",
   "error.unknown": "Beklenmeyen bir hata oluştu.",
+  "lock.title": "Kasa kilitli.",
+  "lock.badge": "kilitli",
+  "lock.body": "{count} hesabın kodları ana parolanın arkasında.",
+  "lock.bodyGeneric": "Kodların ana parolanın arkasında.",
+  "lock.password": "Ana parola",
+  "lock.submit": "Kilidi aç",
+  "lock.enterHint": "Enter ile aç",
+  "lock.forgot": "Parolamı unuttum",
+  "lock.changePolicy": "Değiştir",
+  "status.noVault.title": "Kurulum tamamlanmadı.",
+  "status.noVault.body": "Kodlarını saklamak için önce bir ana parola belirle.",
+  "status.noVault.action": "Kurulumu başlat",
+  "status.unsupported.title": "Güncelleme gerekli.",
+  "status.unsupported.body":
+    "Bu kasa daha yeni bir otp-vault sürümüyle oluşturulmuş. Eklentiyi güncelle.",
+  "status.corrupt.title": "Kasa okunamıyor.",
+  "status.corrupt.body": "Kasa verisi bozulmuş görünüyor. Verilerin silinmedi.",
+  "status.corrupt.action": "Ayrıntılar",
 } as const;
 
 export type MessageKey = keyof typeof tr;
