@@ -620,10 +620,10 @@ export class VaultService {
       this.loading = null;
       this.vault = null;
       this.onLock();
-      for (const area of [this.p.local, this.p.sync]) {
-        const keys = Object.keys(await area.get()).filter(isVaultKey);
-        if (keys.length > 0) await area.remove(keys);
-      }
+      // Only the active area: a vault in the other area may belong to another device (user decision).
+      const active = this.area((await this.settings()).storageArea);
+      const keys = Object.keys(await active.get()).filter(isVaultKey);
+      if (keys.length > 0) await active.remove(keys);
       await this.keys.forget();
       await this.p.session.remove([MANUAL_LOCK_KEY]);
       await this.throttle.reset();

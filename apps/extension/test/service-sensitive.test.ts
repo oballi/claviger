@@ -162,7 +162,7 @@ describe("export result and backup time", () => {
 });
 
 describe("delete vault", () => {
-  it("wipes every vault and lock key, resets settings and allows a fresh setup", async () => {
+  it("wipes the active vault and lock keys, resets settings and allows a fresh setup", async () => {
     const { p, service } = await unlockedService(memoryPlatform(), { kind: "never" });
     await service.addAccount({ uri: `otpauth://totp/GitHub:me?secret=${SECRET}` });
     await service.setStorageArea((await service.reauth(PASSWORD)).token, "sync");
@@ -173,9 +173,9 @@ describe("delete vault", () => {
     for (let i = 0; i < 2; i++) await codeOf(service.reauth("wrong password"));
     expect(p.local.data.has(ATTEMPTS_KEY)).toBe(true);
     await service.deleteVault((await service.reauth(PASSWORD)).token);
-    for (const area of [p.local, p.sync]) {
-      expect([...area.data.keys()].filter((k) => k.startsWith("vault:"))).toEqual([]);
-    }
+    expect([...p.sync.data.keys()].filter((k) => k.startsWith("vault:"))).toEqual([]);
+    // Only the active area (sync) is wiped; the inactive area is left alone.
+    expect(p.local.data.get("vault:stray2")).toBe(1);
     for (const area of [p.local, p.session]) {
       expect([...area.data.keys()].filter((k) => k.startsWith("lock:"))).toEqual([]);
     }
@@ -194,6 +194,30 @@ describe("delete vault", () => {
       storageArea: "local",
     });
     expect((await service.getState()).status).toBe("unlocked");
+  });
+
+  it("leaves a vault in the other storage area alone and adopts it", async () => {
+    const { p, service } = await unlockedService();
+    await service.addAccount({ uri: `otpauth://totp/GitHub:me?secret=${SECRET}` });
+    const other = await unlockedService(memoryPlatform());
+    for (const [key, value] of other.p.local.data) {
+      if (key.startsWith("vault:")) p.sync.data.set(key, structuredClone(value));
+    }
+    const syncKeys = [...p.sync.data.keys()].filter((k) => k.startsWith("vault:")).sort();
+    await service.deleteVault((await service.reauth(PASSWORD)).token);
+    expect([...p.local.data.keys()].filter((k) => k.startsWith("vault:"))).toEqual([]);
+    expect([...p.sync.data.keys()].filter((k) => k.startsWith("vault:")).sort()).toEqual(syncKeys);
+    expect(await service.getState()).toMatchObject({ status: "locked", storageArea: "sync" });
+  });
+
+  it("reports no vault after deleting a vault that only lived in sync", async () => {
+    const { p, service } = await unlockedService();
+    await service.setStorageArea((await service.reauth(PASSWORD)).token, "sync");
+    await service.deleteVault((await service.reauth(PASSWORD)).token);
+    for (const area of [p.local, p.sync]) {
+      expect([...area.data.keys()].filter((k) => k.startsWith("vault:"))).toEqual([]);
+    }
+    expect((await service.getState()).status).toBe("no-vault");
   });
 
   it("deletes nothing without a valid token", async () => {
