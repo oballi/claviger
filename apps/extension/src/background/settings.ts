@@ -18,6 +18,8 @@ export const settingsSchema = z.object({
   storageArea: z.enum(["local", "sync"]),
   clockOffsetSec: z.number().int(),
   clockCheckEnabled: z.boolean(),
+  revealRequiresPassword: z.boolean(),
+  lastBackupAt: z.number().int().nullable(),
 });
 
 export type Settings = z.infer<typeof settingsSchema>;
@@ -30,6 +32,8 @@ export const DEFAULT_SETTINGS: Settings = {
   storageArea: "local",
   clockOffsetSec: 0,
   clockCheckEnabled: false,
+  revealRequiresPassword: true,
+  lastBackupAt: null,
 };
 
 export async function loadSettings(local: StoragePort): Promise<Settings> {

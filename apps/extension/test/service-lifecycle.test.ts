@@ -23,6 +23,8 @@ describe("setup", () => {
       retryAfterMs: 0,
       clockOffsetSec: 0,
       clockCheckEnabled: false,
+      revealRequiresPassword: true,
+      lastBackupAt: null,
     });
   });
 

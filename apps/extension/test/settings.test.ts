@@ -15,6 +15,8 @@ describe("settings", () => {
       storageArea: "local",
       clockOffsetSec: 0,
       clockCheckEnabled: false,
+      revealRequiresPassword: true,
+      lastBackupAt: null,
     });
     expect(DEFAULT_SETTINGS.lockPolicy).toEqual({ kind: "browser-close" });
   });
@@ -36,6 +38,23 @@ describe("settings", () => {
     expect(await loadSettings(local)).toEqual({ ...DEFAULT_SETTINGS, storageArea: "sync" });
     await local.set({ [SETTINGS_KEY]: "garbage" });
     expect(await loadSettings(local)).toEqual(DEFAULT_SETTINGS);
+  });
+
+  it("loads defaults for the reveal and backup fields missing from an old object", async () => {
+    const local = new MemoryStorage();
+    await local.set({
+      [SETTINGS_KEY]: { storageArea: "sync", clockOffsetSec: 5, clockCheckEnabled: true },
+    });
+    expect(await loadSettings(local)).toMatchObject({
+      revealRequiresPassword: true,
+      lastBackupAt: null,
+      clockOffsetSec: 5,
+    });
+    await local.set({ [SETTINGS_KEY]: { revealRequiresPassword: false, lastBackupAt: 1.5 } });
+    expect(await loadSettings(local)).toMatchObject({
+      revealRequiresPassword: false,
+      lastBackupAt: null,
+    });
   });
 
   it("rejects invalid patches", async () => {
