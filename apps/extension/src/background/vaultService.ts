@@ -27,7 +27,7 @@ import {
 } from "@otp-vault/core";
 import type { Platform, StorageAreaName } from "../platform/ports";
 import { ServiceError } from "./errors";
-import { SnapshotStore, type SnapshotReason } from "./snapshots";
+import { canonicalJson, SnapshotStore, type SnapshotReason } from "./snapshots";
 import { KeyCache, MANUAL_LOCK_KEY, PERSISTED_KEY } from "./keyCache";
 import {
   DEFAULT_SETTINGS,
@@ -140,6 +140,7 @@ export class VaultService {
   protected readonly snapshots: SnapshotStore;
   // In memory only: a restart repeats the check, and dedupe makes a second copy harmless.
   private lastDailyCheck: number | null = null;
+  private reconciling: Promise<void> = Promise.resolve();
   private queue: Promise<unknown> = Promise.resolve();
   // Bumped by lock() so async work that started before it cannot reinstate an unlocked vault.
   private lockEpoch = 0;
@@ -162,10 +163,15 @@ export class VaultService {
     }
   }
 
-  private async dailySnapshot(): Promise<void> {
+  private dailyDue(): boolean {
     const now = this.p.clock.now();
     const last = this.lastDailyCheck;
-    if (last !== null && now >= last && now - last < DAILY_CHECK_MS) return;
+    return last === null || now < last || now - last >= DAILY_CHECK_MS;
+  }
+
+  private async dailySnapshot(): Promise<void> {
+    if (!this.dailyDue()) return;
+    const now = this.p.clock.now();
     this.lastDailyCheck = now;
     try {
       await this.snapshots.takeDaily(this.area((await this.settings()).storageArea));
@@ -193,9 +199,9 @@ export class VaultService {
   /** Repairs a crash or failure between a keyslot write and its revocation in the copies. */
   private async reconcileSnapshots(vault: Vault): Promise<void> {
     try {
-      const current = JSON.stringify(vault.headerSnapshot);
+      const current = canonicalJson(vault.headerSnapshot);
       const stale = (await this.snapshots.list()).some(
-        (s) => s.vaultId === vault.vaultId && JSON.stringify(s.records[HEADER_KEY]) !== current,
+        (s) => s.vaultId === vault.vaultId && canonicalJson(s.records[HEADER_KEY]) !== current,
       );
       if (stale) await this.revokeInSnapshots(vault);
     } catch {
@@ -268,6 +274,8 @@ export class VaultService {
       const vault = await Vault.fromKey(this.deps(this.area(storageArea)), dek);
       if (epoch !== this.lockEpoch) return null;
       this.vault = vault;
+      // Queued, not awaited: callers may already hold the queue. Repairs a crash after a keyslot write.
+      this.reconciling = this.exclusive(() => this.reconcileSnapshots(vault));
       return vault;
     } catch (e) {
       if (isCoreError(e, "wrong-password") || isCoreError(e, "vault-not-found")) {
@@ -343,7 +351,7 @@ export class VaultService {
     const none = { hasRecoveryCode: null, accountCount: null };
     if (!exists) return { ...base, status: "no-vault", ...none };
     // Queued: a copy taken mid-write could hold a half-changed vault or a revoked keyslot.
-    await this.exclusive(() => this.dailySnapshot());
+    if (this.dailyDue()) await this.exclusive(() => this.dailySnapshot());
     let vault: Vault | null;
     try {
       vault = await this.ensureLoaded();
@@ -352,6 +360,8 @@ export class VaultService {
       if (isCoreError(e, "vault-corrupt")) return { ...base, status: "corrupt", ...none };
       throw e;
     }
+    // Safe here: getState never runs inside the queue.
+    await this.reconciling;
     // Header-only read: reports unsupported/corrupt, the recovery flag and the count even while locked.
     const info = await Vault.inspect(this.area(settings.storageArea));
     if (info.status === "unsupported" || info.status === "corrupt") {
@@ -393,6 +403,12 @@ export class VaultService {
     const epoch = this.lockEpoch;
     if ((await Vault.exists(this.p.local)) || (await Vault.exists(this.p.sync))) {
       throw new ServiceError("already-set-up", "A vault already exists");
+    }
+    try {
+      // Leftovers of a deleteVault whose cleanup failed belong to no vault.
+      await this.snapshots.removeAll();
+    } catch {
+      // Best effort.
     }
     const { vault, recoveryCode } = await Vault.create(this.deps(this.area(opts.storageArea)), {
       password: opts.password,

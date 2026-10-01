@@ -1,10 +1,13 @@
 import { Vault } from "@otp-vault/core";
 import { MemoryStorage } from "@otp-vault/core/testing";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { DAILY_CHECK_MS } from "../src/background/vaultService";
 import { DAY_MS, recordsStorage, SnapshotStore } from "../src/background/snapshots";
+import { VaultService } from "../src/background/vaultService";
 import { memoryPlatform, type TestPlatform } from "./helpers/platform";
 import { codeOf, PASSWORD, unlockedService } from "./helpers/service";
+
+afterEach(() => vi.restoreAllMocks());
 
 const URI = "otpauth://totp/Acme:a@x?secret=JBSWY3DPEHPK3PXP&issuer=Acme";
 const snapKeys = async (p: ReturnType<typeof memoryPlatform>) =>
@@ -322,6 +325,92 @@ describe("daily copy gating and failure isolation", () => {
     });
     await service.lock();
     await expect(service.deleteAccount(id)).rejects.toMatchObject({ code: "locked" });
+    expect(await snapKeys(p)).toEqual([]);
+  });
+});
+
+const sortKeys = (v: unknown): unknown =>
+  Array.isArray(v)
+    ? v.map(sortKeys)
+    : v !== null && typeof v === "object"
+      ? Object.fromEntries(
+          Object.keys(v)
+            .sort()
+            .map((k) => [k, sortKeys((v as Record<string, unknown>)[k])]),
+        )
+      : v;
+
+/** Chrome's storage returns object keys sorted; mimic it. */
+function sortedLocal(p: TestPlatform) {
+  const origGet = p.local.get.bind(p.local);
+  (p.local as { get: unknown }).get = async (keys?: string[]) =>
+    sortKeys(await origGet(keys)) as Record<string, unknown>;
+}
+
+describe("reconcile and gating (round 2)", () => {
+  it("a plain unlock does not rekey when storage returns sorted keys; a password change still revokes", async () => {
+    const p = memoryPlatform();
+    sortedLocal(p);
+    const { service } = await unlockedService(p);
+    await service.getState();
+    const spy = vi.spyOn(SnapshotStore.prototype, "rekey");
+    await service.lock();
+    await service.unlock(PASSWORD);
+    expect(spy).not.toHaveBeenCalled();
+    const { token } = await service.reauth(PASSWORD);
+    await service.changePassword(token, "a brand new password");
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockClear();
+    await service.lock();
+    await service.unlock("a brand new password");
+    expect(spy).not.toHaveBeenCalled();
+    expect(await oldCannotOpen(p, PASSWORD)).toEqual([]);
+  });
+
+  it("getState does not wait on the write queue when no copy is due", async () => {
+    const { service, p } = await unlockedService();
+    await service.getState();
+    const origSet = p.local.set.bind(p.local);
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    (p.local as { set: unknown }).set = async (items: Record<string, unknown>) => {
+      await gate;
+      return origSet(items);
+    };
+    const pending = service.addAccount({ uri: URI });
+    await new Promise((r) => setTimeout(r, 20));
+    expect((await service.getState()).status).toBe("unlocked");
+    release();
+    await pending;
+  });
+
+  it("a restarted service repairs the crash window from the cached key", async () => {
+    const { service, p } = await unlockedService(undefined, { kind: "never" });
+    await service.getState();
+    vi.spyOn(SnapshotStore.prototype, "rekey").mockRejectedValue(new Error("crash"));
+    vi.spyOn(SnapshotStore.prototype, "removeVault").mockRejectedValue(new Error("crash"));
+    const { token } = await service.reauth(PASSWORD);
+    await service.changePassword(token, "a brand new password");
+    vi.restoreAllMocks();
+    expect((await oldCannotOpen(p, PASSWORD)).length).toBeGreaterThan(0);
+    const restarted = new VaultService(p);
+    expect((await restarted.getState()).status).toBe("unlocked");
+    expect(await oldCannotOpen(p, PASSWORD)).toEqual([]);
+  });
+
+  it("setup clears leftover copies of a deleted vault", async () => {
+    const { service, p } = await unlockedService();
+    await service.getState();
+    vi.spyOn(SnapshotStore.prototype, "removeAll").mockRejectedValueOnce(new Error("x"));
+    const { token } = await service.reauth(PASSWORD);
+    await expect(service.deleteVault(token)).rejects.toThrow();
+    expect((await snapKeys(p)).length).toBeGreaterThan(0);
+    await service.setup({
+      password: PASSWORD,
+      createRecoveryCode: false,
+      lockPolicy: { kind: "browser-close" },
+      storageArea: "local",
+    });
     expect(await snapKeys(p)).toEqual([]);
   });
 });
