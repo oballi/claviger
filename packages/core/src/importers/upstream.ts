@@ -15,9 +15,9 @@ const rawEntrySchema = z.object({
   type: z.string().optional(),
   issuer: z.string().optional(),
   account: z.string().optional(),
-  counter: z.coerce.number().optional(),
-  period: z.coerce.number().optional(),
-  digits: z.coerce.number().optional(),
+  counter: z.union([z.number(), z.string()]).optional(),
+  period: z.union([z.number(), z.string()]).optional(),
+  digits: z.union([z.number(), z.string()]).optional(),
   algorithm: z.string().optional(),
 });
 type RawEntry = z.infer<typeof rawEntrySchema>;
@@ -87,22 +87,32 @@ async function unlockV3Key(
   if (!params || Number(params[1]) > 262_144 || Number(params[2]) > 10 || Number(params[3]) > 4) {
     throw new CoreError("corrupt-file", "Unreasonable Argon2 parameters in backup key");
   }
+  const saltBytes = utf8Encode(key.data.salt);
+  if (saltBytes.length < 8) throw new CoreError("corrupt-file", "Backup key salt is too short");
   const raw = await argon2id({
     password,
-    salt: utf8Encode(key.data.salt),
+    salt: saltBytes,
     ...UPSTREAM_ARGON,
     outputType: "binary",
   });
   const passphrase = toBase64(raw).replace(/=+$/, "");
-  const ok = await argon2Verify({ password: passphrase, hash: key.data.hash }).catch(() => false);
+  let ok: boolean;
+  try {
+    ok = await argon2Verify({ password: passphrase, hash: key.data.hash });
+  } catch {
+    throw new CoreError("corrupt-file", "Malformed Argon2 hash in backup key");
+  }
   if (!ok) throw new CoreError("wrong-password", "Wrong password");
   return passphrase;
 }
 
+const toNum = (v: number | string | undefined): number | undefined =>
+  v === undefined ? undefined : Number(v);
+
 function toDraft(e: RawEntry): AccountDraft {
   let secret = e.secret.trim();
   let type = (e.type ?? "totp").toLowerCase();
-  let digits = e.digits;
+  let digits = toNum(e.digits);
   if (/^(blz-|bliz-)/i.test(secret)) {
     secret = secret.replace(/^(blz-|bliz-)/i, "");
     type = "battle";
@@ -127,8 +137,8 @@ function toDraft(e: RawEntry): AccountDraft {
     label: e.account ?? "",
     algorithm: e.algorithm,
     digits,
-    period: e.period,
-    counter: e.counter,
+    period: toNum(e.period),
+    counter: toNum(e.counter),
     domains: host ? [host] : [],
   };
 }
@@ -183,7 +193,12 @@ export async function parseUpstreamBackup(json: unknown, password?: string): Pro
       entry = { ...raw.data, encrypted: false };
     } else {
       const raw = rawEntrySchema.safeParse(value);
-      if (!raw.success) continue;
+      if (!raw.success) {
+        if (asRecord(value) && "secret" in (value as object)) {
+          result.issues.push({ position: position++, name: "", reason: "malformed-entry" });
+        }
+        continue;
+      }
       entry = raw.data;
       if (entry.encrypted) {
         const secret = safeUtf8(await decryptCryptoJsAes(entry.secret, legacyPassphrase));

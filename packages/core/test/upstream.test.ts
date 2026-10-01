@@ -70,4 +70,36 @@ describe("upstream Authenticator backups", () => {
   it("rejects non-backups", async () => {
     expect(await asyncCodeOf(parseUpstreamBackup({ hello: "world" }))).toBe("unsupported-format");
   });
+
+  it("rejects a crafted v3 salt that is too short", async () => {
+    const backup = await v3Backup("pw");
+    const keyId = "9f0c7c1e-1111-4111-8111-111111111111";
+    backup[keyId] = { ...(backup[keyId] as object), salt: "abc" };
+    expect(await asyncCodeOf(parseUpstreamBackup(backup, "pw"))).toBe("corrupt-file");
+  });
+
+  it("reports a malformed key hash as corrupt-file, not wrong-password", async () => {
+    const bad = await v3Backup("pw", "$argon2id$v=19$m=19456,t=2,p=1$!!!$!!!");
+    expect(await asyncCodeOf(parseUpstreamBackup(bad, "pw"))).toBe("corrupt-file");
+  });
+
+  it("turns entries with invalid numeric params into issues instead of dropping them", async () => {
+    const result = await parseUpstreamBackup({
+      a: { secret: "JBSWY3DPEHPK3PXP", digits: "abc", type: "totp" },
+      b: { secret: "GEZDGNBVGY3TQOJQ", type: "totp" },
+    });
+    expect(result.accounts).toHaveLength(1);
+    expect(result.issues).toEqual([
+      expect.objectContaining({ position: 0, reason: "invalid-params" }),
+    ]);
+  });
+
+  it("reports entries with a secret that fail the schema as malformed", async () => {
+    const result = await parseUpstreamBackup({
+      a: { secret: 42 },
+      b: { secret: "GEZDGNBVGY3TQOJQ" },
+    });
+    expect(result.accounts).toHaveLength(1);
+    expect(result.issues).toEqual([{ position: 0, name: "", reason: "malformed-entry" }]);
+  });
 });
