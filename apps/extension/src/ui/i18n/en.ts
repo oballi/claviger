@@ -240,6 +240,7 @@ export const en: Record<MessageKey, string> = {
     "Delete {name}? This can't be undone; make sure you have another way to sign in.",
   "account.deleteYes": "Yes, delete",
   "account.qrLabel": "QR code for {name}",
+  "account.qrTooLong": "This account is too long for a QR code; enter the secret key manually.",
   "account.secret": "Secret key",
   "account.copySecret": "Copy secret key",
   "account.revealWarning":

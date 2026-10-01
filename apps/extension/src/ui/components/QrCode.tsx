@@ -1,5 +1,6 @@
 import qrcode from "qrcode-generator";
 import { useMemo } from "react";
+import { useT } from "../i18n/i18n";
 
 export function QrCode({
   value,
@@ -10,10 +11,16 @@ export function QrCode({
   label: string;
   size?: number;
 }) {
-  const { count, cells } = useMemo(() => {
+  const t = useT();
+  const matrix = useMemo(() => {
     const qr = qrcode(0, "M");
-    qr.addData(value);
-    qr.make();
+    try {
+      qr.addData(value);
+      qr.make();
+    } catch {
+      // Over-long data overflows the largest QR version; the caller still shows the text secret.
+      return null;
+    }
     const n = qr.getModuleCount();
     const dark: string[] = [];
     for (let row = 0; row < n; row++) {
@@ -22,6 +29,8 @@ export function QrCode({
     }
     return { count: n, cells: dark.join("") };
   }, [value]);
+  if (!matrix) return <p className="m-0 text-[13px] text-muted">{t("account.qrTooLong")}</p>;
+  const { count, cells } = matrix;
   return (
     <svg
       role="img"

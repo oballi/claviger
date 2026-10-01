@@ -9,7 +9,7 @@ import { formatDate, lockPolicyLabel } from "../format";
 import { useAccountList } from "../hooks";
 import { useLocale, useT } from "../i18n/i18n";
 import { useUi } from "../platform";
-import { AccountEditor } from "./AccountEditor";
+import { AccountEditor, typeLabel } from "./AccountEditor";
 import { PageTitle } from "./ManageFrame";
 
 /** Design board "Yönetim — hesaplar". */
@@ -173,7 +173,14 @@ export function AccountsScreen({
         </section>
       ) : null}
 
-      <table className="w-full border-collapse text-left text-sm">
+      <table className="w-full table-fixed border-collapse text-left text-sm">
+        <colgroup>
+          <col style={{ width: "18%" }} />
+          <col style={{ width: "27%" }} />
+          <col style={{ width: "27%" }} />
+          <col style={{ width: "9%" }} />
+          <col style={{ width: "96px" }} />
+        </colgroup>
         <caption className="sr-only">{t("accounts.title")}</caption>
         <thead>
           <tr className="border-b border-line text-xs text-muted">
@@ -204,11 +211,13 @@ export function AccountsScreen({
           ) : null}
           {rows.map((a) => {
             const name = a.issuer || a.label;
+            const editName =
+              a.issuer && a.label ? `${a.issuer} (${a.label})` : name || t("add.unnamed");
             return (
               <tr key={a.id} className="h-14 border-b border-hair">
                 <td className="pr-4">
-                  <span className="flex items-center gap-2.5">
-                    {name}
+                  <span className="flex min-w-0 items-center gap-2.5">
+                    <span className="min-w-0 truncate">{name}</span>
                     {a.pinned ? (
                       <span className="rounded-full border border-line px-[7px] py-px font-mono text-[10px] text-muted">
                         {t("accounts.pinnedBadge")}
@@ -216,19 +225,17 @@ export function AccountsScreen({
                     ) : null}
                   </span>
                 </td>
-                <td className="max-w-[240px] truncate pr-4 text-muted">
-                  {a.issuer ? a.label : ""}
-                </td>
+                <td className="truncate pr-4 text-muted">{a.issuer ? a.label : ""}</td>
                 <td
-                  className={`max-w-[240px] truncate pr-4 font-mono text-xs ${a.domains.length ? "" : "text-muted"}`}
+                  className={`truncate pr-4 font-mono text-xs ${a.domains.length ? "" : "text-muted"}`}
                 >
                   {a.domains.length ? a.domains.join(", ") : t("accounts.unbound")}
                 </td>
-                <td className="pr-4 font-mono text-xs text-muted">{a.type.toUpperCase()}</td>
+                <td className="pr-4 font-mono text-xs text-muted">{typeLabel(a.type)}</td>
                 <td className="text-right">
                   <Button
                     variant="link"
-                    aria-label={t("accounts.edit", { name })}
+                    aria-label={t("accounts.edit", { name: editName })}
                     onClick={() => setEditing(a.id)}
                   >
                     {t("account.edit")}

@@ -13,6 +13,8 @@ import { useUi } from "../platform";
 
 type Mode = "main" | "delete" | "reveal";
 
+export const typeLabel = (type: string) => (type === "steam" ? "Steam" : type.toUpperCase());
+
 const groupSecret = (secret: string) => secret.match(/.{1,4}/g)?.join(" ") ?? secret;
 
 /** The "Düzenle" dialog of the Accounts page: edit, pin, reorder, reveal and delete one account. */
@@ -78,7 +80,7 @@ export function AccountEditor({
   }
 
   const details: [string, string][] = [
-    [t("add.type"), account.type.toUpperCase()],
+    [t("add.type"), typeLabel(account.type)],
     [t("add.algorithm"), account.algorithm],
     [t("add.digits"), String(account.digits)],
     [

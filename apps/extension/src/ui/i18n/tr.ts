@@ -236,6 +236,7 @@ export const tr = {
     "{name} hesabı silinsin mi? Bu işlem geri alınamaz; hesaba girebilmek için başka bir yolun olduğundan emin ol.",
   "account.deleteYes": "Evet, sil",
   "account.qrLabel": "{name} için QR kodu",
+  "account.qrTooLong": "Bu hesap QR'a sığmayacak kadar uzun; gizli anahtarı elle gir.",
   "account.secret": "Gizli anahtar",
   "account.copySecret": "Gizli anahtarı kopyala",
   "account.revealWarning":

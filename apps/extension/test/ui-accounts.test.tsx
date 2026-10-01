@@ -78,7 +78,7 @@ describe("AccountsScreen", () => {
   it("edits issuer, label and linked sites, and shows algorithm, digits and period", async () => {
     const h = await seeded();
     await open(h);
-    await userEvent.click(screen.getByRole("button", { name: "GitHub hesabını düzenle" }));
+    await userEvent.click(screen.getByRole("button", { name: /GitHub.*hesabını düzenle/ }));
     const dialog = screen.getByRole("dialog", { name: "GitHub" });
     expect(within(dialog).getByText("SHA256")).toBeTruthy();
     expect(within(dialog).getByText("8")).toBeTruthy();
@@ -104,14 +104,14 @@ describe("AccountsScreen", () => {
   it("pins and reorders within the same group", async () => {
     const h = await seeded();
     await open(h);
-    await userEvent.click(screen.getByRole("button", { name: "Bank hesabını düzenle" }));
+    await userEvent.click(screen.getByRole("button", { name: /Bank.*hesabını düzenle/ }));
     await userEvent.click(screen.getByRole("button", { name: "Yukarı taşı" }));
     await vi.waitFor(async () => expect(await names(h)).toEqual(["Bank", "GitHub", "Deno"]));
     await screen.findByText("Bank taşındı.");
-    await userEvent.click(screen.getByRole("button", { name: "Deno hesabını düzenle" }));
+    await userEvent.click(screen.getByRole("button", { name: /Deno.*hesabını düzenle/ }));
     await userEvent.click(screen.getByRole("button", { name: "Sabitle" }));
     await screen.findByText("Deno sabitlendi.");
-    await userEvent.click(screen.getByRole("button", { name: "Deno hesabını düzenle" }));
+    await userEvent.click(screen.getByRole("button", { name: /Deno.*hesabını düzenle/ }));
     expect(screen.getByRole("button", { name: "Yukarı taşı" })).toHaveProperty("disabled", true);
     expect(screen.getByRole("button", { name: "Aşağı taşı" })).toHaveProperty("disabled", true);
   });
@@ -119,7 +119,7 @@ describe("AccountsScreen", () => {
   it("deletes only after confirmation", async () => {
     const h = await seeded();
     await open(h);
-    await userEvent.click(screen.getByRole("button", { name: "Deno hesabını düzenle" }));
+    await userEvent.click(screen.getByRole("button", { name: /Deno.*hesabını düzenle/ }));
     await userEvent.click(screen.getByRole("button", { name: "Sil" }));
     expect(await names(h)).toContain("Deno");
     await userEvent.click(screen.getByRole("button", { name: "Evet, sil" }));
@@ -130,7 +130,7 @@ describe("AccountsScreen", () => {
   it("reveals the secret and QR after the password, or directly when the setting allows", async () => {
     const h = await seeded();
     await open(h);
-    await userEvent.click(screen.getByRole("button", { name: "GitHub hesabını düzenle" }));
+    await userEvent.click(screen.getByRole("button", { name: /GitHub.*hesabını düzenle/ }));
     await userEvent.click(screen.getByRole("button", { name: "Gizli anahtarı göster" }));
     expect(screen.queryByText("JBSW Y3DP EHPK 3PXP")).toBeNull();
     await userEvent.type(screen.getByLabelText("Ana parola"), PASSWORD);
@@ -145,7 +145,7 @@ describe("AccountsScreen", () => {
     const h = await seeded();
     const spy = vi.spyOn(h.service, "revealSecret");
     await open(h);
-    await userEvent.click(screen.getByRole("button", { name: "GitHub hesabını düzenle" }));
+    await userEvent.click(screen.getByRole("button", { name: /GitHub.*hesabını düzenle/ }));
     const text = () => document.body.innerHTML.replace(/\s/g, "");
     expect(text()).not.toContain(SECRET);
     await userEvent.click(screen.getByRole("button", { name: "Gizli anahtarı göster" }));
@@ -156,11 +156,114 @@ describe("AccountsScreen", () => {
     expect(spy).not.toHaveBeenCalled();
     await userEvent.type(screen.getByLabelText("Ana parola"), "wrong password!");
     await userEvent.click(screen.getByRole("button", { name: "Göster" }));
-    await vi.waitFor(() =>
-      expect(within(screen.getByRole("dialog")).getByLabelText("Ana parola")).toBeTruthy(),
-    );
+    await within(screen.getByRole("dialog")).findByText("Parola yanlış.");
     expect(text()).not.toContain(SECRET);
     expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("forgets a revealed secret when the dialog is closed and reopened, and reveal never copies", async () => {
+    const h = await seeded();
+    await open(h);
+    await userEvent.click(screen.getByRole("button", { name: /GitHub.*hesabını düzenle/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Gizli anahtarı göster" }));
+    await userEvent.type(screen.getByLabelText("Ana parola"), PASSWORD);
+    await userEvent.click(screen.getByRole("button", { name: "Göster" }));
+    await screen.findByText("JBSW Y3DP EHPK 3PXP");
+    expect(h.ui.copy).not.toHaveBeenCalled();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: /GitHub.*hesabını düzenle/ }));
+    expect(screen.queryByText("JBSW Y3DP EHPK 3PXP")).toBeNull();
+    expect(screen.queryByRole("img", { name: "GitHub için QR kodu" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Gizli anahtarı göster" }));
+    expect(await screen.findByLabelText("Ana parola")).toBeTruthy();
+    expect(screen.queryByText("JBSW Y3DP EHPK 3PXP")).toBeNull();
+  });
+
+  it("searches by issuer and by label", async () => {
+    const h = await seeded();
+    await open(h);
+    const box = screen.getByRole("searchbox", { name: "Hesap ara" });
+    await userEvent.type(box, "git");
+    expect(screen.getByText("GitHub")).toBeTruthy();
+    expect(screen.queryByText("Bank")).toBeNull();
+    // "Deno" has no linked site, so only the issuer can match.
+    await userEvent.clear(box);
+    await userEvent.type(box, "den");
+    expect(screen.getByText("Deno")).toBeTruthy();
+    expect(screen.queryByText("GitHub")).toBeNull();
+    await userEvent.clear(box);
+    await userEvent.type(box, "ali");
+    expect(screen.getByText("Bank")).toBeTruthy();
+    expect(screen.queryByText("GitHub")).toBeNull();
+  });
+
+  it("styles a missing backup as a warning and shows the date once one exists", async () => {
+    const h = await seeded();
+    const { unmount } = renderUi(
+      <AccountsScreen state={await h.ui.rpc("getState", {})} onChanged={() => {}} />,
+      h.ui,
+    );
+    await screen.findByText("GitHub");
+    expect(screen.getByText("Henüz yedek alınmadı").className).toContain("text-warn");
+    unmount();
+    const state = { ...(await h.ui.rpc("getState", {})), lastBackupAt: Date.UTC(2026, 2, 5, 12) };
+    renderUi(<AccountsScreen state={state} onChanged={() => {}} />, h.ui);
+    await screen.findByText("GitHub");
+    expect(screen.queryByText("Henüz yedek alınmadı")).toBeNull();
+    const dd = screen.getByText("Son yedek").nextElementSibling!;
+    expect(dd.textContent).toMatch(/2026/);
+    expect(dd.className).not.toContain("text-warn");
+  });
+
+  it("falls back to the text secret when the QR does not fit", async () => {
+    const h = await harness();
+    const long = "\u015f".repeat(512);
+    await h.ui.rpc("addAccountManual", { draft: { secret: SECRET, issuer: long, label: long } });
+    renderUi(<AccountsScreen state={await h.ui.rpc("getState", {})} onChanged={() => {}} />, h.ui);
+    await userEvent.click(await screen.findByRole("button", { name: /hesabını düzenle$/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Gizli anahtarı göster" }));
+    await userEvent.type(screen.getByLabelText("Ana parola"), PASSWORD);
+    await userEvent.click(screen.getByRole("button", { name: "Göster" }));
+    expect(await screen.findByText("JBSW Y3DP EHPK 3PXP")).toBeTruthy();
+    expect(screen.getByText(/QR'a sığmayacak kadar uzun/)).toBeTruthy();
+    expect(screen.queryByRole("img")).toBeNull();
+  });
+
+  it("names the edit button after service and account, and labels types", async () => {
+    const h = await harness();
+    await h.ui.rpc("addAccountManual", {
+      draft: { secret: SECRET, issuer: "Google", label: "ali@x.com" },
+    });
+    await h.ui.rpc("addAccountManual", {
+      draft: { secret: "MFRGGZDFMZTWQ2LK", issuer: "Google", label: "veli@x.com" },
+    });
+    await h.ui.rpc("addAccountUri", {
+      uri: `otpauth://steam/Valve:gabe?secret=GEZDGNBVGY3TQOJQ&issuer=Valve`,
+    });
+    renderUi(<AccountsScreen state={await h.ui.rpc("getState", {})} onChanged={() => {}} />, h.ui);
+    expect(
+      await screen.findByRole("button", { name: "Google (ali@x.com) hesabını düzenle" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Google (veli@x.com) hesabını düzenle" }),
+    ).toBeTruthy();
+    expect(within(screen.getByText("Valve").closest("tr")!).getByText("Steam")).toBeTruthy();
+  });
+
+  it("falls back to the unnamed text for an account without issuer or label", async () => {
+    const h = await harness();
+    await h.ui.rpc("addAccountManual", { draft: { secret: SECRET } });
+    renderUi(<AccountsScreen state={await h.ui.rpc("getState", {})} onChanged={() => {}} />, h.ui);
+    expect(await screen.findByRole("button", { name: "Hesap hesabını düzenle" })).toBeTruthy();
+  });
+
+  it("uses fixed table columns", async () => {
+    const h = await seeded();
+    await open(h);
+    const table = screen.getByRole("table");
+    expect(table.className).toContain("table-fixed");
+    expect(table.querySelectorAll("colgroup col")).toHaveLength(5);
   });
 
   it("reveals without a password when the user turned that off", async () => {
@@ -168,7 +271,7 @@ describe("AccountsScreen", () => {
     const { token } = await h.ui.rpc("reauth", { password: PASSWORD });
     await h.ui.rpc("setRevealRequiresPassword", { token, value: false });
     await open(h);
-    await userEvent.click(screen.getByRole("button", { name: "GitHub hesabını düzenle" }));
+    await userEvent.click(screen.getByRole("button", { name: /GitHub.*hesabını düzenle/ }));
     await userEvent.click(screen.getByRole("button", { name: "Gizli anahtarı göster" }));
     expect(await screen.findByText("JBSW Y3DP EHPK 3PXP")).toBeTruthy();
     expect(screen.queryByLabelText("Ana parola")).toBeNull();
@@ -178,7 +281,7 @@ describe("AccountsScreen", () => {
     const h = await seeded();
     const state = { ...(await h.ui.rpc("getState", {})), revealRequiresPassword: false };
     renderUi(<AccountsScreen state={state} onChanged={() => {}} />, h.ui);
-    await userEvent.click(await screen.findByRole("button", { name: "GitHub hesabını düzenle" }));
+    await userEvent.click(await screen.findByRole("button", { name: /GitHub.*hesabını düzenle/ }));
     await userEvent.click(screen.getByRole("button", { name: "Gizli anahtarı göster" }));
     expect(await screen.findByLabelText("Ana parola")).toBeTruthy();
     expect(screen.queryByText("JBSW Y3DP EHPK 3PXP")).toBeNull();
