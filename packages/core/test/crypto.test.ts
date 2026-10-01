@@ -51,9 +51,13 @@ describe("KDFs", () => {
 
   it("normalizes passwords to NFC so composed and decomposed input unlock alike", async () => {
     const salt = new Uint8Array(16).fill(2);
-    const composed = await deriveArgon2id("ş", salt, FAST_KDF); // ş
-    const decomposed = await deriveArgon2id("ş", salt, FAST_KDF); // s + cedilla
-    expect(bytesEqual(composed, decomposed)).toBe(true);
+    // U+015F (ş precomposed) vs U+0073 U+0327 (s + combining cedilla)
+    const composed = String.fromCodePoint(0x015f);
+    const decomposed = String.fromCodePoint(0x0073, 0x0327);
+    expect(composed).not.toBe(decomposed); // sanity: inputs must be actually different
+    const composedKey = await deriveArgon2id(composed, salt, FAST_KDF);
+    const decomposedKey = await deriveArgon2id(decomposed, salt, FAST_KDF);
+    expect(bytesEqual(composedKey, decomposedKey)).toBe(true);
   });
 
   it("matches RFC 5869 test case 1 for HKDF-SHA256", async () => {
