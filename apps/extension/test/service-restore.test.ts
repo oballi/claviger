@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { Vault } from "@otp-vault/core";
+import { describe, expect, it, vi } from "vitest";
 import { VaultService } from "../src/background/vaultService";
-import { FREE_ATTEMPTS } from "../src/background/throttle";
+import { ATTEMPTS_KEY, FREE_ATTEMPTS } from "../src/background/throttle";
 import { codeOf, PASSWORD, unlockedService } from "./helpers/service";
 
 const A = "otpauth://totp/Acme:a@x?secret=JBSWY3DPEHPK3PXP&issuer=Acme";
@@ -17,14 +18,11 @@ async function withSnapshot() {
   return { ...h, snap };
 }
 
-/** A fresh vault on the same device that still has the old vault's copies. */
+/** Real flow: the vault turns corrupt, is moved aside, and a new vault is set up. */
 async function withForeignSnapshot() {
   const { service, p, snap } = await withSnapshot();
-  const { token: del } = await service.reauth(PASSWORD);
-  const keep = Object.fromEntries(
-    Object.entries(await p.local.get()).filter(([k]) => k.startsWith("snapshot:")),
-  );
-  await service.deleteVault(del);
+  await p.local.set({ "vault:header": { format: 1, nope: true } });
+  await service.quarantineVault();
   const fresh = new VaultService(p);
   await fresh.setup({
     password: NEW_PASSWORD,
@@ -32,8 +30,6 @@ async function withForeignSnapshot() {
     lockPolicy: { kind: "browser-close" },
     storageArea: "local",
   });
-  // setup clears old copies, so put them back to simulate "kept across a quarantine".
-  await p.local.set(keep);
   return { fresh, p, snap };
 }
 
@@ -64,6 +60,7 @@ describe("restoreSnapshot", () => {
 
   it("restores another vault's copy only with that vault's password", async () => {
     const { fresh, p, snap } = await withForeignSnapshot();
+    expect(Object.keys(await p.local.get()).some((k) => k.startsWith("quarantine:"))).toBe(true);
     const listed = (await fresh.listSnapshots()).find((s) => s.id === snap.id)!;
     expect(listed.sameVault).toBe(false);
 
@@ -73,7 +70,6 @@ describe("restoreSnapshot", () => {
     expect(await codeOf(fresh.restoreSnapshot(token, snap.id, "wrong password!"))).toBe(
       "wrong-password",
     );
-    p.clock.advance(60_000);
     expect(await fresh.restoreSnapshot(token, snap.id, PASSWORD)).toEqual({
       added: 2,
       skipped: 0,
@@ -84,11 +80,11 @@ describe("restoreSnapshot", () => {
   });
 
   it("rejects an invalid token for another vault's copy before trying the password", async () => {
-    const { fresh, snap } = await withForeignSnapshot();
+    const { fresh, p, snap } = await withForeignSnapshot();
     expect(await codeOf(fresh.restoreSnapshot("nope", snap.id, "wrong password!"))).toBe(
       "invalid-token",
     );
-    expect((await fresh.getState()).retryAfterMs).toBe(0);
+    expect((await p.local.get([ATTEMPTS_KEY]))[ATTEMPTS_KEY]).toBeUndefined();
   });
 
   it("throttles repeated wrong old passwords", async () => {
@@ -100,6 +96,29 @@ describe("restoreSnapshot", () => {
       );
     }
     expect(await codeOf(fresh.restoreSnapshot(token, snap.id, PASSWORD))).toBe("throttled");
+  });
+
+  it("refuses a damaged copy without spending the token", async () => {
+    const { service, p, snap } = await withSnapshot();
+    const key = `snapshot:${snap.id}`;
+    const raw = (await p.local.get([key]))[key] as { records: Record<string, unknown> };
+    delete raw.records["vault:header"];
+    await p.local.set({ [key]: raw });
+    const { token } = await service.reauth(PASSWORD);
+    expect(await codeOf(service.restoreSnapshot(token, snap.id))).toBe("invalid-request");
+    raw.records["vault:header"] = (await p.local.get(["vault:header"]))["vault:header"];
+    await p.local.set({ [key]: raw });
+    await expect(service.restoreSnapshot(token, snap.id)).resolves.toMatchObject({ added: 1 });
+  });
+
+  it("refuses to restore while the index is damaged, keeping the token", async () => {
+    const { service, p, snap } = await withSnapshot();
+    const { token } = await service.reauth(PASSWORD);
+    const good = (await p.local.get(["vault:index"]))["vault:index"];
+    await p.local.set({ "vault:index": { garbage: true } });
+    expect(await codeOf(service.restoreSnapshot(token, snap.id))).toBe("invalid-request");
+    await p.local.set({ "vault:index": good });
+    await expect(service.restoreSnapshot(token, snap.id)).resolves.toMatchObject({ added: 1 });
   });
 
   it("does not bring back an account deleted before the copy was taken", async () => {
@@ -157,6 +176,23 @@ describe("quarantineVault", () => {
     expect(after).toEqual(before);
   });
 
+  it("aborts without writing when the vault is no longer corrupt at move time", async () => {
+    const { service, p } = await unlockedService();
+    const good = (await p.local.get(["vault:header"]))["vault:header"];
+    await p.local.set({ "vault:header": { format: 1, nope: true } });
+    const real = Vault.inspect.bind(Vault);
+    const spy = vi.spyOn(Vault, "inspect").mockImplementationOnce(async (st) => {
+      const r = await real(st);
+      // Simulates a sync repair landing right after the service inspected the vault.
+      await p.local.set({ "vault:header": good });
+      return r;
+    });
+    expect(await codeOf(service.quarantineVault())).toBe("invalid-request");
+    spy.mockRestore();
+    expect((await p.local.get(["vault:header"]))["vault:header"]).toEqual(good);
+    expect(Object.keys(await p.local.get()).some((k) => k.startsWith("quarantine:"))).toBe(false);
+  });
+
   it.each(["ok", "unsupported", "missing"] as const)("refuses a %s vault", async (kind) => {
     const { service, p } = await unlockedService();
     if (kind === "unsupported") await p.local.set({ "vault:header": { format: 2 } });
@@ -164,5 +200,14 @@ describe("quarantineVault", () => {
     const before = await p.local.get();
     expect(await codeOf(service.quarantineVault())).toBe("invalid-request");
     expect(await p.local.get()).toEqual(before);
+  });
+});
+
+describe("purge marker", () => {
+  it("setup keeps copies and quarantine unless a delete left a purge pending", async () => {
+    const { fresh, p } = await withForeignSnapshot();
+    expect(Object.keys(await p.local.get()).some((k) => k.startsWith("snapshot:"))).toBe(true);
+    expect((await p.local.get(["snapshotPurgePending"])).snapshotPurgePending).toBeUndefined();
+    expect(fresh).toBeDefined();
   });
 });

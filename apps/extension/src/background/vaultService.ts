@@ -27,7 +27,13 @@ import {
 } from "@otp-vault/core";
 import type { Platform, StorageAreaName } from "../platform/ports";
 import { ServiceError } from "./errors";
-import { canonicalJson, recordsStorage, SnapshotStore, type SnapshotReason } from "./snapshots";
+import {
+  canonicalJson,
+  NotCorruptError,
+  recordsStorage,
+  SnapshotStore,
+  type SnapshotReason,
+} from "./snapshots";
 import { KeyCache, MANUAL_LOCK_KEY, PERSISTED_KEY } from "./keyCache";
 import {
   DEFAULT_SETTINGS,
@@ -48,6 +54,8 @@ export const SYNC_QUOTA_BYTES = 102_400;
 export const SYNC_ITEM_QUOTA_BYTES = 8_192;
 
 /** storage.sync counts quota as key length plus JSON-encoded value length. */
+const PURGE_PENDING_KEY = "snapshotPurgePending";
+
 const itemBytes = (key: string, value: unknown) => key.length + JSON.stringify(value).length;
 
 export type ServiceStatus = "no-vault" | "locked" | "unlocked" | "unsupported" | "corrupt";
@@ -424,11 +432,15 @@ export class VaultService {
     if ((await Vault.exists(this.p.local)) || (await Vault.exists(this.p.sync))) {
       throw new ServiceError("already-set-up", "A vault already exists");
     }
-    try {
-      // Leftovers of a deleteVault whose cleanup failed belong to no vault.
-      await this.snapshots.removeAll();
-    } catch {
-      // Best effort.
+    // Only a deleteVault that did not finish purging leaves copies that belong to no vault;
+    // otherwise copies and quarantine of an earlier vault must survive a fresh setup.
+    if ((await this.p.local.get([PURGE_PENDING_KEY]))[PURGE_PENDING_KEY]) {
+      try {
+        await this.snapshots.removeAll();
+        await this.p.local.remove([PURGE_PENDING_KEY]);
+      } catch {
+        // Best effort; the marker stays for the next setup.
+      }
     }
     const { vault, recoveryCode } = await Vault.create(this.deps(this.area(opts.storageArea)), {
       password: opts.password,
@@ -667,6 +679,12 @@ export class VaultService {
       if (!snap) throw new ServiceError("not-found", "The local copy no longer exists");
       const current = await this.requireVault();
       const sameVault = snap.vaultId === current.vaultId;
+      if ((await current.listAccounts()).indexDamaged) {
+        throw new ServiceError("invalid-request", "Rebuild the index before restoring a copy");
+      }
+      if ((await Vault.inspect(recordsStorage(snap.records))).status !== "ok") {
+        throw new ServiceError("invalid-request", "The local copy cannot be opened");
+      }
       let vault: Vault;
       let opened: Vault;
       const deps = this.deps(recordsStorage(snap.records));
@@ -716,11 +734,18 @@ export class VaultService {
       if ((await Vault.inspect(active)).status !== "corrupt") {
         throw new ServiceError("invalid-request", "Only a corrupt vault can be moved aside");
       }
+      let moved: number;
+      try {
+        moved = await this.snapshots.quarantine(active);
+      } catch (e) {
+        if (e instanceof NotCorruptError)
+          throw new ServiceError("invalid-request", "Only a corrupt vault can be moved aside");
+        throw e;
+      }
       this.lockEpoch++;
       this.loading = null;
       this.vault = null;
       this.onLock();
-      const moved = await this.snapshots.quarantine(active);
       await this.keys.forget();
       await this.p.alarms.clear(AUTOLOCK_ALARM);
       return { moved };
@@ -833,6 +858,8 @@ export class VaultService {
       this.loading = null;
       this.vault = null;
       this.onLock();
+      // Written first: if the purge below fails, the next setup finishes it.
+      await this.p.local.set({ [PURGE_PENDING_KEY]: true });
       // Only the active area: a vault in the other area may belong to another device (user decision).
       const active = this.area((await this.settings()).storageArea);
       const keys = Object.keys(await active.get()).filter(isVaultKey);
@@ -844,6 +871,7 @@ export class VaultService {
       await saveSettings(this.p.local, DEFAULT_SETTINGS);
       // Last, so a failure here can never leave the key cached.
       await this.snapshots.removeAll();
+      await this.p.local.remove([PURGE_PENDING_KEY]);
     });
   }
 

@@ -12,6 +12,8 @@ import { z } from "zod";
 export const SNAPSHOT_PREFIX = "snapshot:";
 export const QUARANTINE_PREFIX = "quarantine:";
 export const MAX_SNAPSHOTS = 7;
+export class NotCorruptError extends Error {}
+
 export const DAY_MS = 86_400_000;
 
 const REASONS = [
@@ -192,6 +194,9 @@ export class SnapshotStore {
   async quarantine(source: StoragePort): Promise<number> {
     const records = vaultRecords(await source.get());
     if (Object.keys(records).length === 0) return 0;
+    // A sync arrival may have repaired the vault since the caller inspected it.
+    if ((await Vault.inspect(recordsStorage(records))).status !== "corrupt")
+      throw new NotCorruptError("The vault is no longer corrupt");
     const createdAt = this.clock.now();
     const key = `${QUARANTINE_PREFIX}${createdAt}-${this.random.uuid()}`;
     // Write first: the source is only cleared once the copy exists.
