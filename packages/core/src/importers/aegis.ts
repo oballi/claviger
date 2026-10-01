@@ -48,9 +48,14 @@ export function aegisNeedsPassword(json: unknown): boolean {
   return file.success && typeof file.data.db === "string";
 }
 
-/** Bellek ≈ 128·n·r bayt; 256 MiB üstü reddedilir (Aegis varsayılanı 2^15·8 ≈ 32 MiB). */
-const saneScrypt = (s: PasswordSlot) =>
-  s.n >= 2 && (s.n & (s.n - 1)) === 0 && s.r >= 1 && s.p >= 1 && s.p <= 4 && s.n * s.r <= 2 ** 21;
+/** Bellek ≈ 128·r·(n + p + 2) bayt; 256 MiB üstü reddedilir (Aegis varsayılanı 2^15·8·32776 ≈ 32 MiB). */
+const saneScrypt = (s: PasswordSlot) => {
+  const isNPowerOfTwo = s.n >= 2 && (s.n & (s.n - 1)) === 0;
+  const rInBounds = s.r >= 1 && s.r <= 32;
+  const pInBounds = s.p >= 1 && s.p <= 4;
+  const memoryOk = 128 * s.r * (s.n + s.p + 2) <= 268_435_456; // 256 MiB
+  return isNPowerOfTwo && rInBounds && pInBounds && memoryOk;
+};
 
 async function decryptDb(
   db: string,
@@ -66,6 +71,8 @@ async function decryptDb(
   });
   if (passwordSlots.length === 0)
     throw new CoreError("corrupt-file", "Aegis vault has no password slot");
+  if (passwordSlots.length > 4)
+    throw new CoreError("corrupt-file", "Aegis vault has too many password slots");
 
   for (const slot of passwordSlots) {
     if (!saneScrypt(slot)) throw new CoreError("corrupt-file", "Unreasonable scrypt parameters");

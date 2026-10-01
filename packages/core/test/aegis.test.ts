@@ -93,4 +93,61 @@ describe("Aegis import", () => {
     file.db.version = 99;
     expect(await asyncCodeOf(parseAegis(file))).toBe("unsupported-format");
   });
+
+  describe("Crafted input DoS guards", () => {
+    it("guards against scrypt r bypass: n=2, r=2^20, p=4", async () => {
+      const file = aegisEncrypted("test");
+      file.header.slots[1]!.n = 2;
+      file.header.slots[1]!.r = 2 ** 20;
+      file.header.slots[1]!.p = 4;
+      expect(await asyncCodeOf(parseAegis(file, "test"))).toBe("corrupt-file");
+    });
+
+    it("rejects vaults with more than 4 password slots", async () => {
+      const file = aegisEncrypted("test");
+      const validSlot = file.header.slots[1]!;
+      file.header.slots[1] = validSlot;
+      file.header.slots[2] = validSlot;
+      file.header.slots[3] = validSlot;
+      file.header.slots[4] = validSlot;
+      file.header.slots[5] = validSlot;
+      expect(await asyncCodeOf(parseAegis(file, "test"))).toBe("corrupt-file");
+    });
+
+    it("rejects vaults with null params", async () => {
+      const file = aegisEncrypted("test") as { header: { params: null | Record<string, string> } };
+      file.header.params = null;
+      expect(await asyncCodeOf(parseAegis(file, "test"))).toBe("corrupt-file");
+    });
+
+    it("rejects vaults with no password slot", async () => {
+      const file = aegisEncrypted("test");
+      file.header.slots = [
+        { type: 2, uuid: "biometric-slot", key: "00", key_params: { nonce: "00", tag: "00" } },
+      ];
+      expect(await asyncCodeOf(parseAegis(file, "test"))).toBe("corrupt-file");
+    });
+
+    it("rejects non-hex salt in password slot", async () => {
+      const file = aegisEncrypted("test");
+      file.header.slots[1]!.salt = "not-hex!@#$";
+      expect(await asyncCodeOf(parseAegis(file, "test"))).toBe("corrupt-file");
+    });
+
+    it("rejects non-base64 ciphertext body", async () => {
+      const file = aegisEncrypted("test");
+      file.db = "not base64!";
+      expect(await asyncCodeOf(parseAegis(file, "test"))).toBe("corrupt-file");
+    });
+
+    it("reports malformed plain vault entries as issues", async () => {
+      const file = aegisPlain() as { db: { entries: unknown[] } };
+      file.db.entries.push({ type: "totp" });
+      const result = await parseAegis(file);
+      expect(result.accounts).toEqual(EXPECTED);
+      expect(result.issues).toContainEqual(
+        expect.objectContaining({ position: 5, reason: "malformed-entry", name: "" }),
+      );
+    });
+  });
 });
