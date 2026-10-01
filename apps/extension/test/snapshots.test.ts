@@ -107,6 +107,62 @@ describe("SnapshotStore", () => {
     expect((await store.list()).map((s) => s.id)).toEqual([snap!.id]);
   });
 
+  it("never evicts the only non-empty copy when making room", async () => {
+    const { source, store, local, clock, vault } = await setup();
+    await vault.addAccount(acc(SECRET, "A", "a"));
+    const nonEmpty = await store.take(source, "daily");
+    const { accounts } = await vault.listAccounts();
+    for (const a of accounts) await vault.deleteAccount(a.id);
+    clock.advance(1000);
+    const empty = await store.take(source, "before-delete");
+    // Make the non-empty copy the oldest one.
+    expect((await store.list()).at(-1)!.id).toBe(nonEmpty!.id);
+    expect(empty).not.toBeNull();
+    await vault.addAccount(acc("JBSWY3DPEHPK3PXQ", "B", "b"));
+    clock.advance(1000);
+    local.failNextSet = new Error("QUOTA_BYTES quota exceeded");
+    const snap = await store.take(source, "before-import");
+    expect(snap).not.toBeNull();
+    const ids = (await store.list()).map((s) => s.id);
+    expect(ids).toContain(nonEmpty!.id);
+    expect(ids).not.toContain(empty!.id);
+  });
+
+  it("rethrows the quota error with a cause when only the protected copy remains", async () => {
+    const { source, store, local, clock, vault } = await setup();
+    await vault.addAccount(acc(SECRET, "A", "a"));
+    const nonEmpty = await store.take(source, "daily");
+    await vault.addAccount(acc("JBSWY3DPEHPK3PXQ", "B", "b"));
+    clock.advance(1000);
+    const quota = new Error("QUOTA_BYTES quota exceeded");
+    local.failNextSet = quota;
+    await expect(store.take(source, "before-import")).rejects.toMatchObject({ cause: quota });
+    expect((await store.list()).map((s) => s.id)).toEqual([nonEmpty!.id]);
+  });
+
+  it("still returns the new copy when pruning fails", async () => {
+    const { source, clock, vault } = await setup();
+    class FailingRemove extends MemoryStorage {
+      override async remove(): Promise<void> {
+        throw new Error("remove failed");
+      }
+    }
+    const failing = new FailingRemove();
+    const s2 = new SnapshotStore(failing, clock, webRandom);
+    for (let i = 0; i < MAX_SNAPSHOTS + 1; i++) {
+      await vault.addAccount(acc("JBSWY3DPEHPK3PX" + "ABCDEFGHIJKLMNOP"[i]!, `I${i}`, `l${i}`));
+      clock.advance(1000);
+      expect(await s2.take(source, "before-import")).not.toBeNull();
+    }
+    expect(await s2.list()).toHaveLength(MAX_SNAPSHOTS + 1);
+  });
+
+  it("quarantine of a source without vault keys writes nothing", async () => {
+    const { store, local } = await setup();
+    expect(await store.quarantine(new MemoryStorage())).toBe(0);
+    expect(Object.keys(await local.get())).toEqual([]);
+  });
+
   it("moves raw vault keys to quarantine and removes them from the source", async () => {
     const { source, store, local } = await setup();
     await source.set({ "vault:header": "garbage" });
@@ -185,6 +241,13 @@ describe("SnapshotStore", () => {
       await store.rekey(vault.vaultId, (await source.get(["vault:header"]))["vault:header"]);
       clock.advance(1000);
       expect(await store.take(source, "before-delete")).toBeNull();
+    });
+
+    it("rejects an invalid header for the same vault", async () => {
+      const { source, store, vault } = await setup();
+      const snap = await store.take(source, "daily");
+      await expect(store.rekey(vault.vaultId, { vaultId: vault.vaultId })).rejects.toThrow();
+      expect((await store.get(snap!.id))!.digest).toBe(snap!.digest);
     });
 
     it("rejects a header of another vault", async () => {

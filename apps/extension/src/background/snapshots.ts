@@ -1,5 +1,6 @@
 import "../zodConfig";
 import {
+  HEADER_KEY,
   isVaultKey,
   Vault,
   type ClockPort,
@@ -12,8 +13,6 @@ export const SNAPSHOT_PREFIX = "snapshot:";
 export const QUARANTINE_PREFIX = "quarantine:";
 export const MAX_SNAPSHOTS = 7;
 export const DAY_MS = 86_400_000;
-
-const HEADER_KEY = "vault:header";
 
 const REASONS = [
   "daily",
@@ -111,21 +110,30 @@ export class SnapshotStore {
     };
     try {
       await this.local.set({ [SNAPSHOT_PREFIX + snapshot.id]: snapshot });
-    } catch {
+    } catch (cause) {
       // Usually a full storage.local: make room once, then give up.
-      const oldest = existing.at(-1);
-      if (!oldest) throw new Error("Snapshot could not be stored");
-      await this.local.remove([SNAPSHOT_PREFIX + oldest.id]);
-      existing.pop();
-      await this.local.set({ [SNAPSHOT_PREFIX + snapshot.id]: snapshot });
+      // The newest non-empty copy backs the "vault is empty" restore offer; never evict it.
+      const protectedId = existing.find((s) => s.accountCount > 0)?.id;
+      const victim = [...existing].reverse().find((s) => s.id !== protectedId);
+      if (!victim) throw new Error("Snapshot could not be stored", { cause });
+      await this.local.remove([SNAPSHOT_PREFIX + victim.id]);
+      existing.splice(existing.indexOf(victim), 1);
+      try {
+        await this.local.set({ [SNAPSHOT_PREFIX + snapshot.id]: snapshot });
+      } catch (retryCause) {
+        throw new Error("Snapshot could not be stored", { cause: retryCause });
+      }
     }
-    const all = [snapshot, ...existing];
-    const keep = new Set(all.slice(0, MAX_SNAPSHOTS).map((s) => s.id));
-    // The newest non-empty copy backs the "vault is empty" restore offer.
-    const newestNonEmpty = all.find((s) => s.accountCount > 0);
-    if (newestNonEmpty) keep.add(newestNonEmpty.id);
-    const stale = all.filter((s) => !keep.has(s.id)).map((s) => SNAPSHOT_PREFIX + s.id);
-    if (stale.length) await this.local.remove(stale);
+    try {
+      const all = [snapshot, ...existing];
+      const keep = new Set(all.slice(0, MAX_SNAPSHOTS).map((s) => s.id));
+      const newestNonEmpty = all.find((s) => s.accountCount > 0);
+      if (newestNonEmpty) keep.add(newestNonEmpty.id);
+      const stale = all.filter((s) => !keep.has(s.id)).map((s) => SNAPSHOT_PREFIX + s.id);
+      if (stale.length) await this.local.remove(stale);
+    } catch {
+      // Pruning is best effort; the new copy is already stored.
+    }
     return snapshot;
   }
 
@@ -149,6 +157,9 @@ export class SnapshotStore {
     for (const snap of await this.list()) {
       if (snap.vaultId !== vaultId) continue;
       const records = { ...snap.records, [HEADER_KEY]: structuredClone(header) };
+      // A mid-loop failure is handled by the caller deleting the copies (A7).
+      if ((await Vault.inspect(recordsStorage(records))).status !== "ok")
+        throw new Error("Header is not a valid vault header");
       const updated: Snapshot = { ...snap, records, digest: await digestOf(records) };
       await this.local.set({ [SNAPSHOT_PREFIX + snap.id]: updated });
       count++;
@@ -158,6 +169,7 @@ export class SnapshotStore {
 
   async quarantine(source: StoragePort): Promise<number> {
     const records = vaultRecords(await source.get());
+    if (Object.keys(records).length === 0) return 0;
     const createdAt = this.clock.now();
     const key = `${QUARANTINE_PREFIX}${createdAt}-${this.random.uuid()}`;
     // Write first: the source is only cleared once the copy exists.

@@ -27,6 +27,7 @@ describe("public API", () => {
       "Vault",
       "moveVaultData",
       "isVaultKey",
+      "HEADER_KEY",
       "TOMBSTONE_TTL_MS",
       "parseRecoveryCode",
       "DEFAULT_ARGON2",

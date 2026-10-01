@@ -30,7 +30,7 @@ export {
   type VaultInspection,
   type VaultListing,
 } from "./vault/vault";
-export { isVaultKey, TOMBSTONE_TTL_MS } from "./vault/format";
+export { HEADER_KEY, isVaultKey, TOMBSTONE_TTL_MS } from "./vault/format";
 export { parseRecoveryCode } from "./vault/recovery";
 export { moveVaultData } from "./vault/migrate";
 
