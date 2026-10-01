@@ -40,6 +40,8 @@ describe("envelope and sender checks", () => {
   it.each([
     { id: "ext-id", url: "https://evil.example/login" },
     { id: "other-ext", url: "chrome-extension://other-ext/popup.html" },
+    { id: "other-ext", url: "chrome-extension://ext-id/popup.html" },
+    { url: "chrome-extension://ext-id/popup.html" },
     { id: "ext-id" },
     {},
   ])("rejects an untrusted sender %j", async (sender) => {
@@ -54,6 +56,66 @@ describe("envelope and sender checks", () => {
       ok: false,
       error: { code: "forbidden", message: "Untrusted sender" },
     });
+  });
+
+  it("handles Firefox origins and lookalikes", () => {
+    const moz = { extensionId: "ext@id", extensionOrigin: "moz-extension://1234-uuid/" };
+    expect(
+      isTrustedSender({ id: "ext@id", url: "moz-extension://1234-uuid/manage.html" }, moz),
+    ).toBe(true);
+    expect(
+      isTrustedSender({ id: "ext@id", url: "moz-extension://1234-uuid-evil/x.html" }, moz),
+    ).toBe(false);
+  });
+
+  it("normalizes an origin without a trailing slash", () => {
+    const bare = { extensionId: "ext", extensionOrigin: "chrome-extension://ext" };
+    expect(isTrustedSender({ id: "ext", url: "chrome-extension://ext/popup.html" }, bare)).toBe(
+      true,
+    );
+    expect(
+      isTrustedSender({ id: "ext", url: "chrome-extension://extother/popup.html" }, bare),
+    ).toBe(false);
+  });
+
+  it("rejects over-long input before it reaches the service", async () => {
+    let calls = 0;
+    const spy = {
+      unlock: async () => {
+        calls++;
+      },
+    } as unknown as VaultService;
+    const response = await handleRpcMessage(
+      spy,
+      { channel: RPC_CHANNEL, request: { type: "unlock", password: "x".repeat(1025) } },
+      trusted,
+      ctx,
+    );
+    expect(response).toEqual({
+      ok: false,
+      error: { code: "invalid-request", message: "Malformed request" },
+    });
+    expect(calls).toBe(0);
+  });
+
+  it.each([
+    { type: "listAccounts", pageUrl: "h".repeat(8193) },
+    { type: "addAccountUri", uri: "u".repeat(8193) },
+    { type: "addAccountManual", draft: { secret: "s".repeat(1025) } },
+    { type: "addAccountManual", draft: { secret: "A", issuer: "i".repeat(513) } },
+    { type: "addAccountManual", draft: { secret: "A", domains: Array(101).fill("a.com") } },
+    { type: "addAccountManual", draft: { secret: "A", domains: ["d".repeat(254)] } },
+    { type: "reorder", order: Array(10001).fill("a") },
+    { type: "importCommit", previewId: "p", indexes: Array(10001).fill(0) },
+    { type: "unlockWithRecovery", code: "c".repeat(129), newPassword: "long enough password" },
+  ])("caps input sizes %#", async (request) => {
+    const response = await handleRpcMessage(
+      new VaultService(memoryPlatform()),
+      { channel: RPC_CHANNEL, request },
+      trusted,
+      ctx,
+    );
+    expect(response).toMatchObject({ ok: false, error: { code: "invalid-request" } });
   });
 
   it.each([
@@ -90,6 +152,29 @@ describe("envelope and sender checks", () => {
     });
   });
 
+  it("does not call write rate limits quota errors", async () => {
+    const response = await handleRpcMessage(
+      failing("getState", new Error("MAX_WRITE_OPERATIONS_PER_MINUTE quota exceeded")),
+      { channel: RPC_CHANNEL, request: { type: "getState" } },
+      trusted,
+      ctx,
+    );
+    expect(response).toEqual({
+      ok: false,
+      error: { code: "internal", message: "Unexpected error" },
+    });
+  });
+
+  it("does not treat any message containing quota as a quota error", async () => {
+    const response = await handleRpcMessage(
+      failing("getState", new Error("quota is fine")),
+      { channel: RPC_CHANNEL, request: { type: "getState" } },
+      trusted,
+      ctx,
+    );
+    expect(response).toMatchObject({ ok: false, error: { code: "internal" } });
+  });
+
   it("hides unexpected errors", async () => {
     for (const error of [new TypeError(`leaked ${SECRET}`), new Error("secret-ish detail")]) {
       const response = await handleRpcMessage(
@@ -115,7 +200,8 @@ describe("envelope and sender checks", () => {
       ),
     );
     const error = await call("getState", {}).catch((e: unknown) => e);
-    expect(error).toMatchObject({ code: "invalid-hex", message: "bad input" });
+    expect(error).toMatchObject({ code: "invalid-hex", message: "invalid-hex" });
+    expect(JSON.stringify(error)).not.toContain("bad input");
     expect(JSON.stringify(error)).not.toContain(SECRET);
   });
 

@@ -30,10 +30,12 @@ export function isRpcEnvelope(message: unknown): boolean {
 
 /** Only the extension's own pages; never content scripts or web pages (spec 3.2). */
 export function isTrustedSender(sender: RpcSender, ctx: RpcContext): boolean {
+  // The trailing slash stops "ext" from matching "extother".
+  const origin = ctx.extensionOrigin.endsWith("/")
+    ? ctx.extensionOrigin
+    : `${ctx.extensionOrigin}/`;
   return (
-    sender.id === ctx.extensionId &&
-    typeof sender.url === "string" &&
-    sender.url.startsWith(ctx.extensionOrigin)
+    sender.id === ctx.extensionId && typeof sender.url === "string" && sender.url.startsWith(origin)
   );
 }
 
@@ -122,9 +124,15 @@ function toErrorBody(e: unknown): RpcErrorBody {
       ? { code: e.code, message: e.message }
       : { code: e.code, message: e.message, retryAfterMs: e.retryAfterMs };
   }
-  if (isCoreError(e)) return { code: e.code, message: e.message };
+  // Core messages can echo import or URI input, so only the code leaves the background.
+  if (isCoreError(e)) return { code: e.code, message: e.code };
   // A full browser quota (e.g. storage.sync QUOTA_BYTES) needs a clear, actionable error (spec 7).
-  if (e instanceof Error && /quota/i.test(e.message)) {
+  // Write rate limits also mention quota but are transient, not "storage is full".
+  if (
+    e instanceof Error &&
+    /QUOTA_BYTES|quota exceeded/i.test(e.message) &&
+    !/MAX_WRITE_OPERATIONS/i.test(e.message)
+  ) {
     return { code: "quota-exceeded", message: "Browser storage is full" };
   }
   // Unexpected errors may carry secrets, so their detail never leaves the background.
