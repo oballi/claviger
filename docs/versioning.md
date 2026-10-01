@@ -1,36 +1,36 @@
-# Sürüm stratejisi
+# Versioning
 
-otp-vault [Semantic Versioning](https://semver.org/lang/tr/) (`MAJOR.MINOR.PATCH`) kullanır.
+otp-vault follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 
-## 1.0.0'dan önce: `0.y.z`
+## Before 1.0.0: `0.y.z`
 
-| Değişiklik                                                    | Artan                | Örnek         |
-| ------------------------------------------------------------- | -------------------- | ------------- |
-| Hata düzeltmesi veya kullanıcıya görünmeyen küçük iyileştirme | `z`                  | 0.1.0 → 0.1.1 |
-| Yeni özellik veya göze çarpan davranış değişikliği            | `y` (`z` sıfırlanır) | 0.1.1 → 0.2.0 |
+| Change                                          | Bump            | Example       |
+| ----------------------------------------------- | --------------- | ------------- |
+| Bug fix or small improvement users don't notice | `z`             | 0.1.0 → 0.1.1 |
+| New feature or noticeable behaviour change      | `y` (reset `z`) | 0.1.1 → 0.2.0 |
 
-- 1.0.0'dan önce mağazalara (Chrome Web Store, Firefox Add-ons, Edge) **yayın yapılmaz**. Kurulum GitHub sürümlerinden, elle yapılır.
-- **1.0.0 = mağazalarda ilk yayın (lansman).**
+- No release is published to the browser stores (Chrome Web Store, Firefox Add-ons, Edge Add-ons) before 1.0.0. 0.x releases are installed from source or from GitHub releases.
+- **1.0.0 is the first store release.**
 
-### Yol haritası eşlemesi
+### Roadmap
 
-| Sürüm  | İçerik                                                                                      |
-| ------ | ------------------------------------------------------------------------------------------- |
-| 0.0.1  | Plan 1–3: çekirdek, eklenti temeli, arayüz (geliştirici modunda çalışır)                    |
-| 0.1.0  | Plan 4: QR tarama, otomatik doldurma, saat kontrolü, otomatik yerel yedekler, paketleme     |
-| 0.2.0+ | Geri bildirim ve upstream analizinden gelen özellikler (`docs/research/upstream-issues.md`) |
-| 1.0.0  | Mağaza lansmanı                                                                             |
+| Version | Scope                                                                              |
+| ------- | ---------------------------------------------------------------------------------- |
+| 0.0.1   | Core library, extension foundation and user interface (runs in developer mode)     |
+| 0.1.0   | QR scanning, on-demand autofill, clock check, automatic local snapshots, packaging |
+| 0.2.0+  | Further features and feedback                                                      |
+| 1.0.0   | Store launch                                                                       |
 
-## 1.0.0'dan sonra: katı SemVer
+## From 1.0.0: strict SemVer
 
-- **MAJOR:** kullanıcıyı kıran değişiklik. Örnekler: bir tarayıcı sürümüne desteği bırakmak, eski bir yedek biçimini artık açamamak.
-- **MINOR:** geriye uyumlu yeni özellik.
-- **PATCH:** geriye uyumlu hata düzeltmesi.
+- **MAJOR:** a change that breaks users, for example dropping support for a browser version or no longer opening an old backup format.
+- **MINOR:** a backwards-compatible feature.
+- **PATCH:** a backwards-compatible fix.
 
-## Kurallar
+## Rules
 
-1. **Mağaza biçimi.** Manifest sürümü yalnızca rakam ve noktadan oluşur (en fazla 4 parça, her biri 0–65535). `-beta` gibi ekler kullanılamaz. Her yükleme bir öncekinden büyük olmalıdır. Bir sürümü geri almak da yeni bir numarayla yapılır. Test sürümleri gerekirse dördüncü parça kullanılır (`1.2.0.1`).
-2. **Tek sürüm numarası.** Repodaki her paket aynı sürümü taşır. Bu paketler: kök, `@otp-vault/core` ve `@otp-vault/extension`. Git etiketi `vX.Y.Z` biçimindedir. `@otp-vault/core` npm'e yayımlanmaz. Masaüstü uygulaması geldiğinde ayrı numara gerekip gerekmediği yeniden değerlendirilir.
-3. **Tek kaynak.** Manifest sürümü `apps/extension/package.json`'dan okunur; elle ikinci bir yerde yazılmaz (Plan 4'te bağlanır).
-4. **Veri biçimleri ayrı sürümlenir.** Uygulama sürümünden bağımsız tam sayılardır: kasa başlığındaki `format`, `.otpvault` dışa aktarma biçimi ve kayıt sürümü `v`. Bu numaraları artıran her uygulama sürümü eski veriyi otomatik ve kayıpsız taşımak zorundadır. Daha yeni biçimdeki veriye dokunulmaz (`unsupported-format`).
-5. **Commit'ler ve değişiklik günlüğü.** Commit mesajları Conventional Commits biçimindedir (`feat:`, `fix:`, `docs:` …). Plan 4'te release-please kurulur. Bu araç sürüm numarasını commit'lerden önerir ve `CHANGELOG.md` dosyasını yazar. O zamana kadar sürüm elle artırılır.
+1. **Store format.** The manifest version may contain only numbers and dots (up to four parts, each 0–65535) with no `-beta` style suffixes, and every upload must be higher than the previous one. A rollback ships as a new, higher version. Test builds may use a fourth part (`1.2.0.1`).
+2. **One version for the repository.** All packages (root, `@otp-vault/core`, `@otp-vault/extension`) carry the same version, tagged `vX.Y.Z`. `@otp-vault/core` is not published to npm.
+3. **Single source.** The extension manifest reads its version from `apps/extension/package.json`; it is never written by hand in a second place.
+4. **Data formats are versioned separately.** The vault header `format`, the record `v` and the `.otpvault` backup `version` are integers independent of the app version (see [vault-format.md](vault-format.md)). A release that raises one of them must migrate older data automatically and without loss, and must never modify data written by a newer version.
+5. **Commits and changelog.** Commit messages follow Conventional Commits (`feat:`, `fix:`, `docs:` …). Release tooling derives the next version and `CHANGELOG.md` from them.

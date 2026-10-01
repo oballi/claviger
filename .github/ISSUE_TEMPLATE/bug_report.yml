@@ -1,0 +1,49 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Security problems must not be reported here.** See SECURITY.md.
+        Never paste secret keys, backup files, recovery codes or passwords into an issue.
+  - type: input
+    id: version
+    attributes:
+      label: otp-vault version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser
+      options: [Chrome, Firefox, Edge, Brave, Other Chromium]
+    validations:
+      required: true
+  - type: input
+    id: browser-version
+    attributes:
+      label: Browser and OS version
+      placeholder: "Chrome 140 on Windows 11"
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the popup
+        2. …
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Errors or screenshots
+      description: Remove any codes, secrets or account names first.

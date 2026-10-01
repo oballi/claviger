@@ -1,6 +1,7 @@
 {
   "name": "@otp-vault/core",
   "version": "0.0.1",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "exports": {
