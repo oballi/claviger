@@ -115,9 +115,11 @@ export class Vault {
     const now = deps.clock.now();
     const header: VaultHeader = { format: 1, vaultId, keyslots, createdAt: now };
     const index: VaultIndex = { order: [], pinned: [], updatedAt: now };
-    await deps.storage.set({
-      [HEADER_KEY]: header,
-      [INDEX_KEY]: await encryptRecord(dek, INDEX_KEY, index, now, deps.random),
+    const indexRecord = await encryptRecord(dek, INDEX_KEY, index, now, deps.random);
+    await withStorageLock(deps.storage, async () => {
+      if (await Vault.exists(deps.storage))
+        throw new CoreError("vault-exists", "A vault already exists");
+      await deps.storage.set({ [HEADER_KEY]: header, [INDEX_KEY]: indexRecord });
     });
     return { vault: new Vault(deps, dek, header), recoveryCode };
   }
@@ -161,9 +163,16 @@ export class Vault {
       header.vaultId,
       deps.random,
     );
-    await withStorageLock(deps.storage, () =>
-      vault.replaceKeyslots({ password: passwordSlot, recovery: recoverySlot }),
-    );
+    await withStorageLock(deps.storage, async () => {
+      // Kilit beklenirken aynı kod başka bir çağrıda kullanılmış olabilir.
+      const current = await Vault.readHeader(deps.storage);
+      const stillValid = current.keyslots.some(
+        (s) => s.kind === "recovery" && s.iv === slot.iv && s.ct === slot.ct,
+      );
+      if (!stillValid)
+        throw new CoreError("invalid-recovery-code", "Recovery code was already used");
+      await vault.replaceKeyslots({ password: passwordSlot, recovery: recoverySlot });
+    });
     const recoveryCode = recovery.code;
     return { vault, recoveryCode };
   }
@@ -502,6 +511,8 @@ export class Vault {
       const key = accountKey(id);
       const raw = (await this.deps.storage.get([key]))[key];
       if (raw === undefined) throw new CoreError("account-not-found", `Account ${id} not found`);
+      if (isNewerVersion(raw, "v"))
+        throw new CoreError("unsupported-format", "This account was saved by a newer version");
       const record = encryptedRecordSchema.safeParse(raw);
       const index = await this.readIndex({ strict: true });
       // Tombstone, kaydın kendisinden de yeni olmalı; yoksa eski kopya sync ile geri gelir (spec §7).
