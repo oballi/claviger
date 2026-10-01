@@ -54,6 +54,23 @@ export type AccountPatch = Partial<
 
 const EMPTY_INDEX: VaultIndex = { order: [], pinned: [], updatedAt: 0 };
 
+/**
+ * Depo başına mutasyon kuyruğu. Vault örneğine değil StoragePort'a bağlıdır: host, service worker
+ * her uyandığında `fromKey` ile yeni bir Vault kurabilir; aynı depoyu kullanan tüm örnekler aynı
+ * sırayı paylaşır. Zincir hiçbir zaman reddedilmez; hata yalnızca çağırana iletilir.
+ */
+const storageLocks = new WeakMap<StoragePort, Promise<unknown>>();
+
+function withStorageLock<T>(storage: StoragePort, fn: () => Promise<T>): Promise<T> {
+  const previous = storageLocks.get(storage) ?? Promise.resolve();
+  const run = previous.then(fn);
+  storageLocks.set(
+    storage,
+    run.catch(() => undefined),
+  );
+  return run;
+}
+
 export class Vault {
   private constructor(
     private readonly deps: VaultDeps,
@@ -141,7 +158,9 @@ export class Vault {
       header.vaultId,
       deps.random,
     );
-    await vault.replaceKeyslots({ password: passwordSlot, recovery: recoverySlot });
+    await withStorageLock(deps.storage, () =>
+      vault.replaceKeyslots({ password: passwordSlot, recovery: recoverySlot }),
+    );
     const recoveryCode = recovery.code;
     return { vault, recoveryCode };
   }
@@ -152,6 +171,12 @@ export class Vault {
     return dek !== null && bytesEqual(dek, this.dek);
   }
 
+  /** Aynı depodaki tüm mutasyonları sıraya sokar. İçeriden başka bir public mutasyon çağrılmamalı. */
+  private exclusive<T>(fn: () => Promise<T>): Promise<T> {
+    return withStorageLock(this.deps.storage, fn);
+  }
+
+  /** Kilit altında çağrılmalıdır. */
   private async replaceKeyslots(
     replacements: Partial<Record<Keyslot["kind"], Keyslot | null>>,
   ): Promise<void> {
@@ -179,7 +204,9 @@ export class Vault {
   }
 
   async changePassword(newPassword: string): Promise<void> {
-    await this.replaceKeyslots({ password: await this.buildPasswordSlot(newPassword) });
+    // Yavaş KDF kilit dışında; header oku-değiştir-yaz kilit içinde.
+    const password = await this.buildPasswordSlot(newPassword);
+    await this.exclusive(() => this.replaceKeyslots({ password }));
   }
 
   hasRecoveryCode(): boolean {
@@ -194,12 +221,12 @@ export class Vault {
       this.header.vaultId,
       this.deps.random,
     );
-    await this.replaceKeyslots({ recovery: slot });
+    await this.exclusive(() => this.replaceKeyslots({ recovery: slot }));
     return recovery.code;
   }
 
   async removeRecoveryCode(): Promise<void> {
-    await this.replaceKeyslots({ recovery: null });
+    await this.exclusive(() => this.replaceKeyslots({ recovery: null }));
   }
 
   exportKey(): Uint8Array {
@@ -325,7 +352,11 @@ export class Vault {
     };
   }
 
-  async addAccounts(
+  addAccounts(inputs: AccountInput[]): Promise<{ added: Account[]; duplicates: AccountInput[] }> {
+    return this.exclusive(() => this.addAccountsUnlocked(inputs));
+  }
+
+  private async addAccountsUnlocked(
     inputs: AccountInput[],
   ): Promise<{ added: Account[]; duplicates: AccountInput[] }> {
     const { accounts } = await this.listAccounts();
@@ -373,7 +404,7 @@ export class Vault {
   }
 
   async addAccount(input: AccountInput): Promise<Account> {
-    const { added } = await this.addAccounts([input]);
+    const { added } = await this.exclusive(() => this.addAccountsUnlocked([input]));
     const account = added[0];
     if (!account) throw new CoreError("duplicate-account", "This account already exists");
     return account;
@@ -398,93 +429,105 @@ export class Vault {
     });
   }
 
-  async updateAccount(id: string, patch: AccountPatch): Promise<Account> {
-    const current = await this.getAccount(id);
-    const normalized = normalizeAccountInput({
-      ...current,
-      ...patch,
-      secret: current.secret,
-      type: current.type,
-    });
-    const updated: Account = {
-      ...normalized,
-      id,
-      createdAt: current.createdAt,
-      updatedAt: this.nextUpdatedAt(current.updatedAt),
-    };
-    await this.writeAccount(updated);
-    return updated;
-  }
-
-  async incrementHotp(id: string): Promise<Account> {
-    const current = await this.getAccount(id);
-    if (current.type !== "hotp") throw new CoreError("invalid-otp-params", "Not an HOTP account");
-    const updated: Account = {
-      ...current,
-      counter: current.counter + 1,
-      updatedAt: this.nextUpdatedAt(current.updatedAt),
-    };
-    await this.writeAccount(updated);
-    return updated;
-  }
-
-  async deleteAccount(id: string): Promise<void> {
-    const key = accountKey(id);
-    const raw = (await this.deps.storage.get([key]))[key];
-    if (raw === undefined) throw new CoreError("account-not-found", `Account ${id} not found`);
-    const record = encryptedRecordSchema.safeParse(raw);
-    const index = await this.readIndex({ strict: true });
-    // Tombstone, kaydın kendisinden de yeni olmalı; yoksa eski kopya sync ile geri gelir (spec §7).
-    const deletedAt = Math.max(
-      this.nextUpdatedAt(index.updatedAt),
-      record.success ? record.data.updatedAt + 1 : 0,
-    );
-    // Önce tombstone + index; sonra kayıt silinir. Arada kesinti olursa tombstone kaydı gizler.
-    await this.writeIndex(
-      {
-        order: index.order.filter((x) => x !== id),
-        pinned: index.pinned.filter((x) => x !== id),
-        updatedAt: deletedAt,
-      },
-      { [tombKey(id)]: { deletedAt } },
-    );
-    await this.deps.storage.remove([key]);
-  }
-
-  async reorder(order: string[]): Promise<void> {
-    const index = await this.readIndex({ strict: true });
-    const { accounts } = await this.listAccounts();
-    const known = new Set(accounts.map((a) => a.id));
-    const front = [...new Set(order)].filter((id) => known.has(id));
-    const rest = accounts.map((a) => a.id).filter((id) => !front.includes(id));
-    await this.writeIndex({
-      ...index,
-      order: [...front, ...rest],
-      updatedAt: this.nextUpdatedAt(index.updatedAt),
+  updateAccount(id: string, patch: AccountPatch): Promise<Account> {
+    return this.exclusive(async () => {
+      const current = await this.getAccount(id);
+      const normalized = normalizeAccountInput({
+        ...current,
+        ...patch,
+        secret: current.secret,
+        type: current.type,
+      });
+      const updated: Account = {
+        ...normalized,
+        id,
+        createdAt: current.createdAt,
+        updatedAt: this.nextUpdatedAt(current.updatedAt),
+      };
+      await this.writeAccount(updated);
+      return updated;
     });
   }
 
-  async setPinned(id: string, pinned: boolean): Promise<void> {
-    const index = await this.readIndex({ strict: true });
-    const without = index.pinned.filter((x) => x !== id);
-    await this.writeIndex({
-      ...index,
-      pinned: pinned ? [...without, id] : without,
-      updatedAt: this.nextUpdatedAt(index.updatedAt),
+  incrementHotp(id: string): Promise<Account> {
+    return this.exclusive(async () => {
+      const current = await this.getAccount(id);
+      if (current.type !== "hotp") throw new CoreError("invalid-otp-params", "Not an HOTP account");
+      const updated: Account = {
+        ...current,
+        counter: current.counter + 1,
+        updatedAt: this.nextUpdatedAt(current.updatedAt),
+      };
+      await this.writeAccount(updated);
+      return updated;
     });
   }
 
-  async purgeTombstones(maxAgeMs = TOMBSTONE_TTL_MS): Promise<number> {
-    const all = await this.deps.storage.get();
-    const cutoff = this.deps.clock.now() - maxAgeMs;
-    const expired = Object.entries(all)
-      .filter(([key, value]) => {
-        if (!key.startsWith(TOMB_PREFIX)) return false;
-        const tomb = tombSchema.safeParse(value);
-        return tomb.success && tomb.data.deletedAt < cutoff;
-      })
-      .map(([key]) => key);
-    if (expired.length) await this.deps.storage.remove(expired);
-    return expired.length;
+  deleteAccount(id: string): Promise<void> {
+    return this.exclusive(async () => {
+      const key = accountKey(id);
+      const raw = (await this.deps.storage.get([key]))[key];
+      if (raw === undefined) throw new CoreError("account-not-found", `Account ${id} not found`);
+      const record = encryptedRecordSchema.safeParse(raw);
+      const index = await this.readIndex({ strict: true });
+      // Tombstone, kaydın kendisinden de yeni olmalı; yoksa eski kopya sync ile geri gelir (spec §7).
+      const deletedAt = Math.max(
+        this.nextUpdatedAt(index.updatedAt),
+        record.success ? record.data.updatedAt + 1 : 0,
+      );
+      // Önce tombstone + index; sonra kayıt silinir. Arada kesinti olursa tombstone kaydı gizler.
+      await this.writeIndex(
+        {
+          order: index.order.filter((x) => x !== id),
+          pinned: index.pinned.filter((x) => x !== id),
+          updatedAt: deletedAt,
+        },
+        { [tombKey(id)]: { deletedAt } },
+      );
+      await this.deps.storage.remove([key]);
+    });
+  }
+
+  reorder(order: string[]): Promise<void> {
+    return this.exclusive(async () => {
+      const index = await this.readIndex({ strict: true });
+      const { accounts } = await this.listAccounts();
+      const known = new Set(accounts.map((a) => a.id));
+      const front = [...new Set(order)].filter((id) => known.has(id));
+      const rest = accounts.map((a) => a.id).filter((id) => !front.includes(id));
+      await this.writeIndex({
+        ...index,
+        order: [...front, ...rest],
+        updatedAt: this.nextUpdatedAt(index.updatedAt),
+      });
+    });
+  }
+
+  setPinned(id: string, pinned: boolean): Promise<void> {
+    return this.exclusive(async () => {
+      const index = await this.readIndex({ strict: true });
+      const without = index.pinned.filter((x) => x !== id);
+      await this.writeIndex({
+        ...index,
+        pinned: pinned ? [...without, id] : without,
+        updatedAt: this.nextUpdatedAt(index.updatedAt),
+      });
+    });
+  }
+
+  purgeTombstones(maxAgeMs = TOMBSTONE_TTL_MS): Promise<number> {
+    return this.exclusive(async () => {
+      const all = await this.deps.storage.get();
+      const cutoff = this.deps.clock.now() - maxAgeMs;
+      const expired = Object.entries(all)
+        .filter(([key, value]) => {
+          if (!key.startsWith(TOMB_PREFIX)) return false;
+          const tomb = tombSchema.safeParse(value);
+          return tomb.success && tomb.data.deletedAt < cutoff;
+        })
+        .map(([key]) => key);
+      if (expired.length) await this.deps.storage.remove(expired);
+      return expired.length;
+    });
   }
 }
