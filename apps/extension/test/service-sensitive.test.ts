@@ -78,6 +78,22 @@ describe("credentials and policy", () => {
 });
 
 describe("export", () => {
+  it("dates the file by the user's local day, not the UTC day", async () => {
+    const zone = process.env.TZ;
+    // UTC+13: 12:00 UTC is already the next calendar day locally.
+    process.env.TZ = "Pacific/Auckland";
+    try {
+      const { p, service } = await unlockedService();
+      p.clock.ms = Date.UTC(2026, 0, 1, 12, 0, 0);
+      const { token } = await service.reauth(PASSWORD);
+      const { filename } = await service.exportVault(token, "otpauth");
+      expect(filename).toBe("otp-vault-2026-01-02.txt");
+    } finally {
+      if (zone === undefined) delete process.env.TZ;
+      else process.env.TZ = zone;
+    }
+  });
+
   it("exports an encrypted .otpvault file that imports back", async () => {
     const { p, service } = await unlockedService();
     await service.addAccount({ uri: `otpauth://totp/GitHub:me?secret=${SECRET}&issuer=GitHub` });
@@ -86,9 +102,9 @@ describe("export", () => {
     );
     const { token } = await service.reauth(PASSWORD);
     const { filename, content } = await service.exportVault(token, "otpvault", "export password");
-    expect(filename).toBe(
-      `otp-vault-${new Date(p.clock.now()).toISOString().slice(0, 10)}.otpvault`,
-    );
+    const d = new Date(p.clock.now());
+    const local = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    expect(filename).toBe(`otp-vault-${local}.otpvault`);
     expect(content).not.toContain(SECRET);
     const parsed = await parseImport(content, "export password");
     expect(parsed).toMatchObject({ status: "ok", format: "otp-vault" });

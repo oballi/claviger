@@ -549,7 +549,10 @@ export class VaultService {
     return this.exclusive(async () => {
       const vault = await this.spendToken(token);
       const { accounts, unreadable } = await vault.listAccounts();
-      const date = new Date(this.p.clock.now()).toISOString().slice(0, 10);
+      // The user's calendar day: a UTC date would name an evening export after tomorrow (or yesterday).
+      const now = new Date(this.p.clock.now());
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
       const result =
         format === "otpvault"
           ? {

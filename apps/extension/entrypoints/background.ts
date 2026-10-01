@@ -1,3 +1,4 @@
+import "../src/zodConfig";
 import { browser } from "wxt/browser";
 import { defineBackground } from "wxt/utils/define-background";
 import { VaultService } from "../src/background/vaultService";

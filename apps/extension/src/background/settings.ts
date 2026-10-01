@@ -1,3 +1,4 @@
+import "../zodConfig";
 import type { StoragePort } from "@otp-vault/core";
 import { z } from "zod";
 
