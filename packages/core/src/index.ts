@@ -27,6 +27,7 @@ export {
   Vault,
   type AccountPatch,
   type CreateVaultOptions,
+  type VaultInspection,
   type VaultListing,
 } from "./vault/vault";
 export { isVaultKey, TOMBSTONE_TTL_MS } from "./vault/format";

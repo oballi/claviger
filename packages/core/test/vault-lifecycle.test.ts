@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { normalizeAccountInput } from "../src/account/account";
+import { base32Encode } from "../src/encoding/base32";
 import { webRandom } from "../src/ports";
 import { HEADER_KEY, INDEX_KEY } from "../src/vault/format";
 import { Vault } from "../src/vault/vault";
@@ -82,5 +84,106 @@ describe("Vault lifecycle", () => {
     const k = vault.exportKey();
     k.fill(0);
     expect(vault.exportKey().some((b) => b !== 0)).toBe(true);
+  });
+});
+
+describe("Vault.inspect", () => {
+  const opts = { password: "pw-123456" };
+
+  it("reports a missing vault", async () => {
+    expect(await Vault.inspect(makeDeps().storage)).toEqual({
+      status: "missing",
+      hasRecoveryCode: null,
+      accountCount: null,
+    });
+  });
+
+  it("reports whether a recovery code exists without unlocking", async () => {
+    const withCode = makeDeps();
+    await Vault.create(withCode, { ...opts, createRecoveryCode: true });
+    expect(await Vault.inspect(withCode.storage)).toEqual({
+      status: "ok",
+      hasRecoveryCode: true,
+      accountCount: 0,
+    });
+    const without = makeDeps();
+    await Vault.create(without, { ...opts, createRecoveryCode: false });
+    expect(await Vault.inspect(without.storage)).toEqual({
+      status: "ok",
+      hasRecoveryCode: false,
+      accountCount: 0,
+    });
+  });
+
+  it("reports newer and corrupt headers as statuses", async () => {
+    const deps = makeDeps();
+    await Vault.create(deps, { ...opts, createRecoveryCode: false });
+    const header = deps.storage.data.get(HEADER_KEY) as Record<string, unknown>;
+    deps.storage.data.set(HEADER_KEY, { ...header, format: 2 });
+    expect(await Vault.inspect(deps.storage)).toEqual({
+      status: "unsupported",
+      hasRecoveryCode: null,
+      accountCount: null,
+    });
+    deps.storage.data.set(HEADER_KEY, { format: 1 });
+    expect(await Vault.inspect(deps.storage)).toEqual({
+      status: "corrupt",
+      hasRecoveryCode: null,
+      accountCount: null,
+    });
+  });
+
+  it("reports a newer account or index record as unsupported", async () => {
+    const deps = makeDeps();
+    const { vault } = await Vault.create(deps, { ...opts, createRecoveryCode: false });
+    await vault.addAccount(
+      normalizeAccountInput({ secret: base32Encode(webRandom.bytes(20)), issuer: "a", label: "a" }),
+    );
+    const none = { hasRecoveryCode: null, accountCount: null };
+    const index = deps.storage.data.get(INDEX_KEY);
+    deps.storage.data.set(INDEX_KEY, { ...(index as object), v: 2 });
+    expect(await Vault.inspect(deps.storage)).toEqual({ status: "unsupported", ...none });
+    deps.storage.data.set(INDEX_KEY, index);
+    deps.storage.data.set("vault:acct:00000000-0000-4000-8000-000000000000", {
+      v: 2,
+      iv: "x",
+      ct: "y",
+      updatedAt: 1,
+    });
+    expect(await Vault.inspect(deps.storage)).toEqual({ status: "unsupported", ...none });
+  });
+
+  it("counts live accounts without decrypting, skipping tombstoned ones", async () => {
+    const deps = makeDeps();
+    const { vault } = await Vault.create(deps, { ...opts, createRecoveryCode: false });
+    const accounts = [];
+    for (const name of ["a", "b", "c"]) {
+      accounts.push(
+        await vault.addAccount(
+          normalizeAccountInput({
+            secret: base32Encode(webRandom.bytes(20)),
+            issuer: name,
+            label: name,
+          }),
+        ),
+      );
+      deps.clock.advance(1000);
+    }
+    await vault.deleteAccount(accounts[1]!.id);
+    expect((await Vault.inspect(deps.storage)).accountCount).toBe(2);
+  });
+
+  it("does not count a replayed record that sits next to its tombstone", async () => {
+    const deps = makeDeps();
+    const { vault } = await Vault.create(deps, { ...opts, createRecoveryCode: false });
+    const account = await vault.addAccount(
+      normalizeAccountInput({ secret: base32Encode(webRandom.bytes(20)), issuer: "a", label: "a" }),
+    );
+    const key = `vault:acct:${account.id}`;
+    const old = deps.storage.data.get(key);
+    deps.clock.advance(1000);
+    await vault.deleteAccount(account.id);
+    deps.storage.data.set(key, old);
+    expect((await Vault.inspect(deps.storage)).accountCount).toBe(0);
   });
 });

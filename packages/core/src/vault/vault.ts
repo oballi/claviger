@@ -74,6 +74,12 @@ function withStorageLock<T>(storage: StoragePort, fn: () => Promise<T>): Promise
   return run;
 }
 
+export interface VaultInspection {
+  status: "missing" | "ok" | "unsupported" | "corrupt";
+  hasRecoveryCode: boolean | null;
+  accountCount: number | null;
+}
+
 export class Vault {
   private constructor(
     private readonly deps: VaultDeps,
@@ -87,6 +93,50 @@ export class Vault {
 
   static async exists(storage: StoragePort): Promise<boolean> {
     return HEADER_KEY in (await storage.get([HEADER_KEY]));
+  }
+
+  /**
+   * Plaintext-only status check; never unlocks. accountCount is an unauthenticated estimate from
+   * plaintext timestamps (listAccounts is authoritative), for display only.
+   */
+  static async inspect(storage: StoragePort): Promise<VaultInspection> {
+    try {
+      const header = await Vault.readHeader(storage);
+      const all = await storage.get();
+      // A newer record would make listAccounts/export refuse, so the vault is not usable either.
+      for (const [key, value] of Object.entries(all)) {
+        if ((key === INDEX_KEY || key.startsWith(ACCOUNT_PREFIX)) && isNewerVersion(value, "v"))
+          throw new CoreError("unsupported-format", "Newer vault record");
+      }
+      const tombs = new Map<string, number>();
+      for (const [key, value] of Object.entries(all)) {
+        if (!key.startsWith(TOMB_PREFIX)) continue;
+        const tomb = tombSchema.safeParse(value);
+        if (tomb.success) tombs.set(key.slice(TOMB_PREFIX.length), tomb.data.deletedAt);
+      }
+      let accountCount = 0;
+      for (const [key, value] of Object.entries(all)) {
+        if (!key.startsWith(ACCOUNT_PREFIX)) continue;
+        const record = encryptedRecordSchema.safeParse(value);
+        if (!record.success) continue;
+        const deletedAt = tombs.get(key.slice(ACCOUNT_PREFIX.length));
+        if (deletedAt !== undefined && record.data.updatedAt <= deletedAt) continue;
+        accountCount++;
+      }
+      return {
+        status: "ok",
+        hasRecoveryCode: header.keyslots.some((s) => s.kind === "recovery"),
+        accountCount,
+      };
+    } catch (e) {
+      const none = { hasRecoveryCode: null, accountCount: null };
+      if (e instanceof CoreError) {
+        if (e.code === "vault-not-found") return { status: "missing", ...none };
+        if (e.code === "unsupported-format") return { status: "unsupported", ...none };
+        if (e.code === "vault-corrupt") return { status: "corrupt", ...none };
+      }
+      throw e;
+    }
   }
 
   static async create(
@@ -115,9 +165,11 @@ export class Vault {
     const now = deps.clock.now();
     const header: VaultHeader = { format: 1, vaultId, keyslots, createdAt: now };
     const index: VaultIndex = { order: [], pinned: [], updatedAt: now };
-    await deps.storage.set({
-      [HEADER_KEY]: header,
-      [INDEX_KEY]: await encryptRecord(dek, INDEX_KEY, index, now, deps.random),
+    const indexRecord = await encryptRecord(dek, INDEX_KEY, index, now, deps.random);
+    await withStorageLock(deps.storage, async () => {
+      if (await Vault.exists(deps.storage))
+        throw new CoreError("vault-exists", "A vault already exists");
+      await deps.storage.set({ [HEADER_KEY]: header, [INDEX_KEY]: indexRecord });
     });
     return { vault: new Vault(deps, dek, header), recoveryCode };
   }
@@ -161,9 +213,16 @@ export class Vault {
       header.vaultId,
       deps.random,
     );
-    await withStorageLock(deps.storage, () =>
-      vault.replaceKeyslots({ password: passwordSlot, recovery: recoverySlot }),
-    );
+    await withStorageLock(deps.storage, async () => {
+      // Kilit beklenirken aynı kod başka bir çağrıda kullanılmış olabilir.
+      const current = await Vault.readHeader(deps.storage);
+      const stillValid = current.keyslots.some(
+        (s) => s.kind === "recovery" && s.iv === slot.iv && s.ct === slot.ct,
+      );
+      if (!stillValid)
+        throw new CoreError("invalid-recovery-code", "Recovery code was already used");
+      await vault.replaceKeyslots({ password: passwordSlot, recovery: recoverySlot });
+    });
     const recoveryCode = recovery.code;
     return { vault, recoveryCode };
   }
@@ -502,6 +561,8 @@ export class Vault {
       const key = accountKey(id);
       const raw = (await this.deps.storage.get([key]))[key];
       if (raw === undefined) throw new CoreError("account-not-found", `Account ${id} not found`);
+      if (isNewerVersion(raw, "v"))
+        throw new CoreError("unsupported-format", "This account was saved by a newer version");
       const record = encryptedRecordSchema.safeParse(raw);
       const index = await this.readIndex({ strict: true });
       // Tombstone, kaydın kendisinden de yeni olmalı; yoksa eski kopya sync ile geri gelir (spec §7).

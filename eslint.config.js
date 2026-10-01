@@ -28,4 +28,31 @@ export default defineConfig(
       ],
     },
   },
+  {
+    files: ["apps/extension/src/background/**/*.ts", "apps/extension/src/rpc/**/*.ts"],
+    rules: {
+      "no-restricted-globals": [
+        "error",
+        {
+          name: "chrome",
+          message: "Arka plan mantığı tarayıcıdan bağımsız kalmalı; Platform portunu kullan.",
+        },
+        {
+          name: "browser",
+          message: "Arka plan mantığı tarayıcıdan bağımsız kalmalı; Platform portunu kullan.",
+        },
+      ],
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["wxt", "wxt/*"],
+              message: "src/background ve src/rpc tarayıcıdan bağımsız kalmalı.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 );
