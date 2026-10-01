@@ -2,6 +2,7 @@ import { Vault } from "@otp-vault/core";
 import { describe, expect, it, vi } from "vitest";
 import { VaultService } from "../src/background/vaultService";
 import { ATTEMPTS_KEY, FREE_ATTEMPTS } from "../src/background/throttle";
+import type { TestPlatform } from "./helpers/platform";
 import { codeOf, PASSWORD, unlockedService } from "./helpers/service";
 
 const A = "otpauth://totp/Acme:a@x?secret=JBSWY3DPEHPK3PXP&issuer=Acme";
@@ -204,10 +205,58 @@ describe("quarantineVault", () => {
 });
 
 describe("purge marker", () => {
-  it("setup keeps copies and quarantine unless a delete left a purge pending", async () => {
-    const { fresh, p } = await withForeignSnapshot();
-    expect(Object.keys(await p.local.get()).some((k) => k.startsWith("snapshot:"))).toBe(true);
+  const corruptAndQuarantine = async (service: VaultService, p: TestPlatform) => {
+    await p.local.set({ "vault:header": { format: 1, nope: true } });
+    await service.quarantineVault();
+  };
+  const setupFresh = (p: TestPlatform) =>
+    new VaultService(p).setup({
+      password: NEW_PASSWORD,
+      createRecoveryCode: false,
+      lockPolicy: { kind: "browser-close" },
+      storageArea: "local",
+    });
+  const keysOf = async (p: TestPlatform, prefix: string) =>
+    Object.keys(await p.local.get()).filter((k) => k.startsWith(prefix));
+
+  it("setup keeps copies and quarantine when no purge is pending", async () => {
+    const { p } = await withForeignSnapshot();
+    expect((await keysOf(p, "snapshot:")).length).toBeGreaterThan(0);
+    expect((await keysOf(p, "quarantine:")).length).toBeGreaterThan(0);
     expect((await p.local.get(["snapshotPurgePending"])).snapshotPurgePending).toBeUndefined();
-    expect(fresh).toBeDefined();
+  });
+
+  it("setup purges copies and quarantine and clears the marker when a purge is pending", async () => {
+    const { service, p } = await withSnapshot();
+    await corruptAndQuarantine(service, p);
+    await p.local.set({ snapshotPurgePending: true });
+    await setupFresh(p);
+    expect(await keysOf(p, "snapshot:")).toEqual([]);
+    expect(await keysOf(p, "quarantine:")).toEqual([]);
+    expect((await p.local.get(["snapshotPurgePending"])).snapshotPurgePending).toBeUndefined();
+  });
+
+  it("a deleteVault that fails midway leaves no marker that could wipe a later quarantine", async () => {
+    const { service, p } = await withSnapshot();
+    const { token } = await service.reauth(PASSWORD);
+    vi.spyOn(p.local, "remove").mockRejectedValueOnce(new Error("x"));
+    await expect(service.deleteVault(token)).rejects.toThrow();
+    expect((await p.local.get(["snapshotPurgePending"])).snapshotPurgePending).toBeUndefined();
+    await corruptAndQuarantine(new VaultService(p), p);
+    await setupFresh(p);
+    expect((await keysOf(p, "quarantine:")).length).toBeGreaterThan(0);
+    expect((await keysOf(p, "snapshot:")).length).toBeGreaterThan(0);
+  });
+
+  it("a stale marker is cleared once a vault is live, so a later quarantine and setup keep data", async () => {
+    const { service, p } = await withSnapshot();
+    await p.local.set({ snapshotPurgePending: true });
+    await service.lock();
+    await service.unlock(PASSWORD);
+    expect((await p.local.get(["snapshotPurgePending"])).snapshotPurgePending).toBeUndefined();
+    await corruptAndQuarantine(service, p);
+    await setupFresh(p);
+    expect((await keysOf(p, "quarantine:")).length).toBeGreaterThan(0);
+    expect((await keysOf(p, "snapshot:")).length).toBeGreaterThan(0);
   });
 });

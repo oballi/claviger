@@ -289,6 +289,7 @@ export class VaultService {
       const vault = await Vault.fromKey(this.deps(this.area(storageArea)), dek);
       if (epoch !== this.lockEpoch) return null;
       this.vault = vault;
+      await this.clearPurgeMarker();
       // Queued, not awaited: callers may already hold the queue. Repairs a crash after a keyslot write.
       this.reconciling = this.exclusive(() => this.reconcileIfActive(vault));
       return vault;
@@ -321,10 +322,20 @@ export class VaultService {
       await this.p.alarms.create(AUTOLOCK_ALARM, lockPolicy.minutes);
   }
 
+  /** A live vault makes a pending purge meaningless. */
+  private async clearPurgeMarker(): Promise<void> {
+    try {
+      await this.p.local.remove([PURGE_PENDING_KEY]);
+    } catch {
+      // Housekeeping only.
+    }
+  }
+
   /** Returns false (and stays locked) if lock() ran since `epoch`; callers decide whether that is an error. */
   private async activate(vault: Vault, policy: LockPolicy, epoch: number): Promise<boolean> {
     if (epoch !== this.lockEpoch) return false;
     this.vault = vault;
+    await this.clearPurgeMarker();
     await this.keys.store(vault.exportKey(), policy);
     if (await this.relockIfOvertaken(epoch)) return false;
     await this.throttle.reset();
@@ -858,12 +869,12 @@ export class VaultService {
       this.loading = null;
       this.vault = null;
       this.onLock();
-      // Written first: if the purge below fails, the next setup finishes it.
-      await this.p.local.set({ [PURGE_PENDING_KEY]: true });
       // Only the active area: a vault in the other area may belong to another device (user decision).
       const active = this.area((await this.settings()).storageArea);
       const keys = Object.keys(await active.get()).filter(isVaultKey);
       if (keys.length > 0) await active.remove(keys);
+      // Only once the vault is gone: a marker next to a surviving vault would later wipe quarantine.
+      await this.p.local.set({ [PURGE_PENDING_KEY]: true });
       await this.keys.forget();
       await this.p.session.remove([MANUAL_LOCK_KEY]);
       await this.throttle.reset();
