@@ -1,0 +1,79 @@
+@import "tailwindcss";
+@import "@fontsource/geist/latin-400.css";
+@import "@fontsource/geist/latin-500.css";
+@import "@fontsource/geist/latin-ext-400.css";
+@import "@fontsource/geist/latin-ext-500.css";
+@import "@fontsource/geist-mono/latin-400.css";
+@import "@fontsource/geist-mono/latin-500.css";
+@import "@fontsource/geist-mono/latin-ext-400.css";
+@import "@fontsource/geist-mono/latin-ext-500.css";
+
+@theme inline {
+  --font-sans: "Geist", system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace;
+  --color-bg: var(--ov-bg);
+  --color-text: var(--ov-text);
+  --color-muted: var(--ov-muted);
+  --color-line: var(--ov-line);
+  --color-hair: var(--ov-hair);
+  --color-ring: var(--ov-ring);
+  --color-dot: var(--ov-dot);
+  --color-warn: var(--ov-warn);
+  --color-btn: var(--ov-btn);
+  --color-btn-text: var(--ov-btn-text);
+}
+
+:root {
+  --ov-bg: #f6f5f2;
+  --ov-text: #19191b;
+  --ov-muted: #66645f;
+  --ov-line: #8f8c85;
+  --ov-hair: #e3e1db;
+  --ov-ring: #dad7d0;
+  --ov-dot: #cfccc4;
+  --ov-warn: #9a5212;
+  --ov-btn: #19191b;
+  --ov-btn-text: #f6f5f2;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ov-bg: #121214;
+    --ov-text: #eceae5;
+    --ov-muted: #9c9a94;
+    --ov-line: #5a5a60;
+    --ov-hair: #26262a;
+    --ov-ring: #303035;
+    --ov-dot: #3a3a40;
+    --ov-warn: #e3a867;
+    --ov-btn: #eceae5;
+    --ov-btn-text: #121214;
+  }
+}
+
+body {
+  margin: 0;
+  background: var(--ov-bg);
+  color: var(--ov-text);
+  font-family: "Geist", system-ui, sans-serif;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ov-text);
+  outline-offset: 2px;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  [data-print],
+  [data-print] * {
+    visibility: visible;
+  }
+  [data-print] {
+    position: absolute;
+    inset: 0;
+  }
+}

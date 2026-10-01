@@ -5,3 +5,4 @@ dist/
 .wxt/
 *.log
 .DS_Store
+.superpowers/

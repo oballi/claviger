@@ -1,3 +1,4 @@
+import "../zodConfig";
 import { z } from "zod";
 import { lockPolicySchema } from "../background/settings";
 import type {

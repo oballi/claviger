@@ -1,3 +1,4 @@
+import "../src/zodConfig";
 import { browser } from "wxt/browser";
 import { defineBackground } from "wxt/utils/define-background";
 import { VaultService } from "../src/background/vaultService";
@@ -38,6 +39,6 @@ export default defineBackground(() => {
 
   browser.runtime.onInstalled.addListener((details) => {
     if (details.reason === "install")
-      void browser.tabs.create({ url: browser.runtime.getURL("/manage.html") });
+      void browser.tabs.create({ url: `${browser.runtime.getURL("/manage.html")}#/setup` });
   });
 });
