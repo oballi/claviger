@@ -1,6 +1,8 @@
+/* global chrome */
 // Loads the built Chrome extension in headless Chromium and walks the first-run flow.
 // EXTENSION_DIR overrides the build folder. Needs a Chromium binary: set CHROMIUM_PATH, or run `pnpm exec playwright-core install chromium` once.
 import { mkdtempSync } from "node:fs";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { chromium } from "playwright-core";
@@ -64,6 +66,36 @@ try {
   popup.on("console", (m) => m.type() === "error" && errors.push(`popup console: ${m.text()}`));
   await popup.goto(`chrome-extension://${id}/popup.html`);
   await popup.getByText("Henüz hesap yok.").waitFor();
+
+  // Clipboard clearing end to end: the real alarm fires the offscreen document. Unpacked extensions may use sub-minute alarms.
+  // Playwright cannot grant permissions to extension origins, so the read-back happens on a local http page.
+  const server = createServer((_, res) =>
+    res.setHeader("content-type", "text/html").end("<p>x</p>"),
+  );
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  await ctx.grantPermissions(["clipboard-read", "clipboard-write"], { origin });
+  const reader = await ctx.newPage();
+  await reader.goto(origin);
+  const rpc = (request) =>
+    popup.evaluate(
+      (req) => chrome.runtime.sendMessage({ channel: "otp-vault/rpc", request: req }),
+      request,
+    );
+  const set = await rpc({ type: "setClipboardClear", seconds: 30 });
+  if (!set?.ok) throw new Error(`setClipboardClear failed: ${JSON.stringify(set)}`);
+  await popup.bringToFront();
+  await popup.evaluate(() => navigator.clipboard.writeText("123456"));
+  const copied = await rpc({ type: "clipboardCopied" });
+  if (!copied?.ok) throw new Error(`clipboardCopied failed: ${JSON.stringify(copied)}`);
+  await reader.bringToFront();
+  const before = await reader.evaluate(() => navigator.clipboard.readText());
+  if (before !== "123456") throw new Error("clipboard read-back is not working");
+  await popup.waitForTimeout(31_000);
+  await reader.bringToFront();
+  const after = await reader.evaluate(() => navigator.clipboard.readText());
+  server.close();
+  if (after.trim() !== "") throw new Error(`clipboard not cleared, got length ${after.length}`);
 } finally {
   await ctx.close();
 }

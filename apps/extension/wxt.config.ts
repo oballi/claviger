@@ -16,7 +16,15 @@ export default defineConfig({
     name: "otp-vault",
     description: "Şifreli, açık kaynak iki adımlı doğrulama kodları.",
     version: "0.0.1",
-    permissions: ["storage", "alarms", "idle", "activeTab", "scripting"],
+    permissions: [
+      "storage",
+      "alarms",
+      "idle",
+      "activeTab",
+      "scripting",
+      "clipboardWrite",
+      ...(browser === "firefox" ? [] : ["offscreen"]),
+    ],
     content_security_policy: {
       extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",
     },

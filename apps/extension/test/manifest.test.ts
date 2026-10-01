@@ -17,14 +17,19 @@ const manifestFor = (browser: string) =>
   });
 
 describe("manifest", () => {
-  it.each(["chrome", "firefox"])("declares the spec's permissions and CSP for %s", (browser) => {
+  it.each(["chrome", "firefox"])("declares the spec's CSP for %s", (browser) => {
     const manifest = manifestFor(browser);
-    expect(manifest.permissions).toEqual(["storage", "alarms", "idle", "activeTab", "scripting"]);
     expect(manifest.host_permissions).toBeUndefined();
     expect(manifest.content_security_policy).toEqual({
       extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",
     });
     expect(manifest.version).toBe("0.0.1");
+  });
+
+  it("declares clipboard permissions per browser", () => {
+    const base = ["storage", "alarms", "idle", "activeTab", "scripting", "clipboardWrite"];
+    expect(manifestFor("chrome").permissions).toEqual([...base, "offscreen"]);
+    expect(manifestFor("firefox").permissions).toEqual(base);
   });
 
   it("pins the Firefox add-on id and minimum version", () => {
