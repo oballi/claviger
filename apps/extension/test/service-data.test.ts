@@ -6,6 +6,7 @@ import {
   SYNC_QUOTA_BYTES,
   VaultService,
 } from "../src/background/vaultService";
+import { type TestPlatform } from "./helpers/platform";
 import { codeOf, PASSWORD, unlockedService } from "./helpers/service";
 
 const SECRET = "JBSWY3DPEHPK3PXP";
@@ -124,6 +125,7 @@ describe("storage area", () => {
 describe("clock", () => {
   it("applies offsets larger than 30 seconds and ignores small ones", async () => {
     const { service } = await unlockedService();
+    await service.setClockCheckEnabled(true);
     const at = (iso: string) => ({
       serverDate: new Date(iso).toUTCString(),
       startMs: Date.parse("2026-01-01T00:00:00Z"),
@@ -158,5 +160,198 @@ describe("clock", () => {
     });
     await service.setClockCheckEnabled(false);
     expect(await service.getState()).toMatchObject({ clockCheckEnabled: false, clockOffsetSec: 0 });
+  });
+});
+
+function gate() {
+  let release!: () => void;
+  const open = new Promise<void>((r) => (release = r));
+  let reached!: () => void;
+  const hit = new Promise<void>((r) => (reached = r));
+  return { open, release, hit, reached };
+}
+
+/** Pauses the first call of `method` whose arguments match, until the returned gate is released. */
+function pauseOnce(
+  storage: TestPlatform["local"],
+  method: "get" | "set" | "remove",
+  match: (arg: unknown) => boolean,
+) {
+  const g = gate();
+  const original = storage[method].bind(storage) as (arg?: never) => Promise<unknown>;
+  let done = false;
+  (storage as unknown as Record<string, unknown>)[method] = async (arg?: never) => {
+    if (!done && match(arg)) {
+      done = true;
+      g.reached();
+      await g.open;
+    }
+    return original(arg);
+  };
+  return g;
+}
+const hasVaultKey = (arg: unknown) =>
+  Array.isArray(arg) ? arg.some((k) => String(k).startsWith("vault:")) : arg === undefined;
+const removesVault = (arg: unknown) =>
+  Array.isArray(arg) && arg.some((k) => String(k).startsWith("vault:"));
+const setsVault = (arg: unknown) =>
+  typeof arg === "object" && arg !== null && Object.keys(arg).some((k) => k.startsWith("vault:"));
+
+describe("races (fix round 1)", () => {
+  it("serializes parallel wrong-password reauth attempts through the throttle", async () => {
+    const { service } = await unlockedService();
+    const codes = await Promise.all(
+      Array.from({ length: 10 }, () => codeOf(service.reauth("wrong password"))),
+    );
+    expect(codes.filter((c) => c === "wrong-password")).toHaveLength(3);
+    expect(codes.filter((c) => c === "throttled")).toHaveLength(7);
+  });
+
+  it("keeps a lock that lands during a storage move", async () => {
+    const { p, service } = await unlockedService();
+    await service.addAccount({ draft: { secret: SECRET } });
+    const { token } = await service.reauth(PASSWORD);
+    const g = pauseOnce(p.sync, "set", setsVault);
+    const move = service.setStorageArea(token, "sync");
+    await g.hit;
+    await service.lock();
+    g.release();
+    await move;
+    expect((await service.getState()).status).toBe("locked");
+    expect(await Vault.exists(p.sync)).toBe(true);
+    await service.unlock(PASSWORD);
+    expect((await service.listAccounts()).accounts).toHaveLength(1);
+  });
+
+  it("never hands out a token minted across a lock", async () => {
+    const { p, service } = await unlockedService();
+    const g = pauseOnce(p.local, "get", (a) => Array.isArray(a) && a.includes("lock:attempts"));
+    const pending = service.reauth(PASSWORD).then(
+      (r) => r.token,
+      () => null,
+    );
+    await g.hit;
+    await service.lock();
+    g.release();
+    const token = await pending;
+    await service.unlock(PASSWORD);
+    if (token !== null)
+      expect(await codeOf(service.createRecoveryCode(token))).toBe("invalid-token");
+    else expect(token).toBeNull();
+    expect(token).toBeNull();
+  });
+
+  it("rejects a token that was in flight while the vault was deleted and recreated", async () => {
+    const { p, service } = await unlockedService();
+    const first = (await service.reauth(PASSWORD)).token;
+    const g = pauseOnce(p.local, "get", (a) => Array.isArray(a) && a.includes("lock:attempts"));
+    const pending = service.reauth(PASSWORD).then(
+      (r) => r.token,
+      () => null,
+    );
+    await g.hit;
+    const del = service.deleteVault(first);
+    const setup = del.then(() =>
+      service.setup({
+        password: "another long password",
+        createRecoveryCode: false,
+        lockPolicy: { kind: "browser-close" },
+        storageArea: "local",
+      }),
+    );
+    g.release();
+    const stale = await pending;
+    await setup;
+    if (stale !== null)
+      expect(await codeOf(service.exportVault(stale, "otpauth"))).toBe("invalid-token");
+  });
+
+  it("does not store a preview built across a lock", async () => {
+    const { p, service } = await unlockedService();
+    const g = pauseOnce(p.local, "get", hasVaultKey);
+    const pending = service.importPreview(text).then(
+      (r) => r,
+      (e: { code?: string }) => e.code,
+    );
+    await g.hit;
+    await service.lock();
+    g.release();
+    const outcome = await pending;
+    await service.unlock(PASSWORD);
+    if (typeof outcome === "object" && outcome.status === "ok") {
+      expect(await codeOf(service.importCommit(outcome.previewId, [0]))).toBe("preview-expired");
+    } else {
+      expect(outcome).toBe("locked");
+    }
+  });
+
+  it("keeps a recovery code created during a move", async () => {
+    const { p, service } = await unlockedService();
+    const a = (await service.reauth(PASSWORD)).token;
+    const b = (await service.reauth(PASSWORD)).token;
+    const g = pauseOnce(p.local, "remove", removesVault);
+    const move = service.setStorageArea(a, "sync");
+    await g.hit;
+    const code = service.createRecoveryCode(b);
+    g.release();
+    await move;
+    const { recoveryCode } = await code;
+    await service.lock();
+    await service.unlockWithRecovery(recoveryCode, "brand new password");
+    await service.lock();
+    await service.unlock("brand new password");
+  });
+
+  it("keeps a password change made during a move", async () => {
+    const { p, service } = await unlockedService();
+    const a = (await service.reauth(PASSWORD)).token;
+    const b = (await service.reauth(PASSWORD)).token;
+    const g = pauseOnce(p.local, "remove", removesVault);
+    const move = service.setStorageArea(a, "sync");
+    await g.hit;
+    const change = service.changePassword(b, "changed during move");
+    g.release();
+    await Promise.all([move, change]);
+    await service.lock();
+    await service.unlock("changed during move");
+  });
+
+  it("keeps only the newest import preview", async () => {
+    const { service } = await unlockedService();
+    const first = await service.importPreview(text);
+    const second = await service.importPreview(text);
+    if (first.status !== "ok" || second.status !== "ok") throw new Error("unexpected");
+    expect(await codeOf(service.importCommit(first.previewId, [0]))).toBe("preview-expired");
+    expect(await service.importCommit(second.previewId, [1])).toEqual({ added: 1, duplicates: 0 });
+  });
+
+  it("rejects clock samples while the check is off or when the offset is implausible", async () => {
+    const { service } = await unlockedService();
+    const sample = (sec: number) => ({
+      serverDate: new Date(sec * 1000).toUTCString(),
+      startMs: 0,
+      endMs: 0,
+    });
+    expect(await codeOf(service.applyClockSample(sample(120)))).toBe("invalid-request");
+    await service.setClockCheckEnabled(true);
+    expect(await codeOf(service.applyClockSample(sample(43_201)))).toBe("invalid-request");
+    expect(await service.applyClockSample(sample(43_200))).toEqual({
+      offsetSec: 43_200,
+      applied: 43_200,
+    });
+  });
+
+  it("keeps the vault usable when a storage move fails", async () => {
+    const { p, service } = await unlockedService();
+    await service.addAccount({ draft: { secret: SECRET, issuer: "A" } });
+    const failing = p.sync as unknown as { set: () => Promise<void> };
+    failing.set = () => Promise.reject(new Error("QUOTA_BYTES quota exceeded"));
+    const { token } = await service.reauth(PASSWORD);
+    await expect(service.setStorageArea(token, "sync")).rejects.toThrow();
+    expect((await service.getState()).storageArea).toBe("local");
+    expect(await Vault.exists(p.local)).toBe(true);
+    expect([...p.sync.data.keys()].some((k) => k.startsWith("vault:"))).toBe(false);
+    expect((await service.listAccounts()).accounts.map((a) => a.issuer)).toEqual(["A"]);
+    await service.addAccount({ draft: { secret: OTHER } });
   });
 });

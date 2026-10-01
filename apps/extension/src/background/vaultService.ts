@@ -40,6 +40,7 @@ export const AUTOLOCK_ALARM = "autolock";
 export const MIN_PASSWORD_LENGTH = 8;
 export const TOKEN_TTL_MS = 60_000;
 export const PREVIEW_TTL_MS = 10 * 60_000;
+export const MAX_CLOCK_OFFSET_SEC = 12 * 3600;
 export const SYNC_QUOTA_BYTES = 102_400;
 export const SYNC_ITEM_QUOTA_BYTES = 8_192;
 
@@ -482,14 +483,21 @@ export class VaultService {
     });
   }
 
-  async reauth(password: string): Promise<{ token: string }> {
-    const vault = await this.requireVault();
-    await this.checkThrottle();
-    if (!(await vault.verifyPassword(password))) return this.failAttempt();
-    await this.throttle.reset();
-    const token = this.p.random.uuid();
-    this.tokens.set(token, this.p.clock.now() + TOKEN_TTL_MS);
-    return { token };
+  // Queued so parallel guesses cannot all pass the throttle check before the first failure is recorded.
+  reauth(password: string): Promise<{ token: string }> {
+    return this.exclusive(async () => {
+      const epoch = this.lockEpoch;
+      const vault = await this.requireVault();
+      await this.checkThrottle();
+      if (!(await vault.verifyPassword(password))) return this.failAttempt();
+      // A token minted across a lock or deletion would outlive the session it was issued for.
+      if (epoch !== this.lockEpoch)
+        throw new ServiceError("locked", "The vault was locked meanwhile");
+      await this.throttle.reset();
+      const token = this.p.random.uuid();
+      this.tokens.set(token, this.p.clock.now() + TOKEN_TTL_MS);
+      return { token };
+    });
   }
 
   /** Sensitive operations need a fresh password confirmation: single use, 60 s (spec section 3.2). */
@@ -548,11 +556,16 @@ export class VaultService {
 
   async changePassword(token: string, newPassword: string): Promise<void> {
     assertPassword(newPassword);
-    await (await this.spendToken(token)).changePassword(newPassword);
+    // Queued: a storage move swaps this.vault, and a rewrite against the old area would be lost.
+    await this.exclusive(async () => {
+      await (await this.spendToken(token)).changePassword(newPassword);
+    });
   }
 
-  async createRecoveryCode(token: string): Promise<{ recoveryCode: string }> {
-    return { recoveryCode: await (await this.spendToken(token)).createRecoveryCode() };
+  createRecoveryCode(token: string): Promise<{ recoveryCode: string }> {
+    return this.exclusive(async () => ({
+      recoveryCode: await (await this.spendToken(token)).createRecoveryCode(),
+    }));
   }
 
   setLockPolicy(token: string, policy: LockPolicy): Promise<void> {
@@ -566,13 +579,16 @@ export class VaultService {
 
   setStorageArea(token: string, area: StorageAreaName): Promise<void> {
     return this.exclusive(async () => {
+      const epoch = this.lockEpoch;
       const vault = await this.spendToken(token);
       const { storageArea } = await this.settings();
       if (storageArea === area) return;
       const target = this.area(area);
       await moveVaultData(this.area(storageArea), target);
+      // The data has moved, so the setting is saved even if a lock arrived meanwhile.
       await saveSettings(this.p.local, { storageArea: area });
-      this.vault = await Vault.fromKey(this.deps(target), vault.exportKey());
+      const moved = await Vault.fromKey(this.deps(target), vault.exportKey());
+      if (epoch === this.lockEpoch) this.vault = moved;
     });
   }
 
@@ -597,12 +613,18 @@ export class VaultService {
   }
 
   async importPreview(text: string, password?: string): Promise<ImportPreviewView> {
+    const epoch = this.lockEpoch;
     const vault = await this.requireVault();
+    this.evictExpiredPreviews();
     const outcome = await parseImport(text, password);
     if (outcome.status !== "ok") return outcome;
     const { accounts: existing } = await vault.listAccounts();
     const preview = buildImportPreview(outcome.result.accounts, existing);
+    if (epoch !== this.lockEpoch)
+      throw new ServiceError("locked", "The vault was locked meanwhile");
     const previewId = this.p.random.uuid();
+    // One live preview at most: parsed secrets must not pile up in memory.
+    this.previews.clear();
     this.previews.set(previewId, {
       accounts: outcome.result.accounts,
       expiresAt: this.p.clock.now() + PREVIEW_TTL_MS,
@@ -622,6 +644,12 @@ export class VaultService {
     };
   }
 
+  private evictExpiredPreviews(): void {
+    const now = this.p.clock.now();
+    for (const [id, preview] of this.previews)
+      if (preview.expiresAt < now) this.previews.delete(id);
+  }
+
   importCommit(
     previewId: string,
     indexes: number[],
@@ -634,6 +662,7 @@ export class VaultService {
     indexes: number[],
   ): Promise<{ added: number; duplicates: number }> {
     const vault = await this.requireVault();
+    this.evictExpiredPreviews();
     const preview = this.previews.get(previewId);
     this.previews.delete(previewId);
     if (!preview || preview.expiresAt < this.p.clock.now()) {
@@ -673,9 +702,16 @@ export class VaultService {
     endMs: number;
   }): Promise<{ offsetSec: number; applied: number }> {
     return this.exclusive(async () => {
+      if (!(await this.settings()).clockCheckEnabled) {
+        throw new ServiceError("invalid-request", "The clock check is turned off");
+      }
       const offset = computeClockOffset(sample.serverDate, sample.startMs, sample.endMs);
       if (offset === null)
         throw new ServiceError("invalid-request", "The server date could not be read");
+      // Offsets this large mean a bad response, not a skewed clock.
+      if (Math.abs(offset) > MAX_CLOCK_OFFSET_SEC) {
+        throw new ServiceError("invalid-request", "The clock offset is implausibly large");
+      }
       const applied = Math.abs(offset) > CLOCK_OFFSET_THRESHOLD_SEC ? offset : 0;
       await saveSettings(this.p.local, { clockOffsetSec: applied });
       return { offsetSec: offset, applied };

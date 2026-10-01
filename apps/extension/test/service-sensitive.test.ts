@@ -168,6 +168,8 @@ describe("delete vault", () => {
     await service.setStorageArea((await service.reauth(PASSWORD)).token, "sync");
     p.sync.data.set("vault:stray", 1);
     p.local.data.set("vault:stray2", 1);
+    p.local.data.set("unrelated", "keep-local");
+    p.sync.data.set("unrelated", "keep-sync");
     for (let i = 0; i < 2; i++) await codeOf(service.reauth("wrong password"));
     expect(p.local.data.has(ATTEMPTS_KEY)).toBe(true);
     await service.deleteVault((await service.reauth(PASSWORD)).token);
@@ -178,6 +180,8 @@ describe("delete vault", () => {
       expect([...area.data.keys()].filter((k) => k.startsWith("lock:"))).toEqual([]);
     }
     expect(p.alarms.scheduled.has(AUTOLOCK_ALARM)).toBe(false);
+    expect(p.local.data.get("unrelated")).toBe("keep-local");
+    expect(p.sync.data.get("unrelated")).toBe("keep-sync");
     expect(await service.getState()).toMatchObject({
       status: "no-vault",
       storageArea: "local",
@@ -199,7 +203,7 @@ describe("delete vault", () => {
     expect([...p.local.data.keys()].some((k) => k.startsWith("vault:"))).toBe(true);
   });
 
-  it("discards a cached key load that started before the deletion", async () => {
+  it("refuses vault access right after the deletion", async () => {
     const { service } = await unlockedService();
     const { token } = await service.reauth(PASSWORD);
     await service.deleteVault(token);
