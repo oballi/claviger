@@ -67,4 +67,16 @@ describe("Throttle", () => {
     });
     expect(await throttle.retryAfterMs()).toBeLessThanOrEqual(2000);
   });
+
+  it("counts a wait down from now when the stored failure lies far in the future", async () => {
+    const storage = new MemoryStorage();
+    const clock = new FakeClock();
+    const throttle = new Throttle(storage, clock);
+    await storage.set({
+      [ATTEMPTS_KEY]: { failures: 3, lastFailureAt: clock.now() + 365 * 86_400_000 },
+    });
+    expect(await throttle.retryAfterMs()).toBeLessThanOrEqual(2000);
+    clock.advance(2001);
+    expect(await throttle.retryAfterMs()).toBe(0);
+  });
 });

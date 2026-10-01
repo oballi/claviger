@@ -27,14 +27,23 @@ export class Throttle {
     return parsed.success ? parsed.data : { failures: 0, lastFailureAt: 0 };
   }
 
+  /** A failure stamped in the future (clock moved back) would never count down, so re-stamp it to now. */
+  private async readClamped(): Promise<z.infer<typeof attemptsSchema>> {
+    const state = await this.read();
+    const now = this.clock.now();
+    if (state.lastFailureAt <= now) return state;
+    const clamped = { failures: state.failures, lastFailureAt: now };
+    await this.storage.set({ [ATTEMPTS_KEY]: clamped });
+    return clamped;
+  }
+
   async retryAfterMs(): Promise<number> {
-    const { failures, lastFailureAt } = await this.read();
-    const elapsed = Math.max(0, this.clock.now() - lastFailureAt);
-    return Math.max(0, delayAfter(failures) - elapsed);
+    const { failures, lastFailureAt } = await this.readClamped();
+    return Math.max(0, delayAfter(failures) - (this.clock.now() - lastFailureAt));
   }
 
   async recordFailure(): Promise<void> {
-    const { failures } = await this.read();
+    const { failures } = await this.readClamped();
     await this.storage.set({
       [ATTEMPTS_KEY]: { failures: failures + 1, lastFailureAt: this.clock.now() },
     });
