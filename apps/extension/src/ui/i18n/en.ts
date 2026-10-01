@@ -329,4 +329,8 @@ export const en: Record<MessageKey, string> = {
   "backup.move": "Move",
   "backup.moved": "Vault moved.",
   "error.target-has-vault": "The target storage already holds a vault. Remove it there first.",
+  "backup.syncRemoval":
+    "The vault is removed from browser sync and disappears from your other synced devices.",
+  "error.move-quota": "Not enough sync storage; the vault stayed on this device.",
+  "import.unreadable": "The file could not be read.",
 };

@@ -43,33 +43,30 @@ function Radio({
 }) {
   const id = useId();
   return (
-    <div className="flex items-start gap-4 border-t border-hair py-4">
+    <label className="flex min-h-11 cursor-pointer items-start gap-4 border-t border-hair py-4">
       <input
-        id={id}
         type="radio"
         name={name}
         checked={checked}
         onChange={onSelect}
+        aria-labelledby={`${id}-title`}
         aria-describedby={`${id}-hint`}
         className="mt-1 h-4 w-4 accent-[var(--ov-text)]"
       />
-      <div className="flex flex-col gap-1">
-        <label
-          htmlFor={id}
-          className="flex cursor-pointer items-center gap-2 text-[15px] font-medium"
-        >
+      <span className="flex flex-col gap-1">
+        <span id={`${id}-title`} className="flex items-center gap-2 text-[15px] font-medium">
           {title}
           {badge ? (
             <span className="rounded-full border border-line px-[7px] py-px font-mono text-[10px] font-normal text-muted">
               {badge}
             </span>
           ) : null}
-        </label>
+        </span>
         <span id={`${id}-hint`} className="text-[13px] leading-normal text-muted">
           {hint}
         </span>
-      </div>
-    </div>
+      </span>
+    </label>
   );
 }
 
@@ -126,6 +123,14 @@ export function BackupScreen({
   const filename = `otp-vault-${isoDate(Date.now())}.${format === "otpvault" ? "otpvault" : "txt"}`;
   const target = state.storageArea === "local" ? "sync" : "local";
 
+  // Losing readiness (e.g. unticking the acknowledgement) must not strand the open panel.
+  useEffect(() => {
+    if (confirming && !ready) {
+      focusAfter.current = "export";
+      setConfirming(false);
+    }
+  }, [confirming, ready]);
+
   function resetPasswords() {
     setCustom(false);
     setExportPassword("");
@@ -151,7 +156,14 @@ export function BackupScreen({
       setImportError(t("import.tooLarge"));
       return;
     }
-    readText(await file.text(), file.name);
+    let text: string;
+    try {
+      text = await file.text();
+    } catch {
+      setImportError(t("import.unreadable"));
+      return;
+    }
+    readText(text, file.name);
   }
 
   function onDrop(event: DragEvent<HTMLDivElement>) {
@@ -163,7 +175,7 @@ export function BackupScreen({
     state.lastBackupAt === null ? (
       <>
         <span className="text-warn">{t("backup.neverSentence")}</span>{" "}
-        {t("backup.risk", { count: state.accountCount ?? 0 })}
+        {state.accountCount ? t("backup.risk", { count: state.accountCount }) : null}
       </>
     ) : (
       t("backup.last", { date: formatDate(locale, state.lastBackupAt) })
@@ -273,7 +285,10 @@ export function BackupScreen({
                 variant="primary"
                 data-action="export"
                 disabled={!ready}
-                onClick={() => setConfirming(true)}
+                onClick={() => {
+                  setMessage("");
+                  setConfirming(true);
+                }}
               >
                 {t("backup.download")}
                 <Icon name="download" size={15} />
@@ -294,6 +309,7 @@ export function BackupScreen({
                   download(file.filename, file.content);
                   focusAfter.current = "export";
                   setConfirming(false);
+                  setPlainAck(false);
                   resetPasswords();
                   setExportResult({ count: file.count, skipped: file.skipped });
                   setMessage(t("backup.done", { count: file.count }));
@@ -328,13 +344,18 @@ export function BackupScreen({
         >
           <span>{t("backup.drop")}</span>
           <span>{t("backup.or")}</span>
-          <label className="flex h-11 cursor-pointer items-center rounded-full border border-line px-4 text-[13px] text-text">
+          <label className="flex h-11 cursor-pointer items-center rounded-full border border-line px-4 text-[13px] text-text focus-within:ring-2 focus-within:ring-[var(--ov-text)]">
             {t("backup.chooseFile")}
             <input
               type="file"
               className="sr-only"
               accept=".json,.txt,.2fas,.otpvault,application/json,text/plain"
-              onChange={(e) => void readFile(e.target.files?.[0])}
+              onChange={(e) => {
+                const input = e.currentTarget;
+                void readFile(input.files?.[0]).finally(() => {
+                  input.value = "";
+                });
+              }}
             />
           </label>
         </div>
@@ -392,7 +413,13 @@ export function BackupScreen({
           description={usageText}
           action={
             moving ? null : (
-              <Button data-action="move" onClick={() => setMoving(true)}>
+              <Button
+                data-action="move"
+                onClick={() => {
+                  setMessage("");
+                  setMoving(true);
+                }}
+              >
                 {target === "sync" ? t("backup.toSync") : t("backup.toLocal")}
               </Button>
             )
@@ -403,9 +430,15 @@ export function BackupScreen({
               <p className="m-0 text-[13px] text-muted">
                 {target === "sync" ? t("storage.syncHint") : t("storage.localHint")}
               </p>
+              {target === "local" ? (
+                <p className="m-0 text-[13px] text-warn">{t("backup.syncRemoval")}</p>
+              ) : null}
               <ReauthForm
                 submitLabel={t("backup.move")}
-                errorKeys={{ "already-set-up": "error.target-has-vault" }}
+                errorKeys={{
+                  "already-set-up": "error.target-has-vault",
+                  "quota-exceeded": "error.move-quota",
+                }}
                 onConfirmed={async (token) => {
                   await rpc("setStorageArea", { token, area: target });
                   focusAfter.current = "move";

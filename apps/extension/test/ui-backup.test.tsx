@@ -380,3 +380,149 @@ describe("BackupScreen storage hardening", () => {
     expect((await h.ui.rpc("getState", {})).storageArea).toBe("local");
   });
 });
+
+describe("BackupScreen fix round 1", () => {
+  it("warns that moving back to local removes the vault from browser sync", async () => {
+    const h = await harness({ storageArea: "sync" });
+    await open(h);
+    const storage = region("Depolama");
+    await userEvent.click(within(storage).getByRole("button", { name: "Yalnızca bu cihaza taşı" }));
+    expect(
+      within(storage).getByText(
+        "Kasa senkronizasyondan kaldırılır; eşitlenen diğer cihazlarında artık görünmez.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("does not show the sync-removal warning when moving to sync", async () => {
+    await open();
+    const storage = region("Depolama");
+    await userEvent.click(
+      within(storage).getByRole("button", { name: "Tarayıcı senkronizasyonuna taşı" }),
+    );
+    expect(within(storage).queryByText(/senkronizasyondan kaldırılır/)).toBeNull();
+  });
+
+  it("never renders the plain export content", async () => {
+    await open();
+    const exporting = region("Dışa aktar");
+    await userEvent.click(
+      within(exporting).getByRole("radio", { name: "Düz metin otpauth listesi" }),
+    );
+    await userEvent.click(
+      within(exporting).getByRole("checkbox", {
+        name: "Gizli anahtarların açıkta olacağını anlıyorum",
+      }),
+    );
+    await userEvent.click(within(exporting).getByRole("button", { name: "Yedeği indir" }));
+    await confirmPassword(exporting, "İndir");
+    await screen.findByText("Yedek indirildi: 1 hesap.");
+    expect(document.body.innerHTML).not.toContain("JBSWY3DPEHPK3PXP");
+  });
+
+  it("keeps the vault local and the panel open when sync is out of quota", async () => {
+    const h = await harness();
+    await open(h);
+    h.p.sync.failNextSet = new Error("QUOTA_BYTES quota exceeded");
+    const storage = region("Depolama");
+    await userEvent.click(
+      within(storage).getByRole("button", { name: "Tarayıcı senkronizasyonuna taşı" }),
+    );
+    await confirmPassword(storage, "Taşı");
+    expect(
+      await within(storage).findByText("Senkronizasyon kotası yetmiyor; kasa bu cihazda kaldı."),
+    ).toBeTruthy();
+    expect((await h.ui.rpc("getState", {})).storageArea).toBe("local");
+    expect(within(storage).getByRole("button", { name: "Taşı" })).toBeTruthy();
+  });
+
+  it("requires the plain acknowledgement again after a download", async () => {
+    await open();
+    const exporting = region("Dışa aktar");
+    await userEvent.click(
+      within(exporting).getByRole("radio", { name: "Düz metin otpauth listesi" }),
+    );
+    const ack = within(exporting).getByRole("checkbox", {
+      name: "Gizli anahtarların açıkta olacağını anlıyorum",
+    });
+    await userEvent.click(ack);
+    await userEvent.click(within(exporting).getByRole("button", { name: "Yedeği indir" }));
+    await confirmPassword(exporting, "İndir");
+    await screen.findByText("Yedek indirildi: 1 hesap.");
+    expect(ack).toHaveProperty("checked", false);
+    expect(within(exporting).getByRole("button", { name: "Yedeği indir" })).toHaveProperty(
+      "disabled",
+      true,
+    );
+  });
+
+  it("brings the controls back when the export stops being ready while confirming", async () => {
+    await open();
+    const exporting = region("Dışa aktar");
+    await userEvent.click(
+      within(exporting).getByRole("radio", { name: "Düz metin otpauth listesi" }),
+    );
+    const ack = within(exporting).getByRole("checkbox", {
+      name: "Gizli anahtarların açıkta olacağını anlıyorum",
+    });
+    await userEvent.click(ack);
+    await userEvent.click(within(exporting).getByRole("button", { name: "Yedeği indir" }));
+    await userEvent.click(ack);
+    expect(within(exporting).queryByLabelText("Ana parola")).toBeNull();
+    expect(within(exporting).getByRole("button", { name: "Yedeği indir" })).toBeTruthy();
+  });
+
+  it("hides the loss-risk sentence when there are no accounts", async () => {
+    const h = await harness();
+    renderUi(
+      <BackupScreen
+        state={await h.ui.rpc("getState", {})}
+        onChanged={() => {}}
+        onImport={() => {}}
+      />,
+      h.ui,
+    );
+    expect(screen.getByText("Henüz yedek alınmadı.")).toBeTruthy();
+    expect(screen.queryByText(/Bu cihazı kaybedersen/)).toBeNull();
+  });
+
+  it("clears the file input after reading so the same file can be chosen again", async () => {
+    const { onImport } = await open();
+    const input = screen.getByLabelText("Dosya seç") as HTMLInputElement;
+    const file = new File([ACME], "codes.txt");
+    await userEvent.upload(input, file);
+    await vi.waitFor(() => expect(onImport).toHaveBeenCalledTimes(1));
+    expect(input.value).toBe("");
+  });
+
+  it("shows an alert when the file cannot be read", async () => {
+    const { onImport } = await open();
+    const file = new File([ACME], "codes.txt");
+    Object.defineProperty(file, "text", { value: () => Promise.reject(new Error("boom")) });
+    await userEvent.upload(screen.getByLabelText("Dosya seç"), file);
+    expect(await screen.findByText("Dosya okunamadı.")).toBeTruthy();
+    expect(onImport).not.toHaveBeenCalled();
+  });
+
+  it("announces a repeated message again by clearing it first", async () => {
+    const h = await harness({ storageArea: "sync" });
+    await open(h);
+    const exporting = region("Dışa aktar");
+    const status = screen.getAllByRole("status")[0]!;
+    const seen: string[] = [];
+    new MutationObserver(() => seen.push(status.textContent ?? "")).observe(status, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+    for (let i = 0; i < 2; i++) {
+      await userEvent.click(within(exporting).getByRole("button", { name: "Yedeği indir" }));
+      await confirmPassword(exporting, "İndir");
+      await vi.waitFor(() => expect(h.ui.download).toHaveBeenCalledTimes(i + 1));
+    }
+    await vi.waitFor(() =>
+      expect(seen.filter((s) => s === "Yedek indirildi: 1 hesap.").length).toBe(2),
+    );
+    expect(seen).toContain("");
+  });
+});

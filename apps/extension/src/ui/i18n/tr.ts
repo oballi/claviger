@@ -323,6 +323,10 @@ export const tr = {
   "backup.move": "Taşı",
   "backup.moved": "Kasa taşındı.",
   "error.target-has-vault": "Hedef alanda zaten bir kasa var. Önce oradaki kasayı kaldır.",
+  "backup.syncRemoval":
+    "Kasa senkronizasyondan kaldırılır; eşitlenen diğer cihazlarında artık görünmez.",
+  "error.move-quota": "Senkronizasyon kotası yetmiyor; kasa bu cihazda kaldı.",
+  "import.unreadable": "Dosya okunamadı.",
 } as const;
 
 export type MessageKey = keyof typeof tr;
