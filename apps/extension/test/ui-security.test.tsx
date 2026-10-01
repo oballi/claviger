@@ -2,6 +2,8 @@
 import { Vault } from "@otp-vault/core";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
+import type { ServiceState } from "../src/background/vaultService";
 import { describe, expect, it, vi } from "vitest";
 import { SecurityScreen } from "../src/ui/manage/SecurityScreen";
 import { harness, renderUi, type Harness } from "./helpers/ui";
@@ -13,6 +15,9 @@ async function open(h?: Harness) {
   renderUi(<SecurityScreen state={await hh.ui.rpc("getState", {})} onChanged={onChanged} />, hh.ui);
   return { ...hh, onChanged };
 }
+
+const WARNING = /Kurtarma kodunu kaydettiğini onaylamadın/;
+const warningNotice = () => screen.getByText(WARNING).closest<HTMLElement>('[role="note"]')!;
 
 const region = (name: string) => screen.getByRole("region", { name });
 
@@ -64,6 +69,7 @@ describe("SecurityScreen", () => {
     );
     await userEvent.click(within(access).getByRole("button", { name: "Tamam" }));
     expect(await screen.findByText("Yeni kurtarma kodu kaydedildi.")).toBeTruthy();
+    expect((await ui.rpc("getState", {})).recoveryCodeConfirmed).toBe(true);
     await ui.rpc("lock", {});
     await expect(
       ui.rpc("unlockWithRecovery", { code: recoveryCode!, newPassword: "x".repeat(8) }),
@@ -446,24 +452,62 @@ describe("SecurityScreen", () => {
   });
 
   it("warns about an unconfirmed recovery code and confirms it", async () => {
-    const { service } = await open();
-    const warning = screen.getByText(/Kurtarma kodunu kaydettiğini onaylamadın/);
-    expect(warning).toBeTruthy();
-    await userEvent.click(screen.getByRole("button", { name: "Kaydettim" }));
-    await vi.waitFor(async () =>
-      expect((await service.getState()).recoveryCodeConfirmed).toBe(true),
-    );
+    const h = await harness();
+    function Host({ initial }: { initial: ServiceState }) {
+      const [state, setState] = useState(initial);
+      return (
+        <SecurityScreen state={state} onChanged={() => void h.service.getState().then(setState)} />
+      );
+    }
+    renderUi(<Host initial={await h.service.getState()} />, h.ui);
+    const notice = warningNotice().parentElement!;
+    await userEvent.click(within(notice).getByRole("button", { name: "Kaydettim" }));
+    expect(await screen.findByText("Kurtarma kodunun kaydedildiği onaylandı.")).toBeTruthy();
+    await vi.waitFor(async () => {
+      expect((await h.service.getState()).recoveryCodeConfirmed).toBe(true);
+      expect(screen.queryByText(WARNING)).toBeNull();
+    });
+  });
+
+  it("hides the warning once the state reports the code as confirmed", async () => {
+    const h = await harness();
+    await h.service.confirmRecoveryCode();
+    await open(h);
+    expect(screen.queryByText(WARNING)).toBeNull();
   });
 
   it("the warning's new-code button opens the recovery panel", async () => {
     await open();
-    const buttons = screen.getAllByRole("button", { name: "Yeni kod oluştur" });
-    await userEvent.click(buttons[0]!);
+    await userEvent.click(
+      within(warningNotice().parentElement!).getByRole("button", {
+        name: "Yeni kod oluştur",
+      }),
+    );
     expect(await screen.findByText("Yeni kod oluşturunca eskisi geçersiz olur.")).toBeTruthy();
+  });
+
+  it("disables the display selects and hides the warning while a new code is pending", async () => {
+    await open();
+    const access = region("Erişim");
+    await userEvent.click(within(access).getByRole("button", { name: "Yeni kod oluştur" }));
+    await confirmPassword(access, "Oluştur");
+    await within(access).findByTestId("recovery-code");
+    expect(screen.queryByText(WARNING)).toBeNull();
+    const display = region("Görünüm ve pano");
+    expect(within(display).getByLabelText("Görünüm")).toHaveProperty("disabled", true);
+    expect(within(display).getByLabelText("Panoyu temizle")).toHaveProperty("disabled", true);
+  });
+
+  it("numbers the sections 01 to 04", async () => {
+    await open();
+    const titles = ["Erişim", "Görünüm ve pano", "Gizli anahtar", "Tehlikeli bölge"];
+    titles.forEach((title, i) => {
+      expect(within(region(title)).getByText(`0${i + 1}`)).toBeTruthy();
+    });
   });
 
   it("no warning without a recovery code", async () => {
     await open(await harness({ recoveryCode: false }));
-    expect(screen.queryByText(/Kurtarma kodunu kaydettiğini onaylamadın/)).toBeNull();
+    expect(screen.queryByText(WARNING)).toBeNull();
   });
 });

@@ -337,9 +337,12 @@ export function SetupWizard({
             doneLabel={t("common.continue")}
             onDone={() => {
               // The code was shown; the flag is only a reminder, so a failure must not block.
-              rpc("confirmRecoveryCode", {}).catch(() => {});
-              setError(null);
-              dispatch({ type: "codeDone" });
+              void rpc("confirmRecoveryCode", {})
+                .catch(() => {})
+                .then(() => {
+                  setError(null);
+                  dispatch({ type: "codeDone" });
+                });
             }}
           />
         </>

@@ -285,6 +285,7 @@ export const en: Record<MessageKey, string> = {
   "security.recoveryUnconfirmed":
     "You haven't confirmed saving your recovery code. If you didn't save it, create a new one; the old one stops working.",
   "security.recoveryConfirm": "I saved it",
+  "security.recoveryConfirmed": "Recovery code marked as saved.",
   "codes.copyHidden": "Copy the {issuer} code",
   "security.secrets": "Secret keys",
   "security.reveal": "Ask for the password to show a secret key",

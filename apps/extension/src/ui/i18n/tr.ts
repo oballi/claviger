@@ -280,6 +280,7 @@ export const tr = {
   "security.recoveryUnconfirmed":
     "Kurtarma kodunu kaydettiğini onaylamadın. Kaydetmediysen yeni bir kod oluştur; eskisi geçersiz olur.",
   "security.recoveryConfirm": "Kaydettim",
+  "security.recoveryConfirmed": "Kurtarma kodunun kaydedildiği onaylandı.",
   "codes.copyHidden": "{issuer} kodunu kopyala",
   "security.secrets": "Gizli anahtar",
   "security.reveal": "Gizli anahtarı göster için parola iste",

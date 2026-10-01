@@ -90,11 +90,11 @@ export function SecurityScreen({
     onChanged();
   }
 
-  async function savePreference(action: () => Promise<unknown>) {
+  async function savePreference(action: () => Promise<unknown>, text = t("security.saved")) {
     setMessage("");
     try {
       await action();
-      setMessage(t("security.saved"));
+      setMessage(text);
       onChanged();
     } catch (e) {
       setMessage(errorMessage(t, e));
@@ -121,9 +121,10 @@ export function SecurityScreen({
           <div className="flex gap-2">
             <Button
               onClick={() =>
-                void savePreference(async () => {
-                  await rpc("confirmRecoveryCode", {});
-                })
+                void savePreference(
+                  () => rpc("confirmRecoveryCode", {}),
+                  t("security.recoveryConfirmed"),
+                )
               }
             >
               {t("security.recoveryConfirm")}
@@ -226,9 +227,13 @@ export function SecurityScreen({
               code={freshCode}
               doneLabel={t("security.recoveryDone")}
               onDone={() => {
-                rpc("confirmRecoveryCode", {}).catch(() => {});
-                setFreshCode(null);
-                done(t("security.recoveryCreated"), "recovery");
+                // Await so the reminder never flashes before the flag is stored.
+                void rpc("confirmRecoveryCode", {})
+                  .catch(() => {})
+                  .then(() => {
+                    setFreshCode(null);
+                    done(t("security.recoveryCreated"), "recovery");
+                  });
               }}
             />
           ) : null}
