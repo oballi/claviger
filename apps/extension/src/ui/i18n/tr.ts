@@ -220,6 +220,7 @@ export const tr = {
   "accounts.pinned": "{name} sabitlendi.",
   "accounts.unpinned": "{name} sabitlemesi kaldırıldı.",
   "accounts.moved": "{name} taşındı.",
+  "accounts.dragHandle": "{name} hesabını sürükle",
   "accounts.deleted": "{name} silindi.",
   "account.edit": "Düzenle",
   "account.domains": "Siteler",

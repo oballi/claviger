@@ -1,5 +1,5 @@
 import { parseOtpauthUri } from "@otp-vault/core";
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { AccountView } from "../../background/vaultService";
 import { RpcError } from "../../rpc/client";
 import { Button } from "../components/Button";
@@ -23,6 +23,7 @@ export function AccountEditor({
   canMove,
   onMove,
   onClose,
+  onMoved,
   onChanged,
 }: {
   account: AccountView;
@@ -31,6 +32,8 @@ export function AccountEditor({
   /** Resolves to false when there was no neighbour to swap with. */
   onMove: (delta: -1 | 1) => Promise<boolean>;
   onClose: () => void;
+  /** Pin and move results: reports a status message but keeps the dialog open. */
+  onMoved: (message: string) => void;
   onChanged: (message: string) => void;
 }) {
   const { rpc, copy } = useUi();
@@ -45,11 +48,26 @@ export function AccountEditor({
   // Starts from the cached setting but falls back to asking if the service says otherwise.
   const [needsPassword, setNeedsPassword] = useState(revealRequiresPassword);
 
-  async function run(action: () => Promise<unknown>, message: string) {
+  const root = useRef<HTMLDivElement>(null);
+  const focusAfter = useRef<Mode | null>(null);
+
+  // Leaving a sub-mode unmounts its opener; focus would otherwise fall to <body>.
+  useEffect(() => {
+    if (mode !== "main" || !focusAfter.current) return;
+    root.current?.querySelector<HTMLElement>(`[data-action="${focusAfter.current}"]`)?.focus();
+    focusAfter.current = null;
+  }, [mode]);
+
+  function back(from: Mode) {
+    focusAfter.current = from;
+    setMode("main");
+  }
+
+  async function run(action: () => Promise<unknown>, message: string, keepOpen = false) {
     setError(null);
     try {
       await action();
-      onChanged(message);
+      (keepOpen ? onMoved : onChanged)(message);
     } catch (e) {
       setError(errorMessage(t, e));
     }
@@ -59,7 +77,7 @@ export function AccountEditor({
     setError(null);
     onMove(delta).then(
       (moved) => {
-        if (moved) onChanged(t("accounts.moved", { name }));
+        if (moved) onMoved(t("accounts.moved", { name }));
       },
       (e) => setError(errorMessage(t, e)),
     );
@@ -101,126 +119,131 @@ export function AccountEditor({
 
   return (
     <Dialog title={name} onClose={onClose}>
-      {mode === "main" ? (
-        <>
-          <form onSubmit={save} className="flex flex-col gap-5">
-            <TextField
-              id="edit-issuer"
-              label={t("add.issuer")}
-              value={issuer}
-              onChange={(e) => setIssuer(e.target.value)}
-            />
-            <TextField
-              id="edit-label"
-              label={t("add.label")}
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-            />
-            <TextField
-              id="edit-domains"
-              label={t("account.domains")}
-              hint={t("account.domainsHint")}
-              value={domains}
-              onChange={(e) => setDomains(e.target.value)}
-              mono
-            />
-            <div>
-              <Button type="submit" variant="primary">
-                {t("common.save")}
+      <div ref={root} className="flex flex-col gap-6">
+        {mode === "main" ? (
+          <>
+            <form onSubmit={save} className="flex flex-col gap-5">
+              <TextField
+                id="edit-issuer"
+                label={t("add.issuer")}
+                value={issuer}
+                onChange={(e) => setIssuer(e.target.value)}
+              />
+              <TextField
+                id="edit-label"
+                label={t("add.label")}
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+              />
+              <TextField
+                id="edit-domains"
+                label={t("account.domains")}
+                hint={t("account.domainsHint")}
+                value={domains}
+                onChange={(e) => setDomains(e.target.value)}
+                mono
+              />
+              <div>
+                <Button type="submit" variant="primary">
+                  {t("common.save")}
+                </Button>
+              </div>
+            </form>
+            <dl className="m-0 grid grid-cols-4 gap-4 border-y border-hair py-4">
+              {details.map(([term, value]) => (
+                <div key={term} className="flex flex-col gap-1">
+                  <dt className="text-xs text-muted">{term}</dt>
+                  <dd className="m-0 font-mono text-sm">{value}</dd>
+                </div>
+              ))}
+            </dl>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={() =>
+                  void run(
+                    () => rpc("setPinned", { id: account.id, pinned: !account.pinned }),
+                    account.pinned
+                      ? t("accounts.unpinned", { name })
+                      : t("accounts.pinned", { name }),
+                    true,
+                  )
+                }
+              >
+                {account.pinned ? t("account.unpin") : t("account.pin")}
+              </Button>
+              <Button disabled={!canMove.up} onClick={() => move(-1)}>
+                {t("account.moveUp")}
+              </Button>
+              <Button disabled={!canMove.down} onClick={() => move(1)}>
+                {t("account.moveDown")}
+              </Button>
+              <Button
+                data-action="reveal"
+                onClick={() => {
+                  setError(null);
+                  setMode("reveal");
+                  if (!needsPassword)
+                    reveal().catch((e) => {
+                      if (e instanceof RpcError && e.code === "invalid-token")
+                        setNeedsPassword(true);
+                      else setError(errorMessage(t, e));
+                    });
+                }}
+              >
+                {t("account.reveal")}
+              </Button>
+              <Button variant="danger" data-action="delete" onClick={() => setMode("delete")}>
+                {t("account.delete")}
               </Button>
             </div>
-          </form>
-          <dl className="m-0 grid grid-cols-4 gap-4 border-y border-hair py-4">
-            {details.map(([term, value]) => (
-              <div key={term} className="flex flex-col gap-1">
-                <dt className="text-xs text-muted">{term}</dt>
-                <dd className="m-0 font-mono text-sm">{value}</dd>
-              </div>
-            ))}
-          </dl>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              onClick={() =>
-                void run(
-                  () => rpc("setPinned", { id: account.id, pinned: !account.pinned }),
-                  account.pinned
-                    ? t("accounts.unpinned", { name })
-                    : t("accounts.pinned", { name }),
-                )
-              }
-            >
-              {account.pinned ? t("account.unpin") : t("account.pin")}
-            </Button>
-            <Button disabled={!canMove.up} onClick={() => move(-1)}>
-              {t("account.moveUp")}
-            </Button>
-            <Button disabled={!canMove.down} onClick={() => move(1)}>
-              {t("account.moveDown")}
-            </Button>
-            <Button
-              onClick={() => {
-                setError(null);
-                setMode("reveal");
-                if (!needsPassword)
-                  reveal().catch((e) => {
-                    if (e instanceof RpcError && e.code === "invalid-token") setNeedsPassword(true);
-                    else setError(errorMessage(t, e));
-                  });
-              }}
-            >
-              {t("account.reveal")}
-            </Button>
-            <Button variant="danger" onClick={() => setMode("delete")}>
-              {t("account.delete")}
-            </Button>
+          </>
+        ) : null}
+
+        {mode === "delete" ? (
+          <div className="flex flex-col gap-5">
+            <p className="m-0 text-sm leading-relaxed">{t("account.deleteConfirm", { name })}</p>
+            <div className="flex gap-2">
+              <Button onClick={() => back("delete")}>{t("common.cancel")}</Button>
+              <Button
+                variant="danger"
+                onClick={() =>
+                  void run(
+                    () => rpc("deleteAccount", { id: account.id }),
+                    t("accounts.deleted", { name }),
+                  )
+                }
+              >
+                {t("account.deleteYes")}
+              </Button>
+            </div>
           </div>
-        </>
-      ) : null}
+        ) : null}
 
-      {mode === "delete" ? (
-        <div className="flex flex-col gap-5">
-          <p className="m-0 text-sm leading-relaxed">{t("account.deleteConfirm", { name })}</p>
-          <div className="flex gap-2">
-            <Button onClick={() => setMode("main")}>{t("common.cancel")}</Button>
-            <Button
-              variant="danger"
-              onClick={() =>
-                void run(
-                  () => rpc("deleteAccount", { id: account.id }),
-                  t("accounts.deleted", { name }),
-                )
-              }
-            >
-              {t("account.deleteYes")}
-            </Button>
+        {mode === "reveal" && !revealed && needsPassword ? (
+          <ReauthForm
+            submitLabel={t("account.revealSubmit")}
+            onConfirmed={(token) => reveal(token)}
+          />
+        ) : null}
+
+        {mode === "reveal" && revealed ? (
+          <div className="flex flex-col items-start gap-5">
+            <QrCode value={revealed.uri} label={t("account.qrLabel", { name })} />
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted">{t("account.secret")}</span>
+              <code className="font-mono text-lg tracking-widest break-all">
+                {groupSecret(revealed.secret)}
+              </code>
+            </div>
+            <Button onClick={() => void copy(revealed.secret)}>{t("account.copySecret")}</Button>
+            <p className="m-0 text-[13px] text-warn">{t("account.revealWarning")}</p>
           </div>
-        </div>
-      ) : null}
+        ) : null}
 
-      {mode === "reveal" && !revealed && needsPassword ? (
-        <ReauthForm
-          submitLabel={t("account.revealSubmit")}
-          onConfirmed={(token) => reveal(token)}
-        />
-      ) : null}
-
-      {mode === "reveal" && revealed ? (
-        <div className="flex flex-col items-start gap-5">
-          <QrCode value={revealed.uri} label={t("account.qrLabel", { name })} />
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted">{t("account.secret")}</span>
-            <code className="font-mono text-lg tracking-widest break-all">
-              {groupSecret(revealed.secret)}
-            </code>
-          </div>
-          <Button onClick={() => void copy(revealed.secret)}>{t("account.copySecret")}</Button>
-          <p className="m-0 text-[13px] text-warn">{t("account.revealWarning")}</p>
-        </div>
-      ) : null}
-
-      <p role="alert" className="m-0 min-h-4 text-sm text-warn">
-        {error}
-      </p>
+        <p role="alert" className="m-0 min-h-4 text-sm text-warn">
+          {error}
+        </p>
+      </div>
     </Dialog>
   );
 }

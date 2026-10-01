@@ -11,6 +11,7 @@ import { useLocale, useT } from "../i18n/i18n";
 import { useUi } from "../platform";
 import { AccountEditor } from "./AccountEditor";
 import { PageTitle } from "./ManageFrame";
+import { reorderByDrop } from "../reorder";
 
 /** Design board "Yönetim — hesaplar". */
 export function AccountsScreen({
@@ -46,6 +47,7 @@ export function AccountsScreen({
   const [message, setMessage] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [maintenanceError, setMaintenanceError] = useState<string | null>(null);
+  const [dragging, setDragging] = useState<string | null>(null);
 
   const accounts = list?.accounts ?? [];
   const q = query.trim().toLocaleLowerCase(locale);
@@ -78,6 +80,31 @@ export function AccountsScreen({
     [order[i], order[j]] = [order[j]!, order[i]!];
     await rpc("reorder", { order });
     return true;
+  }
+
+  const nameOf = (id: string) => {
+    const a = accounts.find((x) => x.id === id);
+    return a?.issuer || a?.label || t("add.unnamed");
+  };
+  const sameGroup = (id: string, other: string | null) => {
+    const a = accounts.find((x) => x.id === id);
+    const b = accounts.find((x) => x.id === other);
+    return Boolean(a && b && a.id !== b.id && a.pinned === b.pinned);
+  };
+
+  async function drop(target: string) {
+    const dragged = dragging;
+    setDragging(null);
+    if (!dragged || q) return;
+    const order = reorderByDrop(accounts, dragged, target);
+    if (!order) return;
+    setMaintenanceError(null);
+    try {
+      await rpc("reorder", { order });
+      changed(t("accounts.moved", { name: nameOf(dragged) }));
+    } catch (e) {
+      setMaintenanceError(errorMessage(t, e));
+    }
   }
 
   async function maintenance(action: () => Promise<unknown>, text: string) {
@@ -192,6 +219,7 @@ export function AccountsScreen({
 
       <table className="w-full table-fixed border-collapse text-left text-sm">
         <colgroup>
+          <col style={{ width: "32px" }} />
           <col style={{ width: "18%" }} />
           <col style={{ width: "27%" }} />
           <col style={{ width: "27%" }} />
@@ -201,6 +229,7 @@ export function AccountsScreen({
         <caption className="sr-only">{t("accounts.title")}</caption>
         <thead>
           <tr className="border-b border-line text-xs text-muted">
+            <td />
             <th scope="col" className="pb-2.5 font-normal">
               {t("add.issuer")}
             </th>
@@ -221,7 +250,7 @@ export function AccountsScreen({
         <tbody>
           {list && rows.length === 0 ? (
             <tr>
-              <td colSpan={5} className="py-6 text-muted">
+              <td colSpan={6} className="py-6 text-muted">
                 {q ? t("accounts.noMatch") : t("codes.empty")}
                 {!q && state.snapshotOffer ? (
                   <Button
@@ -240,7 +269,35 @@ export function AccountsScreen({
             const editName =
               a.issuer && a.label ? `${a.issuer} (${a.label})` : name || t("add.unnamed");
             return (
-              <tr key={a.id} className="h-14 border-b border-hair">
+              <tr
+                key={a.id}
+                className="h-14 border-b border-hair"
+                onDragOver={(e) => {
+                  if (!q && dragging && sameGroup(dragging, a.id)) e.preventDefault();
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  void drop(a.id);
+                }}
+              >
+                <td>
+                  {q ? null : (
+                    // Mouse-only; keyboard users reorder with the move buttons in the edit dialog.
+                    <button
+                      type="button"
+                      draggable
+                      aria-label={t("accounts.dragHandle", { name: editName })}
+                      onDragStart={(e) => {
+                        setDragging(a.id);
+                        e.dataTransfer?.setData("text/plain", a.id);
+                      }}
+                      onDragEnd={() => setDragging(null)}
+                      className="flex h-11 w-8 cursor-grab items-center justify-center border-0 bg-transparent p-0 text-muted"
+                    >
+                      <Icon name="grip" size={16} />
+                    </button>
+                  )}
+                </td>
                 <td className="pr-4">
                   <span className="flex min-w-0 items-center gap-2.5">
                     <span className="min-w-0 truncate">{name}</span>
@@ -316,6 +373,7 @@ export function AccountsScreen({
           }}
           onMove={(delta) => move(selected, delta)}
           onClose={() => setEditing(null)}
+          onMoved={changed}
           onChanged={(text) => {
             setEditing(null);
             changed(text);

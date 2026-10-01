@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { AccountEditor } from "../src/ui/manage/AccountEditor";
@@ -112,9 +112,57 @@ describe("AccountsScreen", () => {
     await userEvent.click(screen.getByRole("button", { name: /Deno.*hesabını düzenle/ }));
     await userEvent.click(screen.getByRole("button", { name: "Sabitle" }));
     await screen.findByText("Deno sabitlendi.");
-    await userEvent.click(screen.getByRole("button", { name: /Deno.*hesabını düzenle/ }));
-    expect(screen.getByRole("button", { name: "Yukarı taşı" })).toHaveProperty("disabled", true);
-    expect(screen.getByRole("button", { name: "Aşağı taşı" })).toHaveProperty("disabled", true);
+    await vi.waitFor(() =>
+      expect(screen.getByRole("button", { name: "Yukarı taşı" })).toHaveProperty("disabled", true),
+    );
+    await vi.waitFor(() =>
+      expect(screen.getByRole("button", { name: "Aşağı taşı" })).toHaveProperty("disabled", true),
+    );
+  });
+
+  it("reorders by drag and drop within a group", async () => {
+    const h = await harness();
+    const secrets = ["JBSWY3DPEHPK3PXA", "JBSWY3DPEHPK3PXB", "JBSWY3DPEHPK3PXC"];
+    for (const [i, issuer] of ["A", "B", "C"].entries())
+      await h.ui.rpc("addAccountManual", { draft: { secret: secrets[i]!, issuer } });
+    renderUi(<AccountsScreen state={await h.ui.rpc("getState", {})} onChanged={() => {}} />, h.ui);
+    const handle = await screen.findByLabelText("A hesabını sürükle");
+    const rowC = screen.getByText("C").closest("tr")!;
+    fireEvent.dragStart(handle);
+    fireEvent.dragOver(rowC);
+    fireEvent.drop(rowC);
+    await vi.waitFor(async () => expect(await names(h)).toEqual(["B", "C", "A"]));
+    await screen.findByText("A taşındı.");
+  });
+
+  it("hides drag handles while searching", async () => {
+    const h = await seeded();
+    await open(h);
+    expect(screen.getAllByLabelText(/hesabını sürükle/)).toHaveLength(3);
+    await userEvent.type(screen.getByRole("searchbox", { name: "Hesap ara" }), "bank");
+    expect(screen.queryByLabelText(/hesabını sürükle/)).toBeNull();
+  });
+
+  it("keeps the edit dialog open after pinning and moving", async () => {
+    const h = await seeded();
+    await open(h);
+    await userEvent.click(screen.getByRole("button", { name: /Bank.*hesabını düzenle/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Yukarı taşı" }));
+    await screen.findByText("Bank taşındı.");
+    expect(screen.getByRole("dialog", { name: "Bank" })).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Sabitle" }));
+    await screen.findByText("Bank sabitlendi.");
+    await screen.findByRole("button", { name: "Sabitlemeyi kaldır" });
+    expect(screen.getByRole("dialog", { name: "Bank" })).toBeTruthy();
+  });
+
+  it("returns focus to the delete button after cancelling the delete step", async () => {
+    const h = await seeded();
+    await open(h);
+    await userEvent.click(screen.getByRole("button", { name: /Bank.*hesabını düzenle/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Sil" }));
+    await userEvent.click(screen.getByRole("button", { name: "Vazgeç" }));
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Sil" }));
   });
 
   it("disables moving past either end of the list", async () => {
@@ -139,6 +187,7 @@ describe("AccountsScreen", () => {
         canMove={{ up: true, down: true }}
         onMove={async () => false}
         onClose={() => {}}
+        onMoved={onChanged}
         onChanged={onChanged}
       />,
       h.ui,
@@ -320,7 +369,7 @@ describe("AccountsScreen", () => {
     await open(h);
     const table = screen.getByRole("table");
     expect(table.className).toContain("table-fixed");
-    expect(table.querySelectorAll("colgroup col")).toHaveLength(5);
+    expect(table.querySelectorAll("colgroup col")).toHaveLength(6);
   });
 
   it("reveals without a password when the user turned that off", async () => {

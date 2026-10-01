@@ -224,6 +224,7 @@ export const en: Record<MessageKey, string> = {
   "accounts.pinned": "{name} pinned.",
   "accounts.unpinned": "{name} unpinned.",
   "accounts.moved": "{name} moved.",
+  "accounts.dragHandle": "Drag {name}",
   "accounts.deleted": "{name} deleted.",
   "account.edit": "Edit",
   "account.domains": "Sites",
