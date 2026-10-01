@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { SnapshotInfo } from "../../background/vaultService";
 import { RpcError } from "../../rpc/client";
 import { Button } from "../components/Button";
@@ -24,10 +24,13 @@ export function SnapshotsSection({ num, onChanged }: { num: string; onChanged: (
   const [needsOld, setNeedsOld] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const toggles = useRef(new Map<string, HTMLButtonElement>());
+  const refocus = useRef<string | null>(null);
 
   const load = useCallback(async () => {
     try {
       setItems(await rpc("listSnapshots", {}));
+      setError(null);
     } catch (e) {
       setError(errorMessage(t, e));
     }
@@ -36,6 +39,14 @@ export function SnapshotsSection({ num, onChanged }: { num: string; onChanged: (
   useEffect(() => {
     void load();
   }, [load]);
+
+  // The panel unmounts with the focused submit button; put focus back on the row's toggle.
+  useEffect(() => {
+    if (open === null && refocus.current) {
+      toggles.current.get(refocus.current)?.focus();
+      refocus.current = null;
+    }
+  });
 
   function toggle(item: SnapshotInfo) {
     setOpen(open === item.id ? null : item.id);
@@ -55,6 +66,7 @@ export function SnapshotsSection({ num, onChanged }: { num: string; onChanged: (
         ? ` ${t("snapshots.resultUnreadable", { count: r.unreadable })}`
         : "";
       setMessage(`${t("snapshots.result", { added: r.added, skipped: r.skipped })}${unreadable}`);
+      refocus.current = item.id;
       setOpen(null);
       setOldPassword("");
       onChanged();
@@ -95,7 +107,18 @@ export function SnapshotsSection({ num, onChanged }: { num: string; onChanged: (
             title={formatDate(locale, item.createdAt)}
             description={item.sameVault ? base : `${base} · ${t("snapshots.otherVault")}`}
             action={
-              <Button data-action={item.id} onClick={() => toggle(item)}>
+              <Button
+                data-action={item.id}
+                ref={(el: HTMLButtonElement | null) => {
+                  if (el) toggles.current.set(item.id, el);
+                  else toggles.current.delete(item.id);
+                }}
+                aria-expanded={open === item.id}
+                aria-label={t("snapshots.restoreRow", {
+                  date: formatDate(locale, item.createdAt),
+                })}
+                onClick={() => toggle(item)}
+              >
                 {t("snapshots.restore")}
               </Button>
             }

@@ -301,6 +301,8 @@ describe("ManageApp", () => {
     renderUi(<ManageApp pollMs={0} />, withStatus(ui, "corrupt"));
     expect(await screen.findByText(/Verilerin silinmedi/)).toBeTruthy();
     expect(await screen.findByText(/kenara alıp yeni bir kasa/)).toBeTruthy();
+    expect(screen.getByLabelText("Onaylamak için KENARA AL yaz")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Kenara al ve yeni kasa kur" })).toBeTruthy();
   });
 
   it("explains a vault from a newer version", async () => {

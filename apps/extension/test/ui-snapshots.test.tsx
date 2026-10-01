@@ -3,7 +3,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { VaultService } from "../src/background/vaultService";
-import { createRpcClient } from "../src/rpc/client";
+import { createRpcClient, RpcError } from "../src/rpc/client";
 import { handleRpcMessage } from "../src/rpc/server";
 import type { UiPlatform } from "../src/ui/platform";
 import { BackupScreen } from "../src/ui/manage/BackupScreen";
@@ -14,6 +14,8 @@ import { PASSWORD } from "./helpers/service";
 
 const A = "otpauth://totp/Acme:a@x?secret=JBSWY3DPEHPK3PXP&issuer=Acme";
 const B = "otpauth://totp/Beta:b@x?secret=JBSWY3DPEHPK3PXQ&issuer=Beta";
+const NOTE = "Yalnızca eksik hesaplar eklenir; hiçbir şey silinmez.";
+const ROW = /kopyasını geri yükle/;
 const NEW_PASSWORD = "new password 123";
 
 async function withCopy() {
@@ -36,9 +38,9 @@ describe("automatic copies section", () => {
     const h = await withCopy();
     await backup(h);
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: "Geri yükle" }));
+    await user.click(await screen.findByRole("button", { name: ROW }));
     await user.type(screen.getByLabelText("Ana parola"), PASSWORD);
-    await user.click(screen.getAllByRole("button", { name: "Geri yükle" }).at(-1)!);
+    await user.click(screen.getByRole("button", { name: "Geri yükle" }));
     await screen.findByText("1 hesap eklendi, 0 zaten vardı.");
     expect(screen.queryByText(/okunamadı/)).toBeNull();
     expect((await h.service.listAccounts()).accounts).toHaveLength(1);
@@ -61,9 +63,9 @@ describe("automatic copies section", () => {
     };
     await backup(h, { ...h.ui, rpc });
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: "Geri yükle" }));
+    await user.click(await screen.findByRole("button", { name: ROW }));
     await user.type(screen.getByLabelText("Ana parola"), PASSWORD);
-    await user.click(screen.getAllByRole("button", { name: "Geri yükle" }).at(-1)!);
+    await user.click(screen.getByRole("button", { name: "Geri yükle" }));
     await screen.findByText("1 hesap eklendi, 0 zaten vardı. 2 hesap okunamadı.");
   });
 
@@ -76,13 +78,66 @@ describe("automatic copies section", () => {
     await backup(h);
     const user = userEvent.setup();
     await waitFor(() =>
-      expect(screen.getAllByRole("button", { name: "Geri yükle" }).length).toBeGreaterThan(1),
+      expect(screen.getAllByRole("button", { name: ROW }).length).toBeGreaterThan(1),
     );
-    const rows = screen.getAllByRole("button", { name: "Geri yükle" });
-    await user.click(rows[0]!);
+    const [first, second] = screen.getAllByRole("button", { name: ROW });
+    await user.click(first!);
+    expect(first!.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getAllByText(NOTE)).toHaveLength(1);
+    await user.click(second!);
+    expect(first!.getAttribute("aria-expanded")).toBe("false");
+    expect(second!.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getAllByText(NOTE)).toHaveLength(1);
     expect(screen.getAllByLabelText("Ana parola")).toHaveLength(1);
-    await user.click(screen.getAllByRole("button", { name: "Geri yükle" })[1]!);
-    expect(screen.getAllByLabelText("Ana parola")).toHaveLength(1);
+  });
+
+  it("returns focus to the row toggle, calls onChanged and reloads after a restore", async () => {
+    const h = await withCopy();
+    let changed = 0;
+    let lists = 0;
+    const rpc: UiPlatform["rpc"] = async (type, payload) => {
+      if (type === "listSnapshots") lists++;
+      return h.ui.rpc(type, payload);
+    };
+    renderUi(
+      <BackupScreen
+        state={await h.service.getState()}
+        onChanged={() => changed++}
+        onImport={() => {}}
+      />,
+      { ...h.ui, rpc },
+    );
+    const user = userEvent.setup();
+    const toggle = await screen.findByRole("button", { name: ROW });
+    const before = lists;
+    await user.click(toggle);
+    await user.type(screen.getByLabelText("Ana parola"), PASSWORD);
+    await user.click(screen.getByRole("button", { name: "Geri yükle" }));
+    await screen.findByText("1 hesap eklendi, 0 zaten vardı.");
+    expect(changed).toBe(1);
+    await waitFor(() => expect(lists).toBeGreaterThan(before));
+    await waitFor(() => expect(document.activeElement).toBe(toggle));
+  });
+
+  it("reveals and focuses the password field on snapshot-password-required", async () => {
+    const h = await withCopy();
+    let first = true;
+    const rpc: UiPlatform["rpc"] = async (type, payload) => {
+      if (type === "restoreSnapshot" && first) {
+        first = false;
+        throw new RpcError("snapshot-password-required", "x");
+      }
+      return h.ui.rpc(type, payload);
+    };
+    await backup(h, { ...h.ui, rpc });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: ROW }));
+    expect(screen.queryByLabelText("Bu kopyanın parolası")).toBeNull();
+    await user.type(screen.getByLabelText("Ana parola"), PASSWORD);
+    await user.click(screen.getByRole("button", { name: "Geri yükle" }));
+    const field = await screen.findByLabelText("Bu kopyanın parolası");
+    expect(document.activeElement).toBe(field);
+    await screen.findByText("Bu kopya başka bir kasaya ait; parolasını gir.");
   });
 
   it("asks for the old password when the copy belongs to another vault", async () => {
@@ -107,16 +162,16 @@ describe("automatic copies section", () => {
       ui,
     );
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: "Geri yükle" }));
+    await user.click(await screen.findByRole("button", { name: ROW }));
     const old = await screen.findByLabelText("Bu kopyanın parolası");
     await user.type(old, "wrong old password");
     await user.type(screen.getByLabelText("Ana parola"), NEW_PASSWORD);
-    await user.click(screen.getAllByRole("button", { name: "Geri yükle" }).at(-1)!);
+    await user.click(screen.getByRole("button", { name: "Geri yükle" }));
     await screen.findByText("Bu kopyanın parolası yanlış.");
     await user.clear(old);
     await user.type(old, PASSWORD);
     await user.type(screen.getByLabelText("Ana parola"), NEW_PASSWORD);
-    await user.click(screen.getAllByRole("button", { name: "Geri yükle" }).at(-1)!);
+    await user.click(screen.getByRole("button", { name: "Geri yükle" }));
     await screen.findByText("1 hesap eklendi, 0 zaten vardı.");
     expect((await fresh.listAccounts()).accounts).toHaveLength(1);
   });
@@ -159,6 +214,25 @@ describe("corrupt vault", () => {
     await user.click(submit);
     await waitFor(() => expect(done).toBe(1));
     expect((await h.service.getState()).status).toBe("no-vault");
+  });
+
+  it("rejects a lowercase or partial confirmation", async () => {
+    const h = await harness();
+    renderUi(<CorruptScreen storageArea="local" onDone={() => {}} />, h.ui);
+    const user = userEvent.setup();
+    const submit = screen.getByRole("button", { name: "Kenara al ve yeni kasa kur" });
+    const field = screen.getByLabelText("Onaylamak için KENARA AL yaz");
+    await user.type(field, "kenara al");
+    expect((submit as HTMLButtonElement).disabled).toBe(true);
+    await user.clear(field);
+    await user.type(field, "KENARA");
+    expect((submit as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("shows no sync warning for local storage", async () => {
+    const h = await harness();
+    renderUi(<CorruptScreen storageArea="local" onDone={() => {}} />, h.ui);
+    expect(screen.queryByText(/eşitleniyor/)).toBeNull();
   });
 
   it("warns when the vault is synced", async () => {

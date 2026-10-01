@@ -379,6 +379,7 @@ export const en: Record<MessageKey, string> = {
   "snapshots.row": "{reason} · {count} accounts",
   "snapshots.otherVault": "another vault",
   "snapshots.restore": "Restore",
+  "snapshots.restoreRow": "Restore the copy from {date}",
   "snapshots.restoreNote": "Only missing accounts are added; nothing is deleted.",
   "snapshots.oldPassword": "Password of this copy",
   "snapshots.oldPasswordHint":

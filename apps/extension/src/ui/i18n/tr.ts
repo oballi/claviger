@@ -373,6 +373,7 @@ export const tr = {
   "snapshots.row": "{reason} · {count} hesap",
   "snapshots.otherVault": "başka bir kasa",
   "snapshots.restore": "Geri yükle",
+  "snapshots.restoreRow": "{date} kopyasını geri yükle",
   "snapshots.restoreNote": "Yalnızca eksik hesaplar eklenir; hiçbir şey silinmez.",
   "snapshots.oldPassword": "Bu kopyanın parolası",
   "snapshots.oldPasswordHint": "Kopya başka bir kasaya ait. O kasanın ana parolasını gir.",

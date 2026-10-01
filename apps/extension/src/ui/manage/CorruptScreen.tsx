@@ -50,9 +50,10 @@ export function CorruptScreen({
         value={typed}
         onChange={(e) => setTyped(e.target.value)}
         autoComplete="off"
+        aria-describedby={error ? "corrupt-error" : undefined}
       />
       {error ? (
-        <p role="alert" className="m-0 text-xs text-warn">
+        <p id="corrupt-error" role="alert" className="m-0 text-xs text-warn">
           {error}
         </p>
       ) : null}
