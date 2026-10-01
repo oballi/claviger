@@ -11,6 +11,8 @@ export const en: Record<MessageKey, string> = {
   "common.copy": "Copy",
   "common.retry": "Try again",
   "common.crashed": "Something went wrong. Your data is safe; try again.",
+  "lock.waitNotice": "Too many wrong attempts. Please wait a moment.",
+  "lock.countdown": "{seconds} s",
   "lock.wait": "Too many wrong attempts. Try again in {seconds} s.",
   "policy.browser-close": "When the browser closes",
   "policy.browser-close-or-screen-lock": "When the browser closes or the screen locks",

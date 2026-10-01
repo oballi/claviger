@@ -9,6 +9,8 @@ export const tr = {
   "common.copy": "Kopyala",
   "common.retry": "Tekrar dene",
   "common.crashed": "Bir şeyler ters gitti. Verilerin güvende; sayfayı yeniden dene.",
+  "lock.waitNotice": "Çok fazla hatalı deneme. Kısa bir süre bekle.",
+  "lock.countdown": "{seconds} sn",
   "lock.wait": "Çok fazla hatalı deneme. {seconds} sn sonra tekrar dene.",
   "policy.browser-close": "Tarayıcı kapanınca",
   "policy.browser-close-or-screen-lock": "Tarayıcı kapanınca veya ekran kilitlenince",

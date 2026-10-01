@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import type { ServiceState } from "../../background/vaultService";
 import { RpcError } from "../../rpc/client";
 import { errorMessage } from "../errors";
@@ -45,6 +45,11 @@ export function LockScreen({
   );
   const now = useNow(waitUntil > 0 ? 250 : 0);
   const waitSeconds = Math.max(0, Math.ceil((waitUntil - now) / 1000));
+
+  // Stops the 250 ms interval once the wait is over.
+  useEffect(() => {
+    if (waitUntil > 0 && waitSeconds === 0) setWaitUntil(0);
+  }, [waitUntil, waitSeconds]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -117,12 +122,16 @@ export function LockScreen({
           <p id="unlock-error" role="alert" className="m-0 min-h-4 text-xs text-warn">
             {error}
           </p>
+          {/* The live region is set once; the ticking number stays out of it. */}
           <p role="status" className="m-0 min-h-4 text-xs text-warn">
-            {waitSeconds > 0 ? t("lock.wait", { seconds: waitSeconds }) : ""}
+            {waitUntil > 0 ? t("lock.waitNotice") : ""}
+          </p>
+          <p aria-live="off" className="m-0 min-h-4 font-mono text-xs text-warn">
+            {waitSeconds > 0 ? t("lock.countdown", { seconds: waitSeconds }) : ""}
           </p>
           <div className="flex items-center justify-between text-xs text-muted">
             <span className="font-mono text-[11px]">{t("lock.enterHint")}</span>
-            <Button variant="link" onClick={onForgot} className="text-xs">
+            <Button variant="link" onClick={onForgot} className="min-w-11 text-xs">
               {t("lock.forgot")}
             </Button>
           </div>
@@ -131,7 +140,11 @@ export function LockScreen({
       <footer className="flex items-center justify-between border-t border-hair pt-1 pb-1 text-[11px] text-muted">
         <span>{lockPolicySentence(t, state.lockPolicy)}</span>
         {onChangePolicy ? (
-          <Button variant="link" onClick={onChangePolicy} className="text-[11px] text-muted">
+          <Button
+            variant="link"
+            onClick={onChangePolicy}
+            className="min-w-11 text-[11px] text-muted"
+          >
             {t("lock.changePolicy")}
           </Button>
         ) : null}

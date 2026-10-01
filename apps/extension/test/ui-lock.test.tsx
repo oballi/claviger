@@ -58,8 +58,9 @@ describe("LockScreen", () => {
       await vi.waitFor(() => expect(screen.getByRole("alert").textContent).toBe("Parola yanlış."));
     }
     expect(screen.getByRole("status").textContent).toBe(
-      "Çok fazla hatalı deneme. 2 sn sonra tekrar dene.",
+      "Çok fazla hatalı deneme. Kısa bir süre bekle.",
     );
+    expect(screen.getByText(/^[12] sn$/)).toBeTruthy();
     await userEvent.type(field, "x");
     expect(screen.getByRole("button", { name: "Kilidi aç" })).toHaveProperty("disabled", true);
   });
@@ -70,8 +71,9 @@ describe("LockScreen", () => {
       await h.ui.rpc("unlock", { password: "wrong password" }).catch(() => undefined);
     await openLock(h);
     expect(screen.getByRole("status").textContent).toBe(
-      "Çok fazla hatalı deneme. 2 sn sonra tekrar dene.",
+      "Çok fazla hatalı deneme. Kısa bir süre bekle.",
     );
+    expect(screen.getByText(/^[12] sn$/)).toBeTruthy();
   });
 
   it("uses a generic sentence when the account count is unknown", async () => {
@@ -88,6 +90,25 @@ describe("LockScreen", () => {
     expect(screen.getByRole("heading", { name: "Kasan bulundu." })).toBeTruthy();
     expect(screen.getByText("Kodların ana parolanın arkasında.")).toBeTruthy();
     expect(screen.getByText("Kendiliğinden kilitlenmez")).toBeTruthy();
+  });
+});
+
+describe("LockScreen countdown timer", () => {
+  it("re-enables the button once the wait is over", async () => {
+    const h = await harness({ status: "locked" });
+    for (let i = 0; i < 3; i++)
+      await h.ui.rpc("unlock", { password: "wrong password" }).catch(() => undefined);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      await openLock(h);
+      expect(screen.getByRole("status").textContent).not.toBe("");
+      await vi.advanceTimersByTimeAsync(3000);
+      await vi.waitFor(() => expect(screen.getByRole("status").textContent).toBe(""));
+      await userEvent.type(screen.getByLabelText("Ana parola"), "x", { delay: null });
+      expect(screen.getByRole("button", { name: "Kilidi aç" })).toHaveProperty("disabled", false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
