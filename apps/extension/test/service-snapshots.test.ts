@@ -1,6 +1,7 @@
 import { Vault } from "@otp-vault/core";
 import { MemoryStorage } from "@otp-vault/core/testing";
 import { describe, expect, it, vi } from "vitest";
+import { DAILY_CHECK_MS } from "../src/background/vaultService";
 import { DAY_MS, recordsStorage, SnapshotStore } from "../src/background/snapshots";
 import { memoryPlatform, type TestPlatform } from "./helpers/platform";
 import { codeOf, PASSWORD, unlockedService } from "./helpers/service";
@@ -200,5 +201,127 @@ describe("snapshot revocation (keyslot changes)", () => {
     await service.changePassword(token, "a brand new password");
     const left = await new SnapshotStore(p.local, p.clock, p.random).list();
     expect(left.map((s) => s.id)).toEqual([foreign.id]);
+  });
+});
+
+const oldCannotOpen = async (p: TestPlatform, oldPassword: string) => {
+  const store = new SnapshotStore(p.local, p.clock, p.random);
+  const opened: string[] = [];
+  for (const s of await store.list()) {
+    try {
+      await Vault.unlockWithPassword(deps(p, recordsStorage(s.records)), oldPassword);
+      opened.push(s.id);
+    } catch {
+      // wrong-password is the expected outcome
+    }
+  }
+  return opened;
+};
+
+describe("snapshot ordering and repair", () => {
+  it("a getState copy cannot interleave with changePassword", async () => {
+    const { service, p } = await unlockedService();
+    await service.getState();
+    await service.addAccount({ uri: URI });
+    p.clock.advance(DAY_MS + 1);
+    const { token } = await service.reauth(PASSWORD);
+    const origGet = p.local.get.bind(p.local);
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    let armed = true;
+    (p.local as { get: unknown }).get = async (keys?: string[]) => {
+      const out = await origGet(keys);
+      if (armed && !keys && /SnapshotStore\.take /.test(new Error().stack!)) {
+        armed = false;
+        await gate;
+      }
+      return out;
+    };
+    const gs = service.getState();
+    await new Promise((r) => setTimeout(r, 10));
+    const cp = service.changePassword(token, "a brand new password");
+    await new Promise((r) => setTimeout(r, 50));
+    release();
+    await Promise.all([gs, cp]);
+    (p.local as { get: unknown }).get = origGet;
+    expect(await oldCannotOpen(p, PASSWORD)).toEqual([]);
+  });
+
+  it("the next unlock repairs a crash between the keyslot write and revocation", async () => {
+    const { service, p } = await unlockedService();
+    await service.getState();
+    vi.spyOn(SnapshotStore.prototype, "rekey").mockRejectedValue(new Error("crash"));
+    vi.spyOn(SnapshotStore.prototype, "removeVault").mockRejectedValue(new Error("crash"));
+    const { token } = await service.reauth(PASSWORD);
+    await service.changePassword(token, "a brand new password");
+    vi.restoreAllMocks();
+    expect((await oldCannotOpen(p, PASSWORD)).length).toBeGreaterThan(0);
+    await service.lock();
+    await service.unlock("a brand new password");
+    expect(await oldCannotOpen(p, PASSWORD)).toEqual([]);
+  });
+
+  it("a double failure still returns the new recovery code and unlocks", async () => {
+    const { service } = await unlockedService();
+    await service.getState();
+    vi.spyOn(SnapshotStore.prototype, "rekey").mockRejectedValue(new Error("x"));
+    vi.spyOn(SnapshotStore.prototype, "removeVault").mockRejectedValue(new Error("x"));
+    const { token } = await service.reauth(PASSWORD);
+    const created = await service.createRecoveryCode(token);
+    expect(created.recoveryCode).toBeTruthy();
+    await service.lock();
+    const next = await service.unlockWithRecovery(created.recoveryCode, "another password 1");
+    expect(next.recoveryCode).toBeTruthy();
+    expect((await service.getState()).status).toBe("unlocked");
+    vi.restoreAllMocks();
+  });
+
+  it("deleteVault forgets the key even when removing copies fails", async () => {
+    const { service, p } = await unlockedService();
+    vi.spyOn(SnapshotStore.prototype, "removeAll").mockRejectedValueOnce(new Error("x"));
+    const { token } = await service.reauth(PASSWORD);
+    await expect(service.deleteVault(token)).rejects.toThrow();
+    expect(Object.keys(await p.session.get()).length).toBe(0);
+    expect((await service.getState()).status).toBe("no-vault");
+  });
+});
+
+describe("daily copy gating and failure isolation", () => {
+  it("runs at most hourly and again when the clock moves backwards", async () => {
+    const { service, p } = await unlockedService();
+    const spy = vi.spyOn(SnapshotStore.prototype, "takeDaily");
+    await service.getState();
+    await service.getState();
+    expect(spy).toHaveBeenCalledTimes(1);
+    p.clock.advance(DAILY_CHECK_MS);
+    await service.getState();
+    expect(spy).toHaveBeenCalledTimes(2);
+    p.clock.advance(-DAILY_CHECK_MS * 3);
+    await service.getState();
+    expect(spy).toHaveBeenCalledTimes(3);
+  });
+
+  it("a throwing daily copy fails neither getState nor unlock", async () => {
+    const { service } = await unlockedService();
+    vi.spyOn(SnapshotStore.prototype, "takeDaily").mockRejectedValue(new Error("x"));
+    expect((await service.getState()).status).toBe("unlocked");
+    await service.lock();
+    await expect(service.unlock(PASSWORD)).resolves.toBeUndefined();
+  });
+
+  it("takes no copy for a locked deleteAccount or an expired preview", async () => {
+    const { service, p } = await unlockedService();
+    const { id } = await service.addAccount({ uri: URI });
+    const preview = await service.importPreview(
+      URI.replace("JBSWY3DPEHPK3PXP", "GEZDGNBVGY3TQOJQ"),
+    );
+    if (preview.status !== "ok") throw new Error("preview");
+    p.clock.advance(11 * 60_000);
+    await expect(service.importCommit(preview.previewId, [0])).rejects.toMatchObject({
+      code: "preview-expired",
+    });
+    await service.lock();
+    await expect(service.deleteAccount(id)).rejects.toMatchObject({ code: "locked" });
+    expect(await snapKeys(p)).toEqual([]);
   });
 });

@@ -174,14 +174,32 @@ export class VaultService {
     }
   }
 
-  /** Keyslot changes keep the DEK, so copies must not keep keyslots the user just revoked. Not best effort. */
+  /**
+   * Keyslot changes keep the DEK, so copies must not keep keyslots the user just revoked.
+   * Never throws: the keyslot change is already written, and the next unlock reconciles.
+   */
   private async revokeInSnapshots(vault: Vault): Promise<void> {
     try {
-      const area = this.area((await this.settings()).storageArea);
-      const header = (await area.get([HEADER_KEY]))[HEADER_KEY];
-      await this.snapshots.rekey(vault.vaultId, header);
+      await this.snapshots.rekey(vault.vaultId, vault.headerSnapshot);
     } catch {
-      await this.snapshots.removeVault(vault.vaultId);
+      try {
+        await this.snapshots.removeVault(vault.vaultId);
+      } catch {
+        // Left for reconcileSnapshots on the next unlock.
+      }
+    }
+  }
+
+  /** Repairs a crash or failure between a keyslot write and its revocation in the copies. */
+  private async reconcileSnapshots(vault: Vault): Promise<void> {
+    try {
+      const current = JSON.stringify(vault.headerSnapshot);
+      const stale = (await this.snapshots.list()).some(
+        (s) => s.vaultId === vault.vaultId && JSON.stringify(s.records[HEADER_KEY]) !== current,
+      );
+      if (stale) await this.revokeInSnapshots(vault);
+    } catch {
+      // Housekeeping only; never fails an unlock.
     }
   }
 
@@ -324,7 +342,8 @@ export class VaultService {
     };
     const none = { hasRecoveryCode: null, accountCount: null };
     if (!exists) return { ...base, status: "no-vault", ...none };
-    await this.dailySnapshot();
+    // Queued: a copy taken mid-write could hold a half-changed vault or a revoked keyslot.
+    await this.exclusive(() => this.dailySnapshot());
     let vault: Vault | null;
     try {
       vault = await this.ensureLoaded();
@@ -408,6 +427,7 @@ export class VaultService {
         throw new ServiceError("locked", "The vault was locked meanwhile");
       }
       await this.dailySnapshot();
+      await this.reconcileSnapshots(vault);
       try {
         await vault.purgeTombstones();
       } catch {
@@ -704,12 +724,13 @@ export class VaultService {
       const active = this.area((await this.settings()).storageArea);
       const keys = Object.keys(await active.get()).filter(isVaultKey);
       if (keys.length > 0) await active.remove(keys);
-      await this.snapshots.removeAll();
       await this.keys.forget();
       await this.p.session.remove([MANUAL_LOCK_KEY]);
       await this.throttle.reset();
       await this.p.alarms.clear(AUTOLOCK_ALARM);
       await saveSettings(this.p.local, DEFAULT_SETTINGS);
+      // Last, so a failure here can never leave the key cached.
+      await this.snapshots.removeAll();
     });
   }
 

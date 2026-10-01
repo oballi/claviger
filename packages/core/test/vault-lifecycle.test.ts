@@ -52,6 +52,19 @@ describe("Vault lifecycle", () => {
     expect(await asyncCodeOf(Vault.unlockWithPassword(deps, "nope"))).toBe("wrong-password");
   });
 
+  it("exposes a detached copy of the current header", async () => {
+    const deps = makeDeps();
+    const { vault } = await Vault.create(deps, {
+      password: "pw-123456",
+      createRecoveryCode: false,
+    });
+    const before = vault.headerSnapshot as { keyslots: unknown[] };
+    expect(before).toEqual(deps.storage.data.get(HEADER_KEY));
+    before.keyslots.length = 0;
+    await vault.changePassword("pw-654321");
+    expect(vault.headerSnapshot).toEqual(deps.storage.data.get(HEADER_KEY));
+  });
+
   it("reports a missing or corrupt vault", async () => {
     const deps = makeDeps();
     expect(await asyncCodeOf(Vault.unlockWithPassword(deps, "x"))).toBe("vault-not-found");

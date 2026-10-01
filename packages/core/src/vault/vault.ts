@@ -91,6 +91,11 @@ export class Vault {
     return this.header.vaultId;
   }
 
+  /** Copy of the header as last written (plaintext keyslots only), for keeping backups in step. */
+  get headerSnapshot(): unknown {
+    return structuredClone(this.header);
+  }
+
   static async exists(storage: StoragePort): Promise<boolean> {
     return HEADER_KEY in (await storage.get([HEADER_KEY]));
   }
