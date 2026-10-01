@@ -6,7 +6,7 @@ import { readFields } from "../encoding/protobuf";
 import { CoreError } from "../errors";
 import { collect, emptyResult, type ImportResult } from "./types";
 
-// google/protobuf: MigrationPayload.OtpParameters enum değerleri
+// google/protobuf MigrationPayload.OtpParameters enum values
 const ALGORITHMS: Record<number, string> = {
   0: "SHA1",
   1: "SHA1",
@@ -77,7 +77,7 @@ export function parseGoogleMigrationUri(
   if (!dataParam) throw new CoreError("invalid-uri", "Missing data parameter");
   let payload: Uint8Array;
   try {
-    // decodeURIComponent '+' karakterine dokunmaz; ham base64 '+' içerse de doğru çözülür.
+    // decodeURIComponent leaves '+' alone, so raw base64 containing '+' still decodes correctly.
     payload = fromBase64(decodeURIComponent(dataParam.slice(5)));
   } catch (cause) {
     throw new CoreError("invalid-uri", "Invalid data parameter", { cause });

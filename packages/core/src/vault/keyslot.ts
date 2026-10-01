@@ -4,7 +4,7 @@ import { DEFAULT_ARGON2, deriveArgon2id, hkdfSha256, type Argon2Params } from ".
 import { fromBase64, toBase64 } from "../encoding/base64";
 import type { RandomPort } from "../ports";
 
-/** base64 olarak çözülebilen ve en az 8 bayt olan salt (hash-wasm alt sınırı). */
+/** Salt that decodes as base64 and is at least 8 bytes (hash-wasm lower bound). */
 const saltSchema = z.string().refine((s) => {
   try {
     return fromBase64(s).length >= 8;
@@ -14,8 +14,8 @@ const saltSchema = z.string().refine((s) => {
 }, "salt must be base64 and at least 8 bytes");
 
 /**
- * Sınırlar, kötü niyetli dosyaların KDF ile tarayıcıyı dondurmasını engeller (Review Focus #1).
- * Üst sınır 256 MiB / 10 tur: varsayılan (64 MiB, t=3) rahatça sığar.
+ * The bounds stop a malicious file from freezing the browser via the KDF (Review Focus #1).
+ * Upper bound 256 MiB / 10 passes: the default (64 MiB, t=3) fits comfortably.
  */
 export const passwordKeyslotSchema = z.object({
   kind: z.literal("password"),

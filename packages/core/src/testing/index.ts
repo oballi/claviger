@@ -1,12 +1,12 @@
 import type { Argon2Params } from "../crypto/kdf";
 import type { ClockPort, StoragePort } from "../ports";
 
-/** Testlerde hızlı Argon2id parametreleri. Üretimde ASLA kullanılmaz. */
+/** Fast Argon2id parameters for tests. NEVER use in production. */
 export const FAST_KDF: Argon2Params = { memoryKiB: 1024, iterations: 1, parallelism: 1 };
 
 export class MemoryStorage implements StoragePort {
   readonly data = new Map<string, unknown>();
-  /** Ayarlanırsa bir sonraki set() bu hatayı fırlatır ve hiçbir şey yazmaz. */
+  /** When set, the next set() throws this error and writes nothing. */
   failNextSet: Error | null = null;
 
   async get(keys?: string[]): Promise<Record<string, unknown>> {

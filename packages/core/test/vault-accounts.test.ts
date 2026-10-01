@@ -87,7 +87,7 @@ describe("sync-shaped data", () => {
     const x = await vault.addAccount(input("X"));
     deps.clock.advance(5);
     const y = await vault.addAccount(input("Y"));
-    // Bu cihazın index'i yalnızca y'yi biliyor:
+    // This device's index only knows y:
     deps.storage.data.set(
       INDEX_KEY,
       await encryptRecord(
@@ -120,7 +120,7 @@ describe("sync-shaped data", () => {
     await vault.updateAccount(a.id, { label: "3" });
     const lastRecord = deps.storage.data.get(accountKey(a.id));
     await vault.deleteAccount(a.id);
-    deps.storage.data.set(accountKey(a.id), lastRecord); // remove() kaçtı veya eski kopya sync'ten döndü
+    deps.storage.data.set(accountKey(a.id), lastRecord); // remove() was missed or an old copy came back via sync
     expect((await vault.listAccounts()).accounts).toEqual([]);
   });
 
@@ -338,7 +338,7 @@ describe("tombstone purge", () => {
     const a = await vault.addAccount(input("A"));
     const stale = deps.storage.data.get(accountKey(a.id));
     await vault.deleteAccount(a.id);
-    deps.storage.data.set(accountKey(a.id), stale); // eski kopya sync ile geri geldi
+    deps.storage.data.set(accountKey(a.id), stale); // old copy came back via sync
     deps.clock.advance(TOMBSTONE_TTL_MS + 10);
     expect(await vault.purgeTombstones()).toBe(1);
     expect(deps.storage.data.has(accountKey(a.id))).toBe(false);

@@ -10,7 +10,7 @@ const attemptsSchema = z.object({
   lastFailureAt: z.number(),
 });
 
-/** spec §5.5: ilk 3 hata serbest; sonra 2, 4, 8 … sn, en fazla 60 sn. */
+/** spec §5.5: first 3 failures free; then 2, 4, 8 ... s, at most 60 s. */
 export function delayAfter(failures: number): number {
   if (failures < FREE_ATTEMPTS) return 0;
   return Math.min(2 ** (failures - FREE_ATTEMPTS + 1) * 1000, MAX_DELAY_MS);

@@ -1,7 +1,7 @@
 import type { Argon2Params } from "./crypto/kdf";
 
 export interface StoragePort {
-  /** `keys` verilmezse tüm öğeleri döner. Olmayan anahtarlar sonuçta yer almaz. */
+  /** Omitting `keys` returns everything; missing keys are absent from the result. */
   get(keys?: string[]): Promise<Record<string, unknown>>;
   set(items: Record<string, unknown>): Promise<void>;
   remove(keys: string[]): Promise<void>;
@@ -20,7 +20,6 @@ export interface VaultDeps {
   storage: StoragePort;
   random: RandomPort;
   clock: ClockPort;
-  /** Yeni parola keyslot'ları için Argon2id parametreleri; verilmezse DEFAULT_ARGON2. */
   kdf?: Argon2Params;
 }
 

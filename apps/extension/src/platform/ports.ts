@@ -5,7 +5,7 @@ export interface AlarmPort {
   clear(name: string): Promise<void>;
 }
 
-/** Arka plan mantığının tarayıcıdan ihtiyaç duyduğu her şey. Olaylar (alarm, idle) servise dışarıdan iletilir. */
+/** Everything the background logic needs from the browser. Events (alarm, idle) are fed to the service from outside. */
 export interface Platform {
   local: StoragePort;
   sync: StoragePort;
@@ -13,7 +13,7 @@ export interface Platform {
   alarms: AlarmPort;
   clock: ClockPort;
   random: RandomPort;
-  /** Yalnızca testlerde hızlı Argon2id için; üretimde tanımsız (DEFAULT_ARGON2). */
+  /** Fast Argon2id for tests only; undefined in production (DEFAULT_ARGON2). */
   kdf?: Argon2Params;
 }
 

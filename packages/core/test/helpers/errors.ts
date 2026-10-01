@@ -1,6 +1,6 @@
 import { isCoreError } from "../../src/errors";
 
-/** Fonksiyonun fırlattığı CoreError kodunu döndürür; hiç hata yoksa undefined, CoreError dışı hata için "non-core-error". */
+/** Returns the CoreError code thrown by the function; undefined if nothing is thrown, "non-core-error" for a non-CoreError. */
 export function codeOf(fn: () => unknown): string | undefined {
   try {
     fn();

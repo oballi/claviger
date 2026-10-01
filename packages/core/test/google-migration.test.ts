@@ -6,7 +6,7 @@ import { parseGoogleMigrationUri } from "../src/importers/googleMigration";
 import { codeOf } from "./helpers/errors";
 import { migrationPayload, migrationUri, otpParameters } from "./helpers/protobuf";
 
-// Herkese açık bir Google Authenticator export örneği (secret "Hello!\xde\xad\xbe\xef").
+// Public Google Authenticator export sample (secret "Hello!\xde\xad\xbe\xef").
 const PUBLIC_SAMPLE =
   "otpauth-migration://offline?data=CjEKCkhlbGxvId6tvu8SGEV4YW1wbGU6YWxpY2VAZ29vZ2xlLmNvbRoHRXhhbXBsZSABKAEwAhABGAEgACjr4JKK%2Bv%2F%2F%2F%2F8B";
 

@@ -94,7 +94,7 @@ export async function parseOtpvaultExport(json: unknown, password: string): Prom
     if (!parsed.success) throw new Error("bad payload");
     body = parsed.data;
   } catch {
-    // cause eklenmez: JSON.parse hata mesajı çözülmüş düz metinden alıntı yapar.
+    // No cause attached: the JSON.parse message quotes decrypted plaintext.
     throw new CoreError("corrupt-file", "Export payload is malformed");
   }
 

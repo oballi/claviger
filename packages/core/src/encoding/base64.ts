@@ -8,7 +8,7 @@ export function toBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-/** Standart ve url-safe base64 kabul eder; padding ve boşluklar opsiyoneldir. */
+/** Accepts standard and url-safe base64; padding and whitespace are optional. */
 export function fromBase64(text: string): Uint8Array {
   let clean = text.replace(/\s+/g, "").replace(/-/g, "+").replace(/_/g, "/");
   if (!/^[A-Za-z0-9+/]*={0,2}$/.test(clean)) {

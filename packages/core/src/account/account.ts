@@ -22,7 +22,6 @@ export interface Account extends AccountInput {
   updatedAt: number;
 }
 
-/** Import ve formlardan gelen, henüz doğrulanmamış hesap verisi. */
 export interface AccountDraft {
   secret: string;
   type?: string;
@@ -64,7 +63,7 @@ export const accountDraftSchema = z.object({
 
 const invalid = (message: string) => new CoreError("invalid-otp-params", message);
 
-/** Eşsiz UTF-16 vekillerini (lone surrogate) U+FFFD ile değiştirir; aksi halde encodeURIComponent patlar. */
+/** Replaces lone UTF-16 surrogates with U+FFFD; encodeURIComponent throws on them otherwise. */
 const wellFormed = (s: string) =>
   s.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "�").trim();
 
@@ -138,7 +137,7 @@ export function normalizeAccountInput(draft: AccountDraft): AccountInput {
   };
 }
 
-/** Kopya tespiti için: aynı tür + aynı normalize secret = aynı hesap. */
+/** For duplicate detection: same type + same normalized secret = same account. */
 export function accountFingerprint(a: { type: string; secret: string }): string {
   return `${a.type}:${normalizeBase32(a.secret)}`;
 }

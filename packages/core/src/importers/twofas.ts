@@ -67,7 +67,7 @@ async function decryptServices(
     if (!Array.isArray(services)) throw new Error("not an array");
     return services;
   } catch {
-    // cause eklenmez: JSON.parse hata mesajı çözülmüş düz metinden alıntı yapar.
+    // No cause attached: the JSON.parse message quotes decrypted plaintext.
     throw new CoreError("corrupt-file", "2FAS payload is malformed");
   }
 }

@@ -47,7 +47,7 @@ export interface VaultListing {
   accounts: Account[];
   pinned: string[];
   unreadable: string[];
-  /** `vault:index` var ama çözülemiyor; yazmalar `rebuildIndex()` çağrılana dek `vault-corrupt` ile reddedilir. */
+  /** `vault:index` exists but cannot be decrypted; writes are rejected with `vault-corrupt` until `rebuildIndex()` runs. */
   indexDamaged: boolean;
 }
 
@@ -58,9 +58,9 @@ export type AccountPatch = Partial<
 const EMPTY_INDEX: VaultIndex = { order: [], pinned: [], updatedAt: 0 };
 
 /**
- * Depo başına mutasyon kuyruğu. Vault örneğine değil StoragePort'a bağlıdır: host, service worker
- * her uyandığında `fromKey` ile yeni bir Vault kurabilir; aynı depoyu kullanan tüm örnekler aynı
- * sırayı paylaşır. Zincir hiçbir zaman reddedilmez; hata yalnızca çağırana iletilir.
+ * Per-storage mutation queue. Bound to the StoragePort, not the Vault instance: the host (service worker)
+ * may build a new Vault via `fromKey` on every wake-up, and all instances over the same storage share
+ * one order. The chain never rejects; errors only propagate to the caller.
  */
 const storageLocks = new WeakMap<StoragePort, Promise<unknown>>();
 
@@ -181,7 +181,6 @@ export class Vault {
     return new Vault(deps, dek, header);
   }
 
-  /** Host'un oturum deposunda sakladığı DEK ile kasayı yeniden açar. */
   static async fromKey(deps: VaultDeps, dek: Uint8Array): Promise<Vault> {
     if (dek.length !== 32)
       throw new CoreError("wrong-password", "The cached key has an invalid length");
@@ -214,7 +213,7 @@ export class Vault {
       deps.random,
     );
     await withStorageLock(deps.storage, async () => {
-      // Kilit beklenirken aynı kod başka bir çağrıda kullanılmış olabilir.
+      // While waiting for the lock, another call may have used the same code.
       const current = await Vault.readHeader(deps.storage);
       const stillValid = current.keyslots.some(
         (s) => s.kind === "recovery" && s.iv === slot.iv && s.ct === slot.ct,
@@ -233,12 +232,12 @@ export class Vault {
     return dek !== null && bytesEqual(dek, this.dek);
   }
 
-  /** Aynı depodaki tüm mutasyonları sıraya sokar. İçeriden başka bir public mutasyon çağrılmamalı. */
+  /** Serializes all mutations on the same storage. Public mutations must not be called from inside. */
   private exclusive<T>(fn: () => Promise<T>): Promise<T> {
     return withStorageLock(this.deps.storage, fn);
   }
 
-  /** Kilit altında çağrılmalıdır. */
+  /** Must be called while holding the lock. */
   private async replaceKeyslots(
     replacements: Partial<Record<Keyslot["kind"], Keyslot | null>>,
   ): Promise<void> {
@@ -266,7 +265,7 @@ export class Vault {
   }
 
   async changePassword(newPassword: string): Promise<void> {
-    // Yavaş KDF kilit dışında; header oku-değiştir-yaz kilit içinde.
+    // Slow KDF runs outside the lock; the header read-modify-write runs inside it.
     const password = await this.buildPasswordSlot(newPassword);
     await this.exclusive(() => this.replaceKeyslots({ password }));
   }
@@ -312,9 +311,9 @@ export class Vault {
   }
 
   /**
-   * DEK bu kasaya mı ait? Önce index, sonra hesap kayıtları denenir; biri açılırsa yeterlidir (index
-   * bozuk veya sync'te henüz gelmemiş olabilir). false: kayıt var ama hiçbiri açılmadı.
-   * null: kontrol edilecek şifreli veri yok (boş kasa) → kabul edilir.
+   * Does the DEK belong to this vault? Tries the index first, then account records; one that opens is enough
+   * (the index may be corrupt or not yet synced). false: records exist but none opened.
+   * null: nothing encrypted to check (empty vault) -> accepted.
    */
   private async indexOpens(): Promise<boolean | null> {
     const all = await this.deps.storage.get();
@@ -334,7 +333,7 @@ export class Vault {
     return parsedAny ? false : null;
   }
 
-  /** Ham index değerini açar. undefined: index yok; null: var ama çözülemiyor (hasarlı). */
+  /** Opens the raw index value. undefined: no index; null: present but undecryptable (damaged). */
   private async openIndex(raw: unknown): Promise<VaultIndex | null | undefined> {
     if (raw === undefined) return undefined;
     if (isNewerVersion(raw, "v"))
@@ -344,9 +343,9 @@ export class Vault {
   }
 
   /**
-   * Index'i okur. Yoksa boş index döner. Varsa ama çözülemiyorsa: okuma amaçlı çağrılarda boş index
-   * döner (kodlar yine görünür); `strict` (yazma öncesi) çağrılarda `vault-corrupt` fırlatır ki
-   * sıralama ve sabitlemeler sessizce silinmesin.
+   * Reads the index. Missing -> empty index. Present but undecryptable: read-only callers get an empty index
+   * (codes stay visible); `strict` callers (before writes) throw `vault-corrupt` so
+   * ordering and pins are not silently wiped.
    */
   protected async readIndex({ strict = false }: { strict?: boolean } = {}): Promise<VaultIndex> {
     const index = await this.openIndex((await this.deps.storage.get([INDEX_KEY]))[INDEX_KEY]);
@@ -390,7 +389,7 @@ export class Vault {
     for (const [key, value] of Object.entries(all)) {
       if (!key.startsWith(ACCOUNT_PREFIX)) continue;
       const id = key.slice(ACCOUNT_PREFIX.length);
-      // Daha yeni bir istemcinin kaydı: bu sürüm kasaya dokunmamalı (okunamaz diye silinmesin).
+      // Record from a newer client: this version must not touch the vault (it must not be deleted for being unreadable).
       if (isNewerVersion(value, "v"))
         throw new CoreError("unsupported-format", "Vault contains records from a newer version");
       const record = encryptedRecordSchema.safeParse(value);
@@ -405,7 +404,7 @@ export class Vault {
         unreadable.push(id);
         continue;
       }
-      // Dış updatedAt AAD ile korunmaz; eski şifreli metin tekrar oynatılabilir. Doğrulanmış iç değer de tombstone'dan yeni olmalı.
+      // The outer updatedAt is not covered by the AAD, so an old ciphertext could be replayed. The verified inner value must also be newer than the tombstone.
       if (deletedAt !== undefined && account.updatedAt <= deletedAt) continue;
       accounts.push(account);
     }
@@ -430,8 +429,8 @@ export class Vault {
   }
 
   /**
-   * Hasarlı index'i okumadan yenisini yazar: sıra okunabilir hesapların createdAt/id sırası,
-   * sabitlemeler boş. Bozuk index yüzünden kilitlenen yazmaları yeniden açar.
+   * Writes a fresh index without reading the damaged one: order is createdAt/id of the readable accounts,
+   * pins are empty. Unblocks writes locked out by a corrupt index.
    */
   rebuildIndex(): Promise<void> {
     return this.exclusive(async () => {
@@ -565,12 +564,12 @@ export class Vault {
         throw new CoreError("unsupported-format", "This account was saved by a newer version");
       const record = encryptedRecordSchema.safeParse(raw);
       const index = await this.readIndex({ strict: true });
-      // Tombstone, kaydın kendisinden de yeni olmalı; yoksa eski kopya sync ile geri gelir (spec §7).
+      // The tombstone must be newer than the record itself, or the old copy comes back via sync (spec §7).
       const deletedAt = Math.max(
         this.nextUpdatedAt(index.updatedAt),
         record.success ? record.data.updatedAt + 1 : 0,
       );
-      // Önce tombstone + index; sonra kayıt silinir. Arada kesinti olursa tombstone kaydı gizler.
+      // Tombstone + index first, then delete the record. If interrupted in between, the tombstone hides the record.
       await this.writeIndex(
         {
           order: index.order.filter((x) => x !== id),
@@ -610,7 +609,6 @@ export class Vault {
     });
   }
 
-  /** Kayıt `deletedAt` tarihli tombstone tarafından gizleniyor mu? (listAccounts ile aynı kural) */
   private async hiddenBy(key: string, raw: unknown, deletedAt: number): Promise<boolean> {
     const record = encryptedRecordSchema.safeParse(raw);
     if (!record.success) return false;
@@ -631,7 +629,7 @@ export class Vault {
         if (!tomb.success || tomb.data.deletedAt >= cutoff) continue;
         purged++;
         toRemove.push(key);
-        // Tombstone'un gizlediği eski kopya da gitmeli; yoksa tombstone silinince geri dirilir (spec §7).
+        // An old copy hidden by the tombstone must go too, or it resurrects once the tombstone is removed (spec §7).
         const recordKey = accountKey(key.slice(TOMB_PREFIX.length));
         if (await this.hiddenBy(recordKey, all[recordKey], tomb.data.deletedAt))
           toRemove.push(recordKey);

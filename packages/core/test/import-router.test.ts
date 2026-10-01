@@ -65,7 +65,7 @@ describe("parseImport", () => {
   });
 
   it("checks specific formats before the generic upstream heuristic", async () => {
-    // Upstream dedektörü "secret" alanlı herhangi bir değeri kabul eder; özel formatlar önce gelmeli.
+    // The upstream detector accepts any value with a "secret" field; specific formats must come first.
     const lookalike = { secret: "JBSWY3DPEHPK3PXP", type: "totp" };
     const exported = JSON.parse(
       await exportOtpvault(

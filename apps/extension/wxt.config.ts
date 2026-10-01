@@ -4,8 +4,8 @@ export default defineConfig({
   modules: ["@wxt-dev/module-react"],
   imports: false,
   hooks: {
-    // WXT 0.21.4, `imports: false` olsa bile unimport dönüşümünü çalıştırıyor ve `storage` adlı
-    // parametreleri global sanıp core'a `wxt/utils/storage` import'u enjekte ediyor. Kapat.
+    // WXT 0.21.4 runs the unimport transform even with `imports: false`, treats parameters named `storage`
+    // as globals and injects a `wxt/utils/storage` import into core. Hence disabled.
     "config:resolved": (wxt) => {
       Object.assign(wxt.config.imports, { autoImport: false });
     },
@@ -24,7 +24,7 @@ export default defineConfig({
             gecko: {
               id: "otp-vault@otp-vault.dev",
               strict_min_version: "128.0",
-              // AMO, Kasım 2025'ten beri yeni eklentilerde zorunlu tutuyor; hiçbir veri toplanmıyor.
+              // AMO has required this for new extensions since Nov 2025; no data is collected.
               data_collection_permissions: { required: ["none"] },
             },
           },

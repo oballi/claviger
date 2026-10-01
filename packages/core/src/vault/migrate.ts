@@ -3,8 +3,8 @@ import type { StoragePort } from "../ports";
 import { isVaultKey } from "./format";
 
 /**
- * Tüm `vault:*` anahtarlarını `from`'dan `to`'ya taşır: kopyala → doğrula → kaynağı sil (spec §7).
- * Doğrulama başarısız olursa hedef temizlenir, kaynak dokunulmadan kalır.
+ * Moves all `vault:*` keys from `from` to `to`: copy -> verify -> delete source (spec §7).
+ * If verification fails the target is cleaned up and the source is left untouched.
  */
 export async function moveVaultData(from: StoragePort, to: StoragePort): Promise<number> {
   const items = Object.fromEntries(

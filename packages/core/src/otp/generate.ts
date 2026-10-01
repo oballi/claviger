@@ -6,7 +6,6 @@ import type { OtpAlgorithm, OtpType } from "./types";
 
 export interface OtpParams {
   type: OtpType;
-  /** Normalize edilmiş base32 */
   secret: string;
   algorithm: OtpAlgorithm;
   digits: number;
@@ -16,7 +15,6 @@ export interface OtpParams {
 
 export interface GeneratedCode {
   code: string;
-  /** Kodun değişmesine kalan saniye; HOTP için null */
   remaining: number | null;
   period: number | null;
 }

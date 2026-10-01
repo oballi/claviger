@@ -138,7 +138,7 @@ export async function v3Backup(
   return out;
 }
 
-/** Tüm biçimlerde beklenen içe aktarma sonucu (GOST kaydı issue olur). */
+/** Expected import result for all formats (the GOST record becomes an issue). */
 export const EXPECTED_ACCOUNTS = [
   {
     type: "totp",

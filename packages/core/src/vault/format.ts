@@ -8,10 +8,10 @@ export const TOMB_PREFIX = "vault:tomb:";
 export const TOMBSTONE_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 
 /**
- * Sürüm kuralı: header, kayıt, index veya tombstone düzeninde geriye uyumsuz HER değişiklik header
- * `format` değerini artırmalıdır; böylece eski istemciler kasaya dokunmadan kilit açmada durur.
- * Bilinen sürümden büyük bir sürüm alanı "bozuk" değil `unsupported-format` olarak raporlanır
- * (kullanıcı kasayı silmeye yönlendirilmemeli).
+ * Versioning rule: ANY backward-incompatible change to the header, record, index or tombstone layout
+ * must bump the header `format`, so older clients stop at unlock without touching the vault.
+ * A format newer than the known one is reported as `unsupported-format`, not "corrupt"
+ * (the user must not be steered toward deleting the vault).
  */
 export const isNewerVersion = (raw: unknown, field: string, current = 1): boolean =>
   typeof raw === "object" &&

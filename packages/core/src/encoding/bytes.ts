@@ -5,7 +5,7 @@ export function utf8Encode(text: string): Uint8Array {
   return encoder.encode(text);
 }
 
-/** Geçersiz UTF-8 dizilerinde TypeError fırlatır. */
+/** Throws TypeError on invalid UTF-8. */
 export function utf8Decode(bytes: Uint8Array): string {
   return decoder.decode(bytes);
 }
@@ -27,7 +27,7 @@ export function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
   return diff === 0;
 }
 
-/** WebCrypto tipleri Uint8Array<ArrayBufferLike> kabul etmez; bağımsız bir ArrayBuffer kopyası üretir. */
+/** WebCrypto typings reject Uint8Array<ArrayBufferLike>; returns a copy backed by a plain ArrayBuffer. */
 export function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   return bytes.slice().buffer as ArrayBuffer;
 }

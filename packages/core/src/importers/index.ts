@@ -20,7 +20,7 @@ interface JsonFormat {
   parse(json: unknown, password?: string): Promise<ImportResult>;
 }
 
-// Sıra önemli: en belirgin imzası olan biçim önce denenir; upstream en gevşek tespit olduğu için sonda.
+// Order matters: the format with the most distinctive signature is tried first; upstream detection is the loosest, so it goes last.
 const JSON_FORMATS: JsonFormat[] = [
   {
     format: "otp-vault",

@@ -53,7 +53,6 @@ describe("vault hardening", () => {
     expect(ok).toHaveLength(1);
     expect(failed).toHaveLength(1);
     expect(failed[0]!.reason).toMatchObject({ code: "invalid-recovery-code" });
-    // Kazananın döndürdüğü yeni kod gerçekten geçerli:
     await Vault.unlockWithRecovery(deps, ok[0]!.value.recoveryCode, "again-pass");
   });
 });

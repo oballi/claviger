@@ -7,7 +7,7 @@ export interface Sealed {
   ct: string;
 }
 
-/** AES-256-GCM çözme. `data` = ciphertext‖tag. Kimlik doğrulama başarısızsa null döner. */
+/** AES-256-GCM decrypt. `data` = ciphertext||tag. Returns null if authentication fails. */
 export async function gcmDecrypt(
   key: Uint8Array,
   iv: Uint8Array,

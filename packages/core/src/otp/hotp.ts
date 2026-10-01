@@ -32,7 +32,7 @@ export function counterBytes(counter: number): Uint8Array {
   return out;
 }
 
-/** RFC 4226 §5.3 dinamik kesme → 31 bitlik tamsayı. */
+/** RFC 4226 §5.3 dynamic truncation -> 31-bit integer. */
 export function dynamicTruncate(mac: Uint8Array): number {
   const offset = mac[mac.length - 1]! & 0x0f;
   return (

@@ -48,7 +48,7 @@ export function aegisNeedsPassword(json: unknown): boolean {
   return file.success && typeof file.data.db === "string";
 }
 
-/** Bellek ≈ 128·r·(n + p + 2) bayt; 256 MiB üstü reddedilir (Aegis varsayılanı 2^15·8·32776 ≈ 32 MiB). */
+/** Memory ~ 128*r*(n + p + 2) bytes; above 256 MiB is rejected (Aegis default 2^15*8*32776 ~ 32 MiB). */
 const saneScrypt = (s: PasswordSlot) => {
   const isNPowerOfTwo = s.n >= 2 && (s.n & (s.n - 1)) === 0;
   const rInBounds = s.r >= 1 && s.r <= 32;
@@ -111,7 +111,7 @@ async function decryptDb(
     try {
       return JSON.parse(utf8Decode(plain));
     } catch {
-      // cause eklenmez: JSON.parse hata mesajı çözülmüş düz metinden alıntı yapar.
+      // No cause attached: the JSON.parse message quotes decrypted plaintext.
       throw new CoreError("corrupt-file", "Aegis vault body is not valid JSON");
     }
   }

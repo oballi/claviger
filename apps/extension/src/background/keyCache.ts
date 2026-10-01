@@ -17,9 +17,9 @@ function decodeKey(value: unknown): Uint8Array | null {
 }
 
 /**
- * Kilidi açık kasanın DEK'i nerede durur (spec §5.3–5.4):
- * - `session` (yalnızca bellekte, tarayıcı kapanınca silinir): kilit açıkken her zaman.
- * - `local` (diskte): yalnızca "Hiçbir zaman" politikasında. ASLA `sync`'e yazılmaz.
+ * Where the DEK of an unlocked vault lives (spec §5.3-5.4):
+ * - `session` (memory only, cleared when the browser closes): always while unlocked.
+ * - `local` (on disk): only under the "Never" lock policy. NEVER written to `sync`.
  */
 export class KeyCache {
   constructor(private readonly p: Platform) {}
@@ -46,7 +46,7 @@ export class KeyCache {
     return decodeKey((await this.p.local.get([PERSISTED_KEY]))[PERSISTED_KEY]);
   }
 
-  /** Elle kilit: tarayıcı yeniden açılana dek kalıcı anahtar da kullanılmaz. */
+  /** Manual lock: the persistent key is not used either until the browser restarts. */
   async lock(): Promise<void> {
     await this.p.session.set({ [MANUAL_LOCK_KEY]: true });
     await this.p.session.remove([SESSION_KEY]);

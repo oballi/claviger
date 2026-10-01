@@ -6,10 +6,10 @@ import { fromHex } from "../encoding/hex";
 const SALTED = utf8Encode("Salted__");
 
 /**
- * CryptoJS.AES.encrypt(text, passphrase) çıktısını çözer: OpenSSL "Salted__" + 8 bayt salt,
- * EVP_BytesToKey(MD5, 1 tur) ile 32 bayt anahtar + 16 bayt IV, AES-256-CBC/PKCS7.
- * YALNIZCA eski upstream yedeklerini okumak içindir; yeni veri asla bu yöntemle şifrelenmez.
- * Parola yanlışsa veya girdi bozuksa genellikle null döner (CBC'de kimlik doğrulama yoktur).
+ * Decrypts CryptoJS.AES.encrypt(text, passphrase) output: OpenSSL "Salted__" + 8-byte salt,
+ * EVP_BytesToKey(MD5, 1 round) -> 32-byte key + 16-byte IV, AES-256-CBC/PKCS7.
+ * ONLY for reading legacy upstream backups; new data is never encrypted this way.
+ * A wrong password or corrupt input usually yields null (CBC has no authentication).
  */
 export async function decryptCryptoJsAes(
   ciphertextB64: string,

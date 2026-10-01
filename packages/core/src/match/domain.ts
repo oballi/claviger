@@ -15,7 +15,7 @@ function hostnameOf(input: string): string | null {
   return host || null;
 }
 
-/** Kayıtlı alan adı (eTLD+1). IP adresleri ve noktasız hostlar olduğu gibi döner. */
+/** Registrable domain (eTLD+1). IP addresses and dotless hosts are returned as-is. */
 export function registrableDomain(input: string): string | null {
   const host = hostnameOf(input);
   if (!host) return null;

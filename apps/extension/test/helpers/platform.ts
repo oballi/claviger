@@ -3,7 +3,6 @@ import { FakeClock, FAST_KDF, MemoryStorage } from "@otp-vault/core/testing";
 import type { AlarmPort, Platform } from "../../src/platform/ports";
 
 export class FakeAlarms implements AlarmPort {
-  /** alarm adı → tetiklenme zamanı (ms) */
   readonly scheduled = new Map<string, number>();
 
   constructor(private readonly clock: ClockPort) {}
@@ -38,7 +37,7 @@ export function memoryPlatform(): TestPlatform {
   };
 }
 
-/** Tarayıcı kapanıp açıldı: session boşalır ve alarmlar silinir; local, sync ve saat aynı kalır. */
+/** Browser closed and reopened: session is emptied and alarms are cleared; local, sync and the clock stay the same. */
 export function restartBrowser(p: TestPlatform): TestPlatform {
   return { ...p, session: new MemoryStorage(), alarms: new FakeAlarms(p.clock) };
 }

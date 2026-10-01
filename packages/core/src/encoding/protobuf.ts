@@ -18,7 +18,7 @@ export function readVarint(buf: Uint8Array, pos: number): [bigint, number] {
   throw invalid("Varint is longer than 10 bytes");
 }
 
-/** Bir protobuf mesajının üst düzey alanlarını okur (iç içe mesajlar `wire: 2` baytları olarak döner). */
+/** Reads the top-level fields of a protobuf message (nested messages come back as `wire: 2` bytes). */
 export function readFields(buf: Uint8Array): ProtoField[] {
   const fields: ProtoField[] = [];
   let pos = 0;

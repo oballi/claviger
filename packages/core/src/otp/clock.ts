@@ -1,7 +1,7 @@
-/** Bu eşikten büyük kayma kaydedilir ve kullanıcıya gösterilir (spec §8). */
+/** Skew above this threshold is recorded and shown to the user (spec §8). */
 export const CLOCK_OFFSET_THRESHOLD_SEC = 30;
 
-/** Sunucunun `Date` başlığını isteğin orta anıyla karşılaştırır. Saniye cinsinden ofset döner (sunucu − yerel). */
+/** Compares the server's `Date` header with the request midpoint. Returns the offset in seconds (server - local). */
 export function computeClockOffset(
   serverDate: string,
   requestStartMs: number,

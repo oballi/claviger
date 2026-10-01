@@ -22,7 +22,6 @@ export function base32Encode(
   return out;
 }
 
-/** Boşluk ve tireleri, sondaki padding'i atar ve büyük harfe çevirir. */
 export function normalizeBase32(input: string): string {
   return input.replace(/[\s-]/g, "").replace(/=+$/, "").toUpperCase();
 }

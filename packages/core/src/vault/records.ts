@@ -4,7 +4,7 @@ import { utf8Decode, utf8Encode } from "../encoding/bytes";
 import type { RandomPort } from "../ports";
 import type { EncryptedRecord } from "./format";
 
-/** AAD kaydın depolama anahtarını içerir; kayıtların yer değiştirmesi (swap) tespit edilir. */
+/** The AAD includes the record's storage key, so swapped records are detected. */
 export const recordAad = (key: string) => `otp-vault/v1/${key}`;
 
 export async function encryptRecord(
