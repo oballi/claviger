@@ -38,4 +38,10 @@ describe("public API", () => {
       expect(core, name).toHaveProperty(name);
     }
   });
+
+  it("does not export test doubles from the root", () => {
+    for (const name of ["MemoryStorage", "FakeClock", "FAST_KDF"]) {
+      expect(core, name).not.toHaveProperty(name);
+    }
+  });
 });

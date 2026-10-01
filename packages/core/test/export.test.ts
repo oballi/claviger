@@ -66,6 +66,22 @@ describe(".otpvault export", () => {
     );
   });
 
+  it("binds the payload to the exportId", async () => {
+    const json = JSON.parse(await exportOtpvault(accounts, "pw", makeDeps()));
+    const code = await asyncCodeOf(
+      parseOtpvaultExport({ ...json, exportId: webRandom.uuid() }, "pw"),
+    );
+    expect(["wrong-password", "corrupt-file"]).toContain(code);
+  });
+
+  it("uses a fresh exportId, salt and iv for every export", async () => {
+    const one = JSON.parse(await exportOtpvault(accounts, "pw", makeDeps()));
+    const two = JSON.parse(await exportOtpvault(accounts, "pw", makeDeps()));
+    expect(one.exportId).not.toBe(two.exportId);
+    expect(one.keyslots[0].kdf.salt).not.toBe(two.keyslots[0].kdf.salt);
+    expect(one.payload.iv).not.toBe(two.payload.iv);
+  });
+
   it("does not attach decrypted plaintext to the error when the payload is not JSON", async () => {
     const exportId = webRandom.uuid();
     const fileKey = webRandom.bytes(32);

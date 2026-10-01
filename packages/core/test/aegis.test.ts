@@ -52,6 +52,10 @@ const EXPECTED = [
 ];
 
 describe("Aegis import", () => {
+  it("imports a vault encrypted with the real Aegis scrypt defaults (n=2^15, r=8, p=1)", async () => {
+    const file = aegisEncrypted("test", { n: 32768, r: 8, p: 1 });
+    expect((await parseAegis(file, "test")).accounts).toEqual(EXPECTED);
+  });
   it("does not attach decrypted plaintext to the error when the body is not JSON", async () => {
     const file = aegisEncrypted("test", { plaintext: "{SECRET-PLAINTEXT" });
     const error = await parseAegis(file, "test").catch((e: unknown) => e);

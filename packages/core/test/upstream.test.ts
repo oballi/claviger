@@ -35,6 +35,25 @@ describe("upstream Authenticator backups", () => {
     expect(result.issues).toEqual([GOST_ISSUE]);
   });
 
+  it("handles secret prefixes, hhex and hex-looking TOTP secrets in plain backups", async () => {
+    const entry = (secret: string, type: string) => ({ secret, type, encrypted: false });
+    const result = await parseUpstreamBackup({
+      a: entry("stm-MFRGGZDFMZTWQ2LK", "totp"),
+      b: entry("blz-KRUGKIDROVUWG2ZA", "totp"),
+      c: entry("bliz-KRUGKIDROVUWG2ZA", "totp"),
+      d: entry("3132333435363738393031323334353637383930", "hhex"),
+      e: entry("3132333435363738393031323334353637383930", "totp"),
+    });
+    expect(result.issues).toEqual([]);
+    expect(result.accounts).toMatchObject([
+      { type: "steam", secret: "MFRGGZDFMZTWQ2LK" },
+      { type: "totp", secret: "KRUGKIDROVUWG2ZA", digits: 8 },
+      { type: "totp", secret: "KRUGKIDROVUWG2ZA", digits: 8 },
+      { type: "hotp", secret: "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ" },
+      { type: "totp", secret: "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ", digits: 6 },
+    ]);
+  });
+
   it("imports v2 backups (encrypted secrets)", async () => {
     const result = await parseUpstreamBackup(v2Backup("pässword"), "pässword");
     expect(result.accounts).toEqual(EXPECTED_ACCOUNTS);

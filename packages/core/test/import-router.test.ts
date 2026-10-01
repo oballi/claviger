@@ -64,6 +64,26 @@ describe("parseImport", () => {
     }
   });
 
+  it("checks specific formats before the generic upstream heuristic", async () => {
+    // Upstream dedektörü "secret" alanlı herhangi bir değeri kabul eder; özel formatlar önce gelmeli.
+    const lookalike = { secret: "JBSWY3DPEHPK3PXP", type: "totp" };
+    const exported = JSON.parse(
+      await exportOtpvault(
+        [normalizeAccountInput({ secret: "JBSWY3DPEHPK3PXP" })],
+        "pw",
+        makeDeps(),
+      ),
+    );
+    expect(await parseImport(json({ ...exported, extra: lookalike }))).toEqual({
+      status: "needs-password",
+      format: "otp-vault",
+    });
+    expect(await parseImport(json({ ...aegisPlain(), extra: lookalike }))).toMatchObject({
+      status: "ok",
+      format: "aegis",
+    });
+  });
+
   it.each(["", "hello", "{}", "[1,2,3]", json({ some: "object" }), "null"])(
     "does not recognize %j",
     async (text) => {
