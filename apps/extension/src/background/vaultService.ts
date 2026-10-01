@@ -1,4 +1,17 @@
-import { isCoreError, Vault, type StoragePort, type VaultDeps } from "@otp-vault/core";
+import {
+  generateCode,
+  isCoreError,
+  matchAccounts,
+  normalizeAccountInput,
+  parseOtpauthUri,
+  registrableDomain,
+  Vault,
+  type Account,
+  type AccountDraft,
+  type AccountPatch,
+  type StoragePort,
+  type VaultDeps,
+} from "@otp-vault/core";
 import type { Platform, StorageAreaName } from "../platform/ports";
 import { ServiceError } from "./errors";
 import { KeyCache } from "./keyCache";
@@ -21,6 +34,27 @@ export interface ServiceState {
   retryAfterMs: number;
   clockOffsetSec: number;
   clockCheckEnabled: boolean;
+}
+
+export interface AccountView {
+  id: string;
+  type: Account["type"];
+  issuer: string;
+  label: string;
+  algorithm: Account["algorithm"];
+  digits: number;
+  period: number;
+  domains: string[];
+  pinned: boolean;
+  code: string;
+  remaining: number | null;
+}
+
+export interface AccountListView {
+  accounts: AccountView[];
+  unreadable: string[];
+  indexDamaged: boolean;
+  matches: { exact: string[]; suggested: string[] };
 }
 
 export function assertPassword(password: string): void {
@@ -292,5 +326,98 @@ export class VaultService {
     const { lockPolicy } = await this.settings();
     if (lockPolicy.kind !== "browser-close-or-screen-lock") return;
     if (state === "locked" || (state === "idle" && opts.idleMeansLocked)) await this.lock();
+  }
+
+  async listAccounts(opts: { pageUrl?: string } = {}): Promise<AccountListView> {
+    const vault = await this.requireVault();
+    const { clockOffsetSec } = await this.settings();
+    const listing = await vault.listAccounts();
+    const now = this.p.clock.now();
+    const pinned = new Set(listing.pinned);
+    const accounts = await Promise.all(
+      listing.accounts.map(async (a): Promise<AccountView> => {
+        const generated = await generateCode(a, now, clockOffsetSec);
+        return {
+          id: a.id,
+          type: a.type,
+          issuer: a.issuer,
+          label: a.label,
+          algorithm: a.algorithm,
+          digits: a.digits,
+          period: a.period,
+          domains: a.domains,
+          pinned: pinned.has(a.id),
+          code: generated.code,
+          remaining: generated.remaining,
+        };
+      }),
+    );
+    const matches = opts.pageUrl
+      ? matchAccounts(listing.accounts, opts.pageUrl)
+      : { exact: [] as Account[], suggested: [] as Account[] };
+    return {
+      accounts,
+      unreadable: listing.unreadable,
+      indexDamaged: listing.indexDamaged,
+      matches: {
+        exact: matches.exact.map((a) => a.id),
+        suggested: matches.suggested.map((a) => a.id),
+      },
+    };
+  }
+
+  addAccount(
+    source: { uri: string } | { draft: AccountDraft },
+    opts: { sourceUrl?: string } = {},
+  ): Promise<{ id: string }> {
+    return this.exclusive(async () => {
+      const vault = await this.requireVault();
+      const parsed =
+        "uri" in source ? parseOtpauthUri(source.uri) : normalizeAccountInput(source.draft);
+      const domain = opts.sourceUrl ? registrableDomain(opts.sourceUrl) : null;
+      const input = domain
+        ? normalizeAccountInput({ ...parsed, domains: [...parsed.domains, domain] })
+        : parsed;
+      const account = await vault.addAccount(input);
+      return { id: account.id };
+    });
+  }
+
+  updateAccount(id: string, patch: AccountPatch): Promise<void> {
+    return this.exclusive(async () => {
+      await (await this.requireVault()).updateAccount(id, patch);
+    });
+  }
+
+  deleteAccount(id: string): Promise<void> {
+    return this.exclusive(async () => {
+      await (await this.requireVault()).deleteAccount(id);
+    });
+  }
+
+  reorder(order: string[]): Promise<void> {
+    return this.exclusive(async () => {
+      await (await this.requireVault()).reorder(order);
+    });
+  }
+
+  setPinned(id: string, pinned: boolean): Promise<void> {
+    return this.exclusive(async () => {
+      await (await this.requireVault()).setPinned(id, pinned);
+    });
+  }
+
+  rebuildIndex(): Promise<void> {
+    return this.exclusive(async () => {
+      await (await this.requireVault()).rebuildIndex();
+    });
+  }
+
+  nextHotp(id: string): Promise<{ code: string }> {
+    return this.exclusive(async () => {
+      const vault = await this.requireVault();
+      const account = await vault.incrementHotp(id);
+      return { code: (await generateCode(account, this.p.clock.now())).code };
+    });
   }
 }
