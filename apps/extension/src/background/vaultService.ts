@@ -26,7 +26,7 @@ import {
 } from "@otp-vault/core";
 import type { Platform, StorageAreaName } from "../platform/ports";
 import { ServiceError } from "./errors";
-import { KeyCache, MANUAL_LOCK_KEY } from "./keyCache";
+import { KeyCache, MANUAL_LOCK_KEY, PERSISTED_KEY } from "./keyCache";
 import {
   DEFAULT_SETTINGS,
   loadSettings,
@@ -183,7 +183,9 @@ export class VaultService {
   }
 
   private async loadFromCache(epoch: number): Promise<Vault | null> {
-    const { storageArea, lockPolicy } = await this.settings();
+    // Adopts the right area first: an interrupted move must not make the cached key look wrong.
+    const { settings } = await this.locateVault();
+    const { storageArea, lockPolicy } = settings;
     const dek = await this.keys.load(lockPolicy);
     if (!dek || epoch !== this.lockEpoch) return null;
     try {
@@ -225,8 +227,18 @@ export class VaultService {
     if (epoch !== this.lockEpoch) return false;
     this.vault = vault;
     await this.keys.store(vault.exportKey(), policy);
+    if (await this.relockIfOvertaken(epoch)) return false;
     await this.throttle.reset();
     await this.scheduleAutolock(policy);
+    return true;
+  }
+
+  /** KeyCache.store spans several writes; a lock that lands between them would be undone, so redo it. */
+  private async relockIfOvertaken(epoch: number): Promise<boolean> {
+    if (epoch === this.lockEpoch) return false;
+    this.vault = null;
+    await this.keys.lock();
+    await this.p.local.remove([PERSISTED_KEY]);
     return true;
   }
 
@@ -264,6 +276,9 @@ export class VaultService {
     }
     // Header-only read: reports unsupported/corrupt, the recovery flag and the count even while locked.
     const info = await Vault.inspect(this.area(settings.storageArea));
+    if (info.status === "unsupported" || info.status === "corrupt") {
+      return { ...base, status: info.status, ...none };
+    }
     if (vault) {
       return {
         ...base,
@@ -271,9 +286,6 @@ export class VaultService {
         hasRecoveryCode: vault.hasRecoveryCode(),
         accountCount: info.accountCount,
       };
-    }
-    if (info.status === "unsupported" || info.status === "corrupt") {
-      return { ...base, status: info.status, ...none };
     }
     if (info.status === "missing") return { ...base, status: "no-vault", ...none };
     return {
@@ -570,9 +582,11 @@ export class VaultService {
 
   setLockPolicy(token: string, policy: LockPolicy): Promise<void> {
     return this.exclusive(async () => {
+      const epoch = this.lockEpoch;
       const vault = await this.spendToken(token);
       await saveSettings(this.p.local, { lockPolicy: policy });
       await this.keys.store(vault.exportKey(), policy);
+      if (await this.relockIfOvertaken(epoch)) return;
       await this.scheduleAutolock(policy);
     });
   }
@@ -584,7 +598,13 @@ export class VaultService {
       const { storageArea } = await this.settings();
       if (storageArea === area) return;
       const target = this.area(area);
-      await moveVaultData(this.area(storageArea), target);
+      try {
+        await moveVaultData(this.area(storageArea), target);
+      } catch (e) {
+        if (isCoreError(e, "vault-exists"))
+          throw new ServiceError("already-set-up", "The target storage area already holds a vault");
+        throw e;
+      }
       // The data has moved, so the setting is saved even if a lock arrived meanwhile.
       await saveSettings(this.p.local, { storageArea: area });
       const moved = await Vault.fromKey(this.deps(target), vault.exportKey());

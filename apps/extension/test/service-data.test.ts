@@ -6,7 +6,7 @@ import {
   SYNC_QUOTA_BYTES,
   VaultService,
 } from "../src/background/vaultService";
-import { type TestPlatform } from "./helpers/platform";
+import { pauseOnce } from "./helpers/pause";
 import { codeOf, PASSWORD, unlockedService } from "./helpers/service";
 
 const SECRET = "JBSWY3DPEHPK3PXP";
@@ -163,33 +163,6 @@ describe("clock", () => {
   });
 });
 
-function gate() {
-  let release!: () => void;
-  const open = new Promise<void>((r) => (release = r));
-  let reached!: () => void;
-  const hit = new Promise<void>((r) => (reached = r));
-  return { open, release, hit, reached };
-}
-
-/** Pauses the first call of `method` whose arguments match, until the returned gate is released. */
-function pauseOnce(
-  storage: TestPlatform["local"],
-  method: "get" | "set" | "remove",
-  match: (arg: unknown) => boolean,
-) {
-  const g = gate();
-  const original = storage[method].bind(storage) as (arg?: never) => Promise<unknown>;
-  let done = false;
-  (storage as unknown as Record<string, unknown>)[method] = async (arg?: never) => {
-    if (!done && match(arg)) {
-      done = true;
-      g.reached();
-      await g.open;
-    }
-    return original(arg);
-  };
-  return g;
-}
 const hasVaultKey = (arg: unknown) =>
   Array.isArray(arg) ? arg.some((k) => String(k).startsWith("vault:")) : arg === undefined;
 const removesVault = (arg: unknown) =>
@@ -235,9 +208,6 @@ describe("races (fix round 1)", () => {
     g.release();
     const token = await pending;
     await service.unlock(PASSWORD);
-    if (token !== null)
-      expect(await codeOf(service.createRecoveryCode(token))).toBe("invalid-token");
-    else expect(token).toBeNull();
     expect(token).toBeNull();
   });
 
@@ -262,8 +232,9 @@ describe("races (fix round 1)", () => {
     g.release();
     const stale = await pending;
     await setup;
-    if (stale !== null)
-      expect(await codeOf(service.exportVault(stale, "otpauth"))).toBe("invalid-token");
+    // reauth is queued ahead of the delete, so it mints a token; the delete must then revoke it.
+    expect(stale).not.toBeNull();
+    expect(await codeOf(service.exportVault(stale!, "otpauth"))).toBe("invalid-token");
   });
 
   it("does not store a preview built across a lock", async () => {
@@ -278,11 +249,7 @@ describe("races (fix round 1)", () => {
     g.release();
     const outcome = await pending;
     await service.unlock(PASSWORD);
-    if (typeof outcome === "object" && outcome.status === "ok") {
-      expect(await codeOf(service.importCommit(outcome.previewId, [0]))).toBe("preview-expired");
-    } else {
-      expect(outcome).toBe("locked");
-    }
+    expect(outcome).toBe("locked");
   });
 
   it("keeps a recovery code created during a move", async () => {
