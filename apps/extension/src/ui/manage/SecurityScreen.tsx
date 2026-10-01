@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { LockPolicy } from "../../background/settings";
 import type { ServiceState } from "../../background/vaultService";
 import { Button } from "../components/Button";
@@ -47,6 +47,17 @@ export function SecurityScreen({
   const [policy, setPolicy] = useState<LockPolicy>(state.lockPolicy);
   const [reveal, setReveal] = useState(state.revealRequiresPassword);
   const [deleteWord, setDeleteWord] = useState("");
+  const root = useRef<HTMLDivElement>(null);
+  const focusAfter = useRef<Panel>(null);
+  // While a new code is pending, the old one is already invalid, so nothing may discard it.
+  const codePending = freshCode !== null;
+
+  // Closing a panel hides its button; focus would otherwise fall to <body>.
+  useEffect(() => {
+    if (panel !== null || !focusAfter.current) return;
+    root.current?.querySelector<HTMLElement>(`[data-action="${focusAfter.current}"]`)?.focus();
+    focusAfter.current = null;
+  }, [panel]);
 
   function open(next: Panel) {
     setMessage("");
@@ -62,7 +73,10 @@ export function SecurityScreen({
     if (next !== "reveal") setReveal(state.revealRequiresPassword);
   }
 
-  function done(text: string) {
+  function done(text: string, from: Panel) {
+    setNewPassword("");
+    setConfirm("");
+    focusAfter.current = from;
     setPanel(null);
     setMessage(text);
     onChanged();
@@ -75,11 +89,14 @@ export function SecurityScreen({
   );
 
   return (
-    <div className="flex flex-col gap-12">
+    <div ref={root} className="flex flex-col gap-12">
       <PageTitle title={t("security.title")}>{t("security.body")}</PageTitle>
       <p role="status" className="m-0 -my-6 min-h-4 text-sm">
         {message}
       </p>
+      {codePending ? (
+        <p className="m-0 text-[13px] text-warn">{t("security.saveCodeFirst")}</p>
+      ) : null}
 
       <SettingsSection num="01" title={t("security.access")}>
         <SettingsRow
@@ -87,7 +104,13 @@ export function SecurityScreen({
           description={t("security.passwordHint")}
           action={
             panel === "password" ? null : (
-              <Button onClick={() => open("password")}>{t("security.passwordChange")}</Button>
+              <Button
+                data-action="password"
+                disabled={codePending}
+                onClick={() => open("password")}
+              >
+                {t("security.passwordChange")}
+              </Button>
             )
           }
         >
@@ -125,7 +148,9 @@ export function SecurityScreen({
                 submitLabel={t("security.passwordChange")}
                 onConfirmed={async (token) => {
                   await rpc("changePassword", { token, newPassword });
-                  done(t("security.passwordChanged"));
+                  setNewPassword("");
+                  setConfirm("");
+                  done(t("security.passwordChanged"), "password");
                 }}
               />
               {cancel}
@@ -138,7 +163,7 @@ export function SecurityScreen({
           description={state.hasRecoveryCode ? t("security.recoveryYes") : t("security.recoveryNo")}
           action={
             panel === "recovery" ? null : (
-              <Button onClick={() => open("recovery")}>
+              <Button data-action="recovery" onClick={() => open("recovery")}>
                 {state.hasRecoveryCode ? t("security.recoveryNew") : t("security.recoveryCreate")}
               </Button>
             )
@@ -164,7 +189,7 @@ export function SecurityScreen({
               doneLabel={t("security.recoveryDone")}
               onDone={() => {
                 setFreshCode(null);
-                done(t("security.recoveryCreated"));
+                done(t("security.recoveryCreated"), "recovery");
               }}
             />
           ) : null}
@@ -176,6 +201,8 @@ export function SecurityScreen({
           action={
             <select
               aria-label={t("picker.legend")}
+              data-action="lock"
+              disabled={codePending}
               className={selectClass}
               value={policyKey(panel === "lock" ? policy : state.lockPolicy)}
               onChange={(e) => {
@@ -207,7 +234,7 @@ export function SecurityScreen({
                 autoFocus={false}
                 onConfirmed={async (token) => {
                   await rpc("setLockPolicy", { token, policy });
-                  done(t("security.saved"));
+                  done(t("security.saved"), "lock");
                 }}
               />
               {cancel}
@@ -226,6 +253,8 @@ export function SecurityScreen({
                 type="checkbox"
                 role="switch"
                 aria-label={t("security.reveal")}
+                data-action="reveal"
+                disabled={codePending}
                 checked={panel === "reveal" ? reveal : state.revealRequiresPassword}
                 onChange={(e) => {
                   const next = e.target.checked;
@@ -247,7 +276,7 @@ export function SecurityScreen({
                 autoFocus={false}
                 onConfirmed={async (token) => {
                   await rpc("setRevealRequiresPassword", { token, value: reveal });
-                  done(t("security.saved"));
+                  done(t("security.saved"), "reveal");
                 }}
               />
               {cancel}
@@ -259,10 +288,17 @@ export function SecurityScreen({
       <SettingsSection num="03" title={t("security.danger")}>
         <SettingsRow
           title={t("security.delete")}
-          description={t("security.deleteHint")}
+          description={
+            state.storageArea === "sync" ? t("security.deleteHintSync") : t("security.deleteHint")
+          }
           action={
             panel === "delete" ? null : (
-              <Button variant="danger" onClick={() => open("delete")}>
+              <Button
+                variant="danger"
+                data-action="delete"
+                disabled={codePending}
+                onClick={() => open("delete")}
+              >
                 {t("security.delete")}
               </Button>
             )
@@ -285,10 +321,12 @@ export function SecurityScreen({
               <ReauthForm
                 submitLabel={t("security.deleteSubmit")}
                 autoFocus={false}
-                disabled={deleteWord.trim() !== t("security.deleteWord")}
+                disabled={
+                  deleteWord.normalize("NFC").trim() !== t("security.deleteWord").normalize("NFC")
+                }
                 onConfirmed={async (token) => {
                   await rpc("deleteVault", { token });
-                  done(t("security.deleted"));
+                  done(t("security.deleted"), "delete");
                 }}
               />
               {cancel}

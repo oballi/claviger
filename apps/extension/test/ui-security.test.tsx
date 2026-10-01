@@ -317,4 +317,113 @@ describe("SecurityScreen", () => {
     await vi.waitFor(() => expect(onChanged).toHaveBeenCalled());
     expect(await ui.rpc("getState", {})).toMatchObject({ status: "locked", storageArea: "sync" });
   });
+
+  it("locks every other row while a fresh recovery code is pending", async () => {
+    await open();
+    const access = region("Erişim");
+    await userEvent.click(within(access).getByRole("button", { name: "Yeni kod oluştur" }));
+    await confirmPassword(access, "Oluştur");
+    await within(access).findByTestId("recovery-code");
+    expect(within(access).getByRole("combobox", { name: "Kilit tercihi" })).toHaveProperty(
+      "disabled",
+      true,
+    );
+    expect(within(access).getByRole("button", { name: "Parolayı değiştir" })).toHaveProperty(
+      "disabled",
+      true,
+    );
+    expect(within(region("Gizli anahtar")).getByRole("switch")).toHaveProperty("disabled", true);
+    const del = within(region("Tehlikeli bölge")).getByRole("button", { name: "Kasayı sil" });
+    expect(del).toHaveProperty("disabled", true);
+    await userEvent.click(del);
+    expect(within(access).getByTestId("recovery-code")).toBeTruthy();
+    expect(screen.getByText("Önce yeni kurtarma kodunu kaydet.")).toBeTruthy();
+    await userEvent.click(
+      within(access).getByRole("checkbox", { name: "Kodu güvenli bir yere kaydettim." }),
+    );
+    await userEvent.click(within(access).getByRole("button", { name: "Tamam" }));
+    await screen.findByText("Yeni kurtarma kodu kaydedildi.");
+    expect(del).toHaveProperty("disabled", false);
+  });
+
+  it("starts with empty password fields after a successful change", async () => {
+    await open();
+    const access = region("Erişim");
+    await userEvent.click(within(access).getByRole("button", { name: "Parolayı değiştir" }));
+    await userEvent.type(within(access).getByLabelText("Yeni ana parola"), "yeni parola cümlesi");
+    await userEvent.type(
+      within(access).getByLabelText("Parolayı tekrar gir"),
+      "yeni parola cümlesi",
+    );
+    await userEvent.click(within(access).getByRole("button", { name: "Devam" }));
+    await confirmPassword(access, "Parolayı değiştir");
+    await screen.findByText("Parola değiştirildi.");
+    await userEvent.click(within(access).getByRole("button", { name: "Parolayı değiştir" }));
+    expect(within(access).getByLabelText("Yeni ana parola")).toHaveProperty("value", "");
+    expect(within(access).getByLabelText("Parolayı tekrar gir")).toHaveProperty("value", "");
+  });
+
+  it("uses a sync-specific delete hint for the sync area", async () => {
+    const sync = await harness({ storageArea: "sync" });
+    const { unmount } = renderUi(
+      <SecurityScreen state={await sync.ui.rpc("getState", {})} onChanged={() => {}} />,
+      sync.ui,
+    );
+    const danger = region("Tehlikeli bölge");
+    expect(
+      within(danger).getByText(/eşitlenen tüm cihazlardan kalıcı olarak silinir/),
+    ).toBeTruthy();
+    expect(within(danger).queryByText(/bu cihazdan/)).toBeNull();
+    unmount();
+    const local = await harness();
+    renderUi(
+      <SecurityScreen state={await local.ui.rpc("getState", {})} onChanged={() => {}} />,
+      local.ui,
+    );
+    expect(within(region("Tehlikeli bölge")).getByText(/bu cihazdan/)).toBeTruthy();
+  });
+
+  it("moves focus back to the row action after a change", async () => {
+    await open();
+    const access = region("Erişim");
+    await userEvent.selectOptions(
+      within(access).getByRole("combobox", { name: "Kilit tercihi" }),
+      "timeout-15",
+    );
+    await confirmPassword(access, "Kaydet");
+    await screen.findByText("Kaydedildi.");
+    await vi.waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(access).getByRole("combobox", { name: "Kilit tercihi" }),
+      ),
+    );
+    await userEvent.click(within(access).getByRole("button", { name: "Parolayı değiştir" }));
+    await userEvent.type(within(access).getByLabelText("Yeni ana parola"), "yeni parola cümlesi");
+    await userEvent.type(
+      within(access).getByLabelText("Parolayı tekrar gir"),
+      "yeni parola cümlesi",
+    );
+    await userEvent.click(within(access).getByRole("button", { name: "Devam" }));
+    await confirmPassword(access, "Parolayı değiştir");
+    await vi.waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(access).getByRole("button", { name: "Parolayı değiştir" }),
+      ),
+    );
+  });
+
+  it("accepts a decomposed (NFD) confirmation word", async () => {
+    const { ui } = await open();
+    const danger = region("Tehlikeli bölge");
+    await userEvent.click(within(danger).getByRole("button", { name: "Kasayı sil" }));
+    await userEvent.type(within(danger).getByLabelText("Ana parola"), PASSWORD);
+    await userEvent.type(
+      within(danger).getByLabelText("Onaylamak için S\u0130L yaz"),
+      "SI\u0307L ",
+    );
+    const submit = within(danger).getByRole("button", { name: "Kasayı kalıcı olarak sil" });
+    expect(submit).toHaveProperty("disabled", false);
+    await userEvent.click(submit);
+    await vi.waitFor(async () => expect((await ui.rpc("getState", {})).status).toBe("no-vault"));
+  });
 });

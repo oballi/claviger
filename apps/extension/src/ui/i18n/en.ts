@@ -278,6 +278,9 @@ export const en: Record<MessageKey, string> = {
   "security.delete": "Delete vault",
   "security.deleteHint":
     "All accounts are permanently removed from this device. Take a backup first.",
+  "security.deleteHintSync":
+    "All accounts are permanently removed from all your synced devices. Take a backup first.",
+  "security.saveCodeFirst": "Save the new recovery code first.",
   "security.deleteWarning": "This can't be undone.",
   "security.deleteWord": "DELETE",
   "security.deleteType": "Type {word} to confirm",

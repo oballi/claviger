@@ -273,8 +273,11 @@ export const tr = {
   "security.delete": "Kasayı sil",
   "security.deleteHint":
     "Tüm hesaplar bu cihazdan kalıcı olarak silinir. Önce yedek almanı öneririz.",
+  "security.deleteHintSync":
+    "Tüm hesaplar eşitlenen tüm cihazlardan kalıcı olarak silinir. Önce yedek almanı öneririz.",
+  "security.saveCodeFirst": "Önce yeni kurtarma kodunu kaydet.",
   "security.deleteWarning": "Bu işlem geri alınamaz.",
-  "security.deleteWord": "SİL",
+  "security.deleteWord": "S\u0130L",
   "security.deleteType": "Onaylamak için {word} yaz",
   "security.deleteSubmit": "Kasayı kalıcı olarak sil",
   "security.deleted": "Kasa silindi.",
