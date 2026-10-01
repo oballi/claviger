@@ -36,7 +36,18 @@ describe("RecoverScreen", () => {
       screen.getByRole("heading", { name: "Yeni kurtarma kodun." }),
     );
     await userEvent.click(screen.getByRole("button", { name: "Kopyala" }));
-    expect(ui.copy.mock.calls[0]![0]).not.toBe(recoveryCode);
+    const copied = ui.copy.mock.calls[0]![0];
+    expect(copied).not.toBe(recoveryCode);
+    expect(screen.getByTestId("recovery-code").textContent).toBe(
+      copied
+        .split("-")
+        .map((g, i) => `${i + 1}${g}`)
+        .join(""),
+    );
+    const done = screen.getByRole("button", { name: "Kodlarıma git" });
+    expect(done).toHaveProperty("disabled", true);
+    await userEvent.click(done);
+    expect(onDone).not.toHaveBeenCalled();
     await userEvent.click(
       screen.getByRole("checkbox", { name: "Kodu güvenli bir yere kaydettim." }),
     );
@@ -44,9 +55,13 @@ describe("RecoverScreen", () => {
     expect(onDone).toHaveBeenCalled();
     await ui.rpc("lock", {});
     await expect(
+      ui.rpc("unlockWithRecovery", { code: copied, newPassword: "ikinci parola cümlesi" }),
+    ).resolves.toMatchObject({ recoveryCode: expect.any(String) });
+    await ui.rpc("lock", {});
+    await expect(
       ui.rpc("unlockWithRecovery", { code: recoveryCode!, newPassword: NEW_PASSWORD }),
     ).rejects.toMatchObject({ code: "invalid-recovery-code" });
-    await expect(ui.rpc("unlock", { password: NEW_PASSWORD })).resolves.toBeNull();
+    await expect(ui.rpc("unlock", { password: "ikinci parola cümlesi" })).resolves.toBeNull();
   });
 
   it("rejects a wrong code and keeps the form", async () => {
@@ -60,9 +75,56 @@ describe("RecoverScreen", () => {
 
   it("checks the new password before calling the service", async () => {
     const { ui, recoveryCode } = await open();
+    const rpc = vi.spyOn(ui, "rpc");
     await fill(recoveryCode!, "short");
     expect(screen.getByText("Parola en az 8 karakter olmalı.")).toBeTruthy();
+    expect(rpc).not.toHaveBeenCalledWith("unlockWithRecovery", expect.anything());
     expect((await ui.rpc("getState", {})).status).toBe("locked");
+  });
+
+  it("rejects a mismatched confirmation without calling the service", async () => {
+    const { ui, recoveryCode } = await open();
+    const rpc = vi.spyOn(ui, "rpc");
+    await fill(recoveryCode!, NEW_PASSWORD, "başka bir parola");
+    expect(screen.getByText("Parolalar eşleşmiyor.")).toBeTruthy();
+    expect(rpc).not.toHaveBeenCalledWith("unlockWithRecovery", expect.anything());
+  });
+
+  it("clears both password fields after a failed attempt but keeps the code", async () => {
+    await open();
+    await fill("AAAA-BBBB-CCCC-DDDD");
+    await vi.waitFor(() => expect(screen.getByRole("alert").textContent).not.toBe(""));
+    expect(screen.getByLabelText<HTMLInputElement>("Yeni ana parola").value).toBe("");
+    expect(screen.getByLabelText<HTMLInputElement>("Parolayı tekrar gir").value).toBe("");
+    expect(screen.getByLabelText<HTMLInputElement>("Kurtarma kodu").value).toBe(
+      "AAAA-BBBB-CCCC-DDDD",
+    );
+  });
+
+  it("disables submit with a countdown while throttled, then re-enables", async () => {
+    const h = await harness({ status: "locked" });
+    for (let i = 0; i < 3; i++)
+      await h.ui
+        .rpc("unlockWithRecovery", { code: "AAAA-BBBB-CCCC-DDDD", newPassword: NEW_PASSWORD })
+        .catch(() => undefined);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      renderUi(<RecoverScreen hasRecoveryCode={true} onDone={vi.fn()} onCancel={vi.fn()} />, h.ui);
+      await fill("AAAA-BBBB-CCCC-DDDD");
+      await vi.waitFor(() =>
+        expect(screen.getByRole("status").textContent).toBe(
+          "Çok fazla hatalı deneme. Kısa bir süre bekle.",
+        ),
+      );
+      expect(screen.getByText(/^\d+ sn$/)).toBeTruthy();
+      await userEvent.type(screen.getByLabelText("Yeni ana parola"), NEW_PASSWORD, { delay: null });
+      expect(screen.getByRole("button", { name: "Kasayı aç" })).toHaveProperty("disabled", true);
+      await vi.advanceTimersByTimeAsync(5000);
+      await vi.waitFor(() => expect(screen.getByRole("status").textContent).toBe(""));
+      expect(screen.getByRole("button", { name: "Kasayı aç" })).toHaveProperty("disabled", false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("explains that there is no way back without a recovery code", async () => {

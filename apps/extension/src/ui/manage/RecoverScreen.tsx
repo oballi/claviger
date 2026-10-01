@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { RpcError } from "../../rpc/client";
 import { Button } from "../components/Button";
 import { NewPasswordFields, newPasswordProblem } from "../components/NewPasswordFields";
 import { RecoveryCodeDisplay } from "../components/RecoveryCodeDisplay";
 import { TextField } from "../components/TextField";
 import { errorMessage } from "../errors";
+import { useNow } from "../hooks";
 import { useT } from "../i18n/i18n";
 import { useUi } from "../platform";
 import { PageTitle } from "./ManageFrame";
@@ -27,14 +29,24 @@ export function RecoverScreen({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [fresh, setFresh] = useState<string | null>(null);
+  const [waitUntil, setWaitUntil] = useState(0);
+  const now = useNow(waitUntil > 0 ? 250 : 0);
+  const waitSeconds = Math.max(0, Math.ceil((waitUntil - now) / 1000));
+  const waiting = waitSeconds > 0;
   const headingRef = useRef<HTMLHeadingElement>(null);
   // The submit button disappears on success; move focus to the new screen's heading.
   useEffect(() => {
     if (fresh) headingRef.current?.focus();
   }, [fresh]);
 
+  // Stops the 250 ms interval once the wait is over.
+  useEffect(() => {
+    if (waitUntil > 0 && waitSeconds === 0) setWaitUntil(0);
+  }, [waitUntil, waitSeconds]);
+
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (busy || waiting) return;
     setError(null);
     const problem = newPasswordProblem(t, password, confirm);
     setPasswordError(problem);
@@ -47,6 +59,10 @@ export function RecoverScreen({
       setConfirm("");
       setFresh(result.recoveryCode);
     } catch (e) {
+      // Plaintext passwords must not linger in the DOM; the code stays so a typo can be fixed.
+      setPassword("");
+      setConfirm("");
+      if (e instanceof RpcError && e.retryAfterMs) setWaitUntil(Date.now() + e.retryAfterMs);
       setError(errorMessage(t, e));
     } finally {
       setBusy(false);
@@ -108,9 +124,20 @@ export function RecoverScreen({
         <p role="alert" className="m-0 min-h-4 text-sm text-warn">
           {error}
         </p>
+        {/* The live region is set once; the ticking number stays out of it. */}
+        <p role="status" className="m-0 min-h-4 text-xs text-warn">
+          {waitUntil > 0 ? t("lock.waitNotice") : ""}
+        </p>
+        <p aria-live="off" className="m-0 min-h-4 font-mono text-xs text-warn">
+          {waiting ? t("lock.countdown", { seconds: waitSeconds }) : ""}
+        </p>
         <div className="flex justify-between gap-3">
           <Button onClick={onCancel}>{t("common.back")}</Button>
-          <Button type="submit" variant="primary" disabled={busy || code.trim().length === 0}>
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={busy || waiting || code.trim().length === 0}
+          >
             {t("recover.submit")}
           </Button>
         </div>
