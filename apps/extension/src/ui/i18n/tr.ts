@@ -147,6 +147,42 @@ export const tr = {
   "setup.step.storage": "Depolama",
   "setup.step.done": "Tamamlandı",
   "setup.step.account": "İlk hesap",
+  "setup.enterHint": "Enter ile devam",
+  "setup.importantLabel": "ÖNEMLİ",
+  "setup.password.title": "Ana parolanı belirle.",
+  "setup.password.body":
+    "Bu parola tüm hesaplarını şifreler. Kimseyle paylaşma; biz de dahil kimse onu senin yerine sıfırlayamaz.",
+  "setup.password.notice":
+    "Parolayı unutursan kasanı yalnızca bir sonraki adımda oluşturacağın kurtarma koduyla açabilirsin.",
+  "setup.recovery.title": "Kurtarma kodunu sakla.",
+  "setup.recovery.body":
+    "Parolanı unutursan kasanı yalnızca bu kodla açabilirsin. Yazdır, bir parola yöneticisine koy ya da çevrimdışı bir yerde sakla.",
+  "setup.recovery.create": "Kod oluştur",
+  "setup.recovery.skip": "Şimdilik atla",
+  "setup.recovery.skipLabel": "ATLARSAN",
+  "setup.recovery.skipWarning":
+    "Parolanı unutursan kodlarına bir daha erişemezsin. Kodu sonra Güvenlik bölümünden oluşturabilirsin.",
+  "setup.lock.title": "Kasan ne zaman kilitlensin?",
+  "setup.lock.body":
+    "Kilitlenince kodları görmek için parolanı tekrar girersin. Bunu sonra ayarlardan değiştirebilirsin.",
+  "setup.storage.title": "Kasan nerede dursun?",
+  "setup.storage.body":
+    "Bunu sonra Yedekleme bölümünden değiştirebilirsin; kasan yeni yere taşınır.",
+  "setup.storage.bothLabel": "HER İKİSİNDE",
+  "setup.storage.both":
+    "Kasa cihazdan çıkmadan önce ana parolanla şifrelenir. Ana parola hiçbir yere gönderilmez.",
+  "storage.local": "Yalnızca bu cihaz",
+  "storage.localHint":
+    "Kasa bu tarayıcının yerel deposunda durur. Başka cihaza geçmek için yedek alırsın.",
+  "storage.sync": "Tarayıcı senkronizasyonu",
+  "storage.syncHint":
+    "Şifreli kasa, tarayıcı hesabınla oturum açtığın diğer cihazlarına da taşınır (en fazla ~100 KB).",
+  "setup.account.title": "İlk hesabını ekle.",
+  "setup.account.body":
+    "Kasan hazır. Şimdi bir hesap ekle ya da atlayıp sonra araç çubuğundaki simgeden ekle.",
+  "setup.account.added": "{name} eklendi.",
+  "setup.account.skip": "Şimdilik atla, kurulumu bitir",
+  "setup.account.finish": "Kurulumu bitir",
 } as const;
 
 export type MessageKey = keyof typeof tr;

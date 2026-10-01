@@ -150,4 +150,40 @@ export const en: Record<MessageKey, string> = {
   "setup.step.storage": "Storage",
   "setup.step.done": "Done",
   "setup.step.account": "First account",
+  "setup.enterHint": "Press Enter to continue",
+  "setup.importantLabel": "IMPORTANT",
+  "setup.password.title": "Choose your master password.",
+  "setup.password.body":
+    "This password encrypts all your accounts. Don't share it; nobody, including us, can reset it for you.",
+  "setup.password.notice":
+    "If you forget the password, only the recovery code from the next step can open your vault.",
+  "setup.recovery.title": "Keep your recovery code.",
+  "setup.recovery.body":
+    "If you forget your password, only this code opens your vault. Print it, put it in a password manager or keep it offline.",
+  "setup.recovery.create": "Create code",
+  "setup.recovery.skip": "Skip for now",
+  "setup.recovery.skipLabel": "IF YOU SKIP",
+  "setup.recovery.skipWarning":
+    "If you forget your password, you lose access to your codes. You can create a code later under Security.",
+  "setup.lock.title": "When should your vault lock?",
+  "setup.lock.body":
+    "Once locked, you enter your password again to see codes. You can change this later in settings.",
+  "setup.storage.title": "Where should your vault live?",
+  "setup.storage.body":
+    "You can change this later under Backup; your vault moves to the new place.",
+  "setup.storage.bothLabel": "EITHER WAY",
+  "setup.storage.both":
+    "The vault is encrypted with your master password before it leaves the device. The password is never sent anywhere.",
+  "storage.local": "This device only",
+  "storage.localHint":
+    "The vault stays in this browser's local storage. To move devices, take a backup.",
+  "storage.sync": "Browser sync",
+  "storage.syncHint":
+    "The encrypted vault also reaches your other devices signed in to your browser account (up to ~100 KB).",
+  "setup.account.title": "Add your first account.",
+  "setup.account.body":
+    "Your vault is ready. Add an account now, or skip and add one later from the toolbar icon.",
+  "setup.account.added": "{name} added.",
+  "setup.account.skip": "Skip for now and finish",
+  "setup.account.finish": "Finish setup",
 };
