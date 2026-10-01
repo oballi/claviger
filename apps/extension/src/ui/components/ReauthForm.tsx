@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { RpcError } from "../../rpc/client";
 import { errorMessage } from "../errors";
 import { useNow } from "../hooks";
-import { useT } from "../i18n/i18n";
+import { useT, type MessageKey } from "../i18n/i18n";
 import { useUi } from "../platform";
 import { Button } from "./Button";
 import { TextField } from "./TextField";
@@ -16,12 +16,15 @@ export function ReauthForm({
   submitLabel,
   autoFocus = true,
   disabled = false,
+  errorKeys,
 }: {
   onConfirmed: (token: string, password: string) => void | Promise<void>;
   submitLabel: string;
   /** Off when the form appears while the user is still typing elsewhere. */
   autoFocus?: boolean;
   disabled?: boolean;
+  /** Context-specific wording for error codes, e.g. `already-set-up` while moving storage. */
+  errorKeys?: Record<string, MessageKey>;
 }) {
   const { rpc } = useUi();
   const t = useT();
@@ -48,7 +51,7 @@ export function ReauthForm({
       await onConfirmed(token, password);
     } catch (e) {
       if (e instanceof RpcError && e.retryAfterMs) setWaitUntil(Date.now() + e.retryAfterMs);
-      setError(errorMessage(t, e));
+      setError(errorMessage(t, e, errorKeys));
     } finally {
       setPassword("");
       setBusy(false);

@@ -22,10 +22,14 @@ const KNOWN: Record<string, MessageKey> = {
 };
 
 /** Maps an RPC failure to user-facing text; unknown errors never leak their internal message. */
-export function errorMessage(t: Translate, error: unknown): string {
+export function errorMessage(
+  t: Translate,
+  error: unknown,
+  overrides: Record<string, MessageKey> = {},
+): string {
   if (!(error instanceof RpcError)) return t("error.unknown");
   if (error.code === "throttled")
     return t("lock.wait", { seconds: Math.ceil((error.retryAfterMs ?? 0) / 1000) });
-  const key = KNOWN[error.code];
+  const key = overrides[error.code] ?? KNOWN[error.code];
   return key ? t(key) : t("error.unknown");
 }
