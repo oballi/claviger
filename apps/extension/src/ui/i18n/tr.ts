@@ -83,6 +83,22 @@ export const tr = {
   "add.bind": "Bu siteye bağla ({domain})",
   "add.submit": "Hesabı ekle",
   "add.unnamed": "Hesap",
+  "codes.search": "Hesap ara",
+  "codes.searchPlaceholder": "Ara",
+  "codes.add": "Hesap ekle",
+  "codes.lock": "Kilitle",
+  "codes.thisSite": "Bu site",
+  "codes.pinned": "Sabitlenenler",
+  "codes.all": "Tüm hesaplar",
+  "codes.results": "Sonuçlar",
+  "codes.suggested": "olası eşleşme",
+  "codes.copy": "{issuer} kodunu kopyala ({code})",
+  "codes.copied": "{issuer} kodu kopyalandı",
+  "codes.added": "{issuer} eklendi",
+  "codes.next": "{issuer} için yeni kod üret",
+  "codes.empty": "Henüz hesap yok.",
+  "codes.problem": "Bazı hesaplar okunamadı. Ayrıntılar",
+  "codes.quota": "Eşitleme alanı dolmak üzere (%{percent}). Ayrıntılar",
 } as const;
 
 export type MessageKey = keyof typeof tr;
