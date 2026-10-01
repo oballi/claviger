@@ -413,4 +413,33 @@ describe("reconcile and gating (round 2)", () => {
     });
     expect(await snapKeys(p)).toEqual([]);
   });
+
+  it("a stale cache-load reconcile cannot reinstate revoked keyslots", async () => {
+    const p = memoryPlatform();
+    const { recoveryCode } = await unlockedService(p, { kind: "never" });
+    const service = new VaultService(p);
+    await service.getState();
+    await service.lock();
+    // Cached key was cleared by lock; log in again so a restart can load from cache.
+    await service.unlock(PASSWORD);
+    const restarted = new VaultService(p);
+    const origSet = p.local.set.bind(p.local);
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    let armed = true;
+    (p.local as { set: unknown }).set = async (items: Record<string, unknown>) => {
+      if (armed && "vault:header" in items) {
+        armed = false;
+        await gate;
+      }
+      return origSet(items);
+    };
+    const recovery = restarted.unlockWithRecovery(recoveryCode!, "another password 1");
+    await new Promise((r) => setTimeout(r, 20));
+    await restarted.listAccounts(); // loads the old header from the cached key
+    release();
+    await recovery;
+    await restarted.getState();
+    expect(await oldCannotOpen(p, PASSWORD)).toEqual([]);
+  });
 });

@@ -196,6 +196,11 @@ export class VaultService {
     }
   }
 
+  /** A Vault captured earlier may hold a header that a later keyslot change replaced; it must not rekey copies back. */
+  private async reconcileIfActive(vault: Vault): Promise<void> {
+    if (this.vault === vault) await this.reconcileSnapshots(vault);
+  }
+
   /** Repairs a crash or failure between a keyslot write and its revocation in the copies. */
   private async reconcileSnapshots(vault: Vault): Promise<void> {
     try {
@@ -275,7 +280,7 @@ export class VaultService {
       if (epoch !== this.lockEpoch) return null;
       this.vault = vault;
       // Queued, not awaited: callers may already hold the queue. Repairs a crash after a keyslot write.
-      this.reconciling = this.exclusive(() => this.reconcileSnapshots(vault));
+      this.reconciling = this.exclusive(() => this.reconcileIfActive(vault));
       return vault;
     } catch (e) {
       if (isCoreError(e, "wrong-password") || isCoreError(e, "vault-not-found")) {
@@ -443,7 +448,7 @@ export class VaultService {
         throw new ServiceError("locked", "The vault was locked meanwhile");
       }
       await this.dailySnapshot();
-      await this.reconcileSnapshots(vault);
+      await this.reconcileIfActive(vault);
       try {
         await vault.purgeTombstones();
       } catch {
