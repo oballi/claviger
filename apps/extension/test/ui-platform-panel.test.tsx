@@ -169,13 +169,22 @@ describe("panel context", () => {
   it("ignores tab events that cannot change this site in the target window", async () => {
     const listener = vi.fn();
     createBrowserUiPlatform("panel").onActiveTabChange!(listener);
-    // Loading/title updates, background tabs and other windows must not re-resolve.
-    mocks.onUpdated.fire(1, { status: "loading" }, { active: true, windowId: 7 });
+    // Title/complete updates, background tabs and other windows must not re-resolve.
+    mocks.onUpdated.fire(1, { status: "complete" }, { active: true, windowId: 7 });
+    mocks.onUpdated.fire(1, { title: "x" } as never, { active: true, windowId: 7 });
+    mocks.onUpdated.fire(1, { status: "loading" }, { active: true, windowId: 8 });
     mocks.onUpdated.fire(1, { url: "https://a.example/" }, { active: false, windowId: 7 });
     mocks.onUpdated.fire(1, { url: "https://a.example/" }, { active: true, windowId: 8 });
     mocks.onActivated.fire({ windowId: 8 });
     await new Promise((r) => setTimeout(r, 30));
     expect(listener).not.toHaveBeenCalled();
+  });
+
+  it("re-resolves on a URL-less navigation of the active tab (no tabs permission)", async () => {
+    const listener = vi.fn();
+    createBrowserUiPlatform("panel").onActiveTabChange!(listener);
+    mocks.onUpdated.fire(1, { status: "loading" }, { active: true, windowId: 7 });
+    await waitFor(() => expect(listener).toHaveBeenCalledTimes(1));
   });
 
   it("window mode filters tab events by the stored target window", async () => {

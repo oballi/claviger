@@ -119,10 +119,12 @@ export function createBrowserUiPlatform(
             };
             const onUpdated = (
               _id: number,
-              changeInfo: { url?: string },
+              changeInfo: { url?: string; status?: string },
               tab: { active?: boolean; windowId?: number },
             ) => {
-              if (!changeInfo.url || !tab.active) return;
+              // Without the tabs permission a cross-origin navigation reports no url, only
+              // status "loading"; it must still drop the previous site's match.
+              if (!(changeInfo.url || changeInfo.status === "loading") || !tab.active) return;
               void inTarget(tab.windowId).then((ok) => ok && listener());
             };
             const onRemoved = () => listener();
