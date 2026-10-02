@@ -197,7 +197,8 @@ export const manageTr = {
   "view.normal": "Normal",
   "view.compact": "Kompakt",
   "view.hidden": "Gizli",
-  "view.hiddenHint": "Kodlar gizli kalır, tıklayınca kopyalanır.",
+  "view.hiddenHint":
+    "Kodlar gizli kalır; göz simgesi {seconds} sn gösterir, tıklayınca kopyalanır.",
   "security.clipboard": "Panoyu temizle",
   "security.clipboardHint":
     "Kopyalanan kod bu süre sonunda panodan silinir. Bu sürede başka bir şey kopyalarsan o da silinir.",

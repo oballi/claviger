@@ -200,7 +200,7 @@ export const manageEn: Record<ManageKey, string> = {
   "view.normal": "Normal",
   "view.compact": "Compact",
   "view.hidden": "Hidden",
-  "view.hiddenHint": "Codes stay hidden and are copied on click.",
+  "view.hiddenHint": "Codes stay hidden; the eye icon shows one for {seconds} s, clicking copies.",
   "security.clipboard": "Clear clipboard",
   "security.clipboardHint":
     "A copied code is wiped from the clipboard after this time. Anything else you copy in the meantime is wiped too.",

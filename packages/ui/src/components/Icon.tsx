@@ -19,9 +19,24 @@ export type IconName =
   | "sun"
   | "moon"
   | "sort"
-  | "more";
+  | "more"
+  | "eye"
+  | "eye-off";
 
 const PATHS: Record<IconName, ReactElement> = {
+  eye: (
+    <>
+      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+  "eye-off": (
+    <>
+      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
+      <circle cx="12" cy="12" r="3" />
+      <path d="M4 4l16 16" />
+    </>
+  ),
   sort: <path d="M7 4v16M3 8l4-4 4 4M17 20V4M13 16l4 4 4-4" />,
   grip: (
     <>

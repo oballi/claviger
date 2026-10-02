@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { REVEAL_SECONDS } from "../popup/reveal";
 import type { LockPolicy, ServiceState, ViewMode } from "../contract/views";
 import { Button } from "../components/Button";
 import { NewPasswordFields, newPasswordProblem } from "../components/NewPasswordFields";
@@ -297,7 +298,7 @@ export function SecurityScreen({
         ) : null}
         <SettingsRow
           title={t("security.view")}
-          description={`${t("security.viewHint")} ${state.viewMode === "hidden" ? t("view.hiddenHint") : ""}`.trim()}
+          description={`${t("security.viewHint")} ${state.viewMode === "hidden" ? t("view.hiddenHint", { seconds: REVEAL_SECONDS }) : ""}`.trim()}
           action={
             <select
               aria-label={t("security.view")}
