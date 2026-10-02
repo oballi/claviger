@@ -4,6 +4,13 @@ import { defineConfig } from "wxt";
 // Smoke-only: lets the end-to-end test drive fill and capture without a real toolbar click. Never shipped.
 const smoke = process.env.SMOKE === "1";
 
+const icons = {
+  16: "icon/16.png",
+  32: "icon/32.png",
+  48: "icon/48.png",
+  128: "icon/128.png",
+};
+
 export default defineConfig({
   outDir: smoke ? ".output-smoke" : ".output",
   modules: ["@wxt-dev/module-react"],
@@ -20,6 +27,9 @@ export default defineConfig({
     name: "__MSG_extName__",
     description: "__MSG_extDescription__",
     default_locale: "en",
+    icons,
+    // WXT only fills `icons`; the toolbar needs default_icon explicitly.
+    action: { default_icon: icons },
     permissions: [
       "storage",
       "alarms",

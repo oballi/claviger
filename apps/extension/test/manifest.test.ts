@@ -116,4 +116,32 @@ describe("manifest", () => {
       ).sort();
     expect(keys("tr")).toEqual(keys("en"));
   });
+
+  it("ships square PNG icons in every size WXT auto-detects", () => {
+    for (const size of [16, 32, 48, 128]) {
+      const png = readFileSync(new URL(`../public/icon/${size}.png`, import.meta.url));
+      expect(png.subarray(1, 4).toString()).toBe("PNG");
+      expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([size, size]);
+    }
+  });
+
+  it.each(["chrome", "firefox"])("points the toolbar action at the icons for %s", (browser) => {
+    const icons = {
+      16: "icon/16.png",
+      32: "icon/32.png",
+      48: "icon/48.png",
+      128: "icon/128.png",
+    };
+    const manifest = manifestFor(browser);
+    expect(manifest.icons).toEqual(icons);
+    expect((manifest.action as { default_icon: unknown }).default_icon).toEqual(icons);
+  });
+
+  it("keeps the source SVGs next to the generator", () => {
+    for (const name of ["icon.svg", "icon-16.svg"]) {
+      const svg = readFileSync(new URL(`../assets/${name}`, import.meta.url), "utf8");
+      expect(svg).toContain('viewBox="0 0 32 32"');
+      expect(svg).toContain("#19191B");
+    }
+  });
 });
