@@ -168,17 +168,18 @@ export function AccountsScreen({
     const name = nameOf(id);
     try {
       await rpc("setAccountGroup", { id, groupId });
-      const group = groups.find((g) => g.id === groupId)?.name ?? "";
-      await changed(
-        groupId ? t("accounts.joinedGroup", { name, group }) : t("accounts.leftGroup", { name }),
-      );
-      return true;
     } catch (e) {
+      moving.current = false;
       setReorderError(errorMessage(t, e));
       return false;
-    } finally {
-      moving.current = false;
     }
+    const group = groups.find((g) => g.id === groupId)?.name ?? "";
+    // The move already succeeded; a failed refresh is reported by the list's own error state.
+    await changed(
+      groupId ? t("accounts.joinedGroup", { name, group }) : t("accounts.leftGroup", { name }),
+    ).catch(() => {});
+    moving.current = false;
+    return true;
   }
 
   async function createGroup(event: FormEvent) {

@@ -98,12 +98,16 @@ describe("manage drag between groups", () => {
 
   it("a table row dropped on the table or the Grupsuz zone is not accepted", async () => {
     const s = await setup({ grouped: true });
+    const spy = vi.spyOn(s.ui, "rpc");
     fireEvent.dragStart(s.handle("Beta"), dt());
     expect(fireEvent.dragOver(s.row("Alpha"), dt())).toBe(true);
     expect(fireEvent.dragOver(screen.getByTestId("ungrouped-drop"), dt())).toBe(true);
     fireEvent.drop(s.row("Alpha"), dt());
     fireEvent.drop(screen.getByTestId("ungrouped-drop"), dt());
-    await new Promise((r) => setTimeout(r, 50));
+    // A rejected drop must not write; the list is unchanged and nothing is announced.
+    expect(spy.mock.calls.some((c) => c[0] === "setAccountGroup" || c[0] === "reorder")).toBe(
+      false,
+    );
     expect(await s.groupOf(s.b)).toBe(s.g1.id);
   });
 
@@ -118,6 +122,47 @@ describe("manage drag between groups", () => {
     fireEvent.dragEnd(member);
     fireEvent.dragStart(s.handle("Alpha"), dt());
     expect(fireEvent.dragOver(screen.getByTestId("ungrouped-drop"), dt())).toBe(true);
+  });
+
+  it("a table row dropped on a group while searching joins it and does not reorder", async () => {
+    const s = await setup();
+    const spy = vi.spyOn(s.ui, "rpc");
+    await userEvent.type(screen.getByRole("searchbox"), "a");
+    fireEvent.dragStart(s.handle("Alpha"), dt());
+    fireEvent.drop(s.row("Gamma"), dt());
+    fireEvent.dragEnd(s.handle("Alpha"));
+    fireEvent.dragStart(s.handle("Alpha"), dt());
+    fireEvent.drop(s.groupLi("İş"), dt());
+    await waitFor(async () => expect(await s.groupOf(s.a)).toBe(s.g1.id));
+    expect(spy.mock.calls.some((c) => c[0] === "reorder")).toBe(false);
+  });
+
+  it("a member dragged directly onto another group moves there", async () => {
+    const s = await setup({ grouped: true });
+    const member = await openGroup(s);
+    fireEvent.dragStart(member, dt());
+    expect(fireEvent.dragOver(s.groupLi("Kişisel"), dt())).toBe(false);
+    fireEvent.drop(s.groupLi("Kişisel"), dt());
+    await waitFor(async () => expect(await s.groupOf(s.b)).toBe(s.g2.id));
+    await screen.findByText("Beta → Kişisel");
+  });
+
+  it("a failed refresh after a successful move still reports success", async () => {
+    const s = await setup();
+    const real = s.ui.rpc;
+    let moved = false;
+    const spy = vi.spyOn(s.ui, "rpc").mockImplementation(((type: string, ...rest: unknown[]) => {
+      if (type === "setAccountGroup") moved = true;
+      return moved && type === "listAccounts"
+        ? Promise.reject(new Error("boom"))
+        : (real as (...a: unknown[]) => unknown)(type, ...rest);
+    }) as typeof s.ui.rpc);
+    fireEvent.dragStart(s.handle("Alpha"), dt());
+    fireEvent.drop(s.groupLi("İş"), dt());
+    await screen.findByText("Alpha → İş");
+    expect(screen.queryByRole("alert")?.textContent ?? "").not.toContain("boom");
+    spy.mockRestore();
+    expect(await s.groupOf(s.a)).toBe(s.g1.id);
   });
 
   it("still reorders groups by their handle, without touching account groups", async () => {
