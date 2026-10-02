@@ -45,6 +45,7 @@ export { canonicalJson } from "./vault/canonical";
 
 export type { ImportIssue, ImportIssueReason, ImportResult } from "./importers/types";
 export { parseImport, type ImportFormat, type ImportParseOutcome } from "./importers";
+export { encodeBinaryImport } from "./importers/binary";
 export { buildImportPreview, type PreviewItem } from "./importers/preview";
 export { parseGoogleMigrationUri, type MigrationBatch } from "./importers/googleMigration";
 export { parseOtpauthText } from "./importers/otpauthText";

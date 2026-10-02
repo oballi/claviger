@@ -5,6 +5,8 @@ import { describe, expect, it, vi } from "vitest";
 import { LocaleProvider } from "@claviger/ui";
 import { UiProvider } from "@claviger/ui";
 import { ImportScreen, manageMessages } from "@claviger/ui/manage";
+import { encodeBinaryImport } from "@claviger/core";
+import { andotpEncrypted } from "../../../packages/core/test/helpers/andotp";
 import { harness, renderUi, type Harness } from "./helpers/ui";
 import { PASSWORD } from "./helpers/service";
 
@@ -21,6 +23,16 @@ async function open(text: string, name: string | null = "codes.txt", h?: Harness
 }
 
 describe("ImportScreen", () => {
+  it("opens an encrypted andOTP binary with its password", async () => {
+    const text = encodeBinaryImport(await andotpEncrypted("andotp pw"));
+    await open(text, "backup.json.aes");
+    const field = await screen.findByLabelText("Dosya parolası");
+    expect(screen.getByText("andOTP yedeği parola ile korunuyor.")).toBeTruthy();
+    await userEvent.type(field, "andotp pw");
+    await userEvent.click(screen.getByRole("button", { name: "Aç" }));
+    expect(await screen.findByText(/· andOTP yedeği · şifresi çözüldü$/)).toBeTruthy();
+  });
+
   it("previews entries with counts, lists problems as rows and imports only the selection", async () => {
     const { ui, onDone } = await open([ACME, BANK, BROKEN].join("\n"));
     expect(await screen.findByText(/· otpauth:\/\/ listesi$/)).toBeTruthy();

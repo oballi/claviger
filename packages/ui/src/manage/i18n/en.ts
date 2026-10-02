@@ -289,6 +289,10 @@ export const manageEn: Record<ManageKey, string> = {
   "format.proton-authenticator": "Proton Authenticator export",
   "format.bitwarden": "Bitwarden export",
   "format.claviger": "claviger backup",
+  "format.andotp": "andOTP backup",
+  "format.freeotp-plus": "FreeOTP+ export",
+  "import.binarySingle": "Choose binary backups (andOTP) one at a time.",
+  "import.andotpHint": "andOTP 0.6.3 or newer is required for encrypted backups.",
   "manage.found": "We found your vault.",
   "manage.corrupt":
     "The vault header can't be read, so the vault can't be opened. Nothing has been deleted. Removing the extension would delete this data; if you have no backup, keep it installed and report the problem.",

@@ -64,3 +64,24 @@ export async function pbkdf2Sha256(
   );
   return new Uint8Array(bits);
 }
+
+/** PBKDF2-HMAC-SHA1: only for reading andOTP and legacy Stratum files; never used for new data. */
+export async function pbkdf2Sha1(
+  password: string,
+  salt: Uint8Array,
+  iterations: number,
+): Promise<Uint8Array> {
+  const base = await crypto.subtle.importKey(
+    "raw",
+    toArrayBuffer(utf8Encode(password)),
+    "PBKDF2",
+    false,
+    ["deriveBits"],
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", hash: "SHA-1", salt: toArrayBuffer(salt), iterations },
+    base,
+    256,
+  );
+  return new Uint8Array(bits);
+}

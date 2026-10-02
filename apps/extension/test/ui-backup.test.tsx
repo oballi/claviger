@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { BackupScreen, type ImportSource, ImportScreen } from "@claviger/ui/manage";
+import { encodeBinaryImport } from "@claviger/core";
 import { harness, renderUi, type Harness } from "./helpers/ui";
 import { PASSWORD } from "./helpers/service";
 import { migrationUri } from "./helpers/qr";
@@ -154,6 +155,27 @@ describe("BackupScreen import", () => {
     await vi.waitFor(() =>
       expect(onImport).toHaveBeenCalledWith({ text: ACME, name: "codes.txt" }),
     );
+  });
+
+  it("sends a non-UTF-8 file as claviger-binary base64", async () => {
+    const { onImport } = await open();
+    const bytes = Uint8Array.from([0, 0, 3, 232, 0xff, 0xfe, 0x80, 0x90]);
+    await userEvent.upload(screen.getByLabelText("Dosya seç"), new File([bytes], "b.json.aes"));
+    await vi.waitFor(() => expect(onImport).toHaveBeenCalled());
+    expect(onImport.mock.calls[0]![0]).toEqual({
+      text: encodeBinaryImport(bytes),
+      name: "b.json.aes",
+    });
+  });
+
+  it("refuses a binary file picked together with others", async () => {
+    const { onImport } = await open();
+    await userEvent.upload(screen.getByLabelText("Dosya seç"), [
+      new File([Uint8Array.from([0xff, 0xfe])], "b.aes"),
+      new File([ACME], "codes.txt"),
+    ]);
+    expect(await screen.findByText("İkili yedekleri (andOTP) tek tek seçin.")).toBeTruthy();
+    expect(onImport).not.toHaveBeenCalled();
   });
 
   it("accepts a dropped file and pasted text", async () => {
@@ -612,7 +634,7 @@ describe("BackupScreen fix round 1", () => {
   it("shows an alert when the file cannot be read", async () => {
     const { onImport } = await open();
     const file = new File([ACME], "codes.txt");
-    Object.defineProperty(file, "text", { value: () => Promise.reject(new Error("boom")) });
+    Object.defineProperty(file, "arrayBuffer", { value: () => Promise.reject(new Error("boom")) });
     await userEvent.upload(screen.getByLabelText("Dosya seç"), file);
     expect(await screen.findByText("Dosya okunamadı.")).toBeTruthy();
     expect(onImport).not.toHaveBeenCalled();

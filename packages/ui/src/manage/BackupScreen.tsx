@@ -7,6 +7,7 @@ import {
   type DragEvent,
   type ReactNode,
 } from "react";
+import { encodeBinaryImport } from "@claviger/core";
 import type { ServiceState, StorageUsageView } from "../contract/views";
 import { QrImageTooLargeError } from "../contract/qrLimits";
 import { Button } from "../components/Button";
@@ -20,6 +21,8 @@ import { PageTitle, SettingsRow, SettingsSection } from "./ManageFrame";
 import { SnapshotsSection } from "./SnapshotsSection";
 
 export const MAX_IMPORT_CHARS = 5_000_000;
+// Base64 inflates by 4/3; keeps the transport text under MAX_IMPORT_CHARS.
+const MAX_BINARY_BYTES = 3_700_000;
 const MAX_IMAGE_BYTES = 20_000_000;
 const MAX_IMPORT_FILES = 20;
 const OTP_TEXT = /^otpauth(-migration)?:/i;
@@ -42,6 +45,8 @@ const SOURCES = [
   "2FAS",
   "Proton",
   "Bitwarden",
+  "andOTP",
+  "FreeOTP+",
   "claviger",
 ];
 
@@ -208,7 +213,25 @@ export function BackupScreen({
         return;
       }
       try {
-        parts.push(await file.text());
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        let text: string | null = null;
+        try {
+          text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+        } catch {
+          text = null;
+        }
+        if (text === null) {
+          // Binary backups (andOTP) travel as base64 text and must be chosen alone.
+          if (files.length > 1) {
+            setImportError(t("import.binarySingle"));
+            return;
+          }
+          if (bytes.length > MAX_BINARY_BYTES) {
+            setImportError(t("import.tooLarge"));
+            return;
+          }
+          parts.push(encodeBinaryImport(bytes));
+        } else parts.push(text);
       } catch {
         setImportError(t("import.unreadable"));
         return;
@@ -410,7 +433,7 @@ export function BackupScreen({
               className="sr-only"
               multiple
               // .otpvault: files written by earlier previews
-              accept=".json,.txt,.2fas,.claviger,.otpvault,application/json,text/plain,image/png,image/jpeg,image/webp,image/gif"
+              accept=".json,.txt,.2fas,.claviger,.otpvault,.aes,.bin,application/json,text/plain,image/png,image/jpeg,image/webp,image/gif"
               onChange={(e) => {
                 const input = e.currentTarget;
                 void readFiles(Array.from(input.files ?? [])).finally(() => {

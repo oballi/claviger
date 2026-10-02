@@ -284,6 +284,10 @@ export const manageTr = {
   "format.proton-authenticator": "Proton Authenticator dışa aktarımı",
   "format.bitwarden": "Bitwarden dışa aktarımı",
   "format.claviger": "claviger yedeği",
+  "format.andotp": "andOTP yedeği",
+  "format.freeotp-plus": "FreeOTP+ dışa aktarımı",
+  "import.binarySingle": "İkili yedekleri (andOTP) tek tek seçin.",
+  "import.andotpHint": "Şifreli yedekler için andOTP 0.6.3 veya üstü gerekir.",
   "manage.found": "Kasan bulundu.",
   "manage.corrupt":
     "Kasa başlığı okunamadığı için kasa açılamıyor. Verilerin silinmedi. Eklentiyi kaldırırsan bu veriler de silinir; bir yedeğin yoksa eklentiyi kaldırma ve sorunu bildir.",
