@@ -96,9 +96,13 @@ A random 256-bit file key encrypts the payload with AAD `otp-vault/v1/export/<ex
 
 Groups are additive and keep `version` at 1: an account may carry `"group": "<name>"` and the payload may carry `"groups": ["<name>", ...]` (display order). Names are matched on import by case-insensitive NFC key, reusing existing groups; invalid or over-limit names import the account ungrouped. Groups that none of the imported accounts use are not created. Older readers ignore both fields and import everything ungrouped.
 
-## Recently deleted (trash)
+## Recently deleted (device-local, not part of the vault)
 
-Deleted accounts are kept for 30 days as one sealed entry per account (`trash:<id>`) in `storage.local` only, never in sync, outside the vault namespace and outside snapshots and exports. Each entry is encrypted with the vault key. Entries left by a replaced or deleted vault cannot be opened by the new vault: they stay encrypted in `storage.local`, hidden, until they expire or are evicted. An old copy of an entry's ciphertext replayed into storage can make a purged entry reappear; this is accepted.
+Deleted accounts are kept for 30 days in `storage.local` under `trash:<uuid>` so a delete can be undone. These keys are **not** part of the vault format: they never start with `vault:`, are never written to `sync`, and are not included in vault copies, exports or storage moves.
+
+Each value is a record like any other (`{ "v": 1, "iv": "...", "ct": "...", "updatedAt": <deletedAt ms> }`), sealed with the vault's data key and AAD `otp-vault/v1/trash:<uuid>`. The plaintext is `{ "account": <account plaintext>, "deletedAt": <ms> }`; the inner `deletedAt` (authenticated) decides expiry, the outer `updatedAt` is used only to age out entries this key cannot open.
+
+Restoring creates a new account with a fresh id (the old id keeps its tombstone, so sync cannot resurrect it elsewhere). At most 100 entries and about 200 KB are kept; the oldest go first. Because the data key is unchanged by a password change, entries stay readable; a future data-key rotation must re-seal them. Removing an entry from the list does not touch the automatic vault copies (`snapshot:*`), which may still contain the account until they rotate out.
 
 ## Versioning rules
 
