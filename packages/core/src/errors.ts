@@ -15,7 +15,11 @@ export type CoreErrorCode =
   | "account-not-found"
   | "duplicate-account"
   | "unsupported-format"
-  | "corrupt-file";
+  | "corrupt-file"
+  | "invalid-group-name"
+  | "duplicate-group"
+  | "group-limit"
+  | "group-not-found";
 
 export class CoreError extends Error {
   readonly code: CoreErrorCode;

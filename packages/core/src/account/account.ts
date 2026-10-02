@@ -20,6 +20,7 @@ export interface Account extends AccountInput {
   id: string;
   createdAt: number;
   updatedAt: number;
+  groupId?: string;
 }
 
 export interface AccountDraft {
@@ -47,6 +48,8 @@ export const accountSchema = z.object({
   domains: z.array(z.string()),
   createdAt: z.number(),
   updatedAt: z.number(),
+  // No upper bound: a future version with longer ids must not make the account unreadable.
+  groupId: z.string().optional(),
 });
 
 export const accountDraftSchema = z.object({

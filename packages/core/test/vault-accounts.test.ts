@@ -231,6 +231,7 @@ describe("ordering and pinning", () => {
       pinned: [],
       unreadable: [],
       indexDamaged: false,
+      groups: [],
     });
   });
 });

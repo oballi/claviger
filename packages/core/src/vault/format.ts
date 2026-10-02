@@ -41,11 +41,28 @@ export const encryptedRecordSchema = z.object({
   updatedAt: z.number(),
 });
 
+export const MAX_GROUPS = 30;
+export const MAX_GROUP_NAME = 40;
+// The index is one sync item (8 KiB quota) that already costs ~54 B per account (+~52 B per pin), and sealing grows JSON ~1.33x.
+export const MAX_GROUPS_BYTES = 1200;
+
+export const groupSchema = z.object({
+  id: z.string().min(1).max(64),
+  // UTF-16 bound; the real 40 code point rule lives in normalizeGroupName.
+  name: z
+    .string()
+    .min(1)
+    .max(MAX_GROUP_NAME * 2),
+});
+
 export const indexSchema = z.object({
   order: z.array(z.string()),
   pinned: z.array(z.string()),
   updatedAt: z.number(),
+  groups: z.array(groupSchema).max(MAX_GROUPS).optional(),
 });
+
+export type VaultGroup = z.infer<typeof groupSchema>;
 
 export const tombSchema = z.object({ deletedAt: z.number() });
 

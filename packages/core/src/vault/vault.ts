@@ -27,6 +27,7 @@ import {
   tombKey,
   tombSchema,
   TOMBSTONE_TTL_MS,
+  type VaultGroup,
   type VaultHeader,
   type VaultIndex,
 } from "./format";
@@ -39,6 +40,7 @@ import {
   type PasswordKeyslot,
   type RecoveryKeyslot,
 } from "./keyslot";
+import { assertFits, assertNameFree, newGroupId, normalizeGroupName, withoutGroup } from "./groups";
 import { decryptRecord, encryptRecord, recordAad } from "./records";
 import { generateRecoveryCode, parseRecoveryCode } from "./recovery";
 
@@ -53,11 +55,12 @@ export interface VaultListing {
   unreadable: string[];
   /** `vault:index` exists but cannot be decrypted; writes are rejected with `vault-corrupt` until `rebuildIndex()` runs. */
   indexDamaged: boolean;
+  groups: VaultGroup[];
 }
 
 export type AccountPatch = Partial<
   Pick<AccountInput, "issuer" | "label" | "domains" | "algorithm" | "digits" | "period">
->;
+> & { groupId?: string | null };
 
 const EMPTY_INDEX: VaultIndex = { order: [], pinned: [], updatedAt: 0 };
 
@@ -385,6 +388,8 @@ export class Vault {
     const all = await this.deps.storage.get();
     const opened = await this.openIndex(all[INDEX_KEY]);
     const index = opened ?? EMPTY_INDEX;
+    const groups = index.groups ?? [];
+    const knownGroups = new Set(groups.map((g) => g.id));
 
     const tombs = new Map<string, number>();
     for (const [key, value] of Object.entries(all)) {
@@ -415,7 +420,10 @@ export class Vault {
       }
       // The outer updatedAt is not covered by the AAD, so an old ciphertext could be replayed. The verified inner value must also be newer than the tombstone.
       if (deletedAt !== undefined && account.updatedAt <= deletedAt) continue;
-      accounts.push(account);
+      // A groupId missing from the index (rebuilt or damaged) reads as ungrouped.
+      accounts.push(
+        account.groupId && !knownGroups.has(account.groupId) ? withoutGroup(account) : account,
+      );
     }
 
     const position = new Map(index.order.map((id, i) => [id, i]));
@@ -434,6 +442,7 @@ export class Vault {
       pinned: index.pinned.filter((id) => ids.has(id)),
       unreadable: unreadable.sort(),
       indexDamaged: opened === null,
+      groups,
     };
   }
 
@@ -533,9 +542,19 @@ export class Vault {
   updateAccount(id: string, patch: AccountPatch): Promise<Account> {
     return this.exclusive(async () => {
       const current = await this.getAccount(id);
+      const { groupId: patchGroup, ...fields } = patch;
+      let groupId = current.groupId;
+      if (patchGroup === null) groupId = undefined;
+      else if (patchGroup !== undefined) {
+        const index = await this.readIndex({ strict: true });
+        if (!(index.groups ?? []).some((g) => g.id === patchGroup))
+          throw new CoreError("group-not-found", "Group not found");
+        groupId = patchGroup;
+      }
+      // normalizeAccountInput whitelists fields, so groupId is re-added explicitly.
       const normalized = normalizeAccountInput({
         ...current,
-        ...patch,
+        ...fields,
         secret: current.secret,
         type: current.type,
       });
@@ -544,6 +563,7 @@ export class Vault {
         id,
         createdAt: current.createdAt,
         updatedAt: this.nextUpdatedAt(current.updatedAt),
+        ...(groupId ? { groupId } : {}),
       };
       await this.writeAccount(updated);
       return updated;
@@ -581,6 +601,7 @@ export class Vault {
       // Tombstone + index first, then delete the record. If interrupted in between, the tombstone hides the record.
       await this.writeIndex(
         {
+          ...index,
           order: index.order.filter((x) => x !== id),
           pinned: index.pinned.filter((x) => x !== id),
           updatedAt: deletedAt,
@@ -588,6 +609,88 @@ export class Vault {
         { [tombKey(id)]: { deletedAt } },
       );
       await this.deps.storage.remove([key]);
+    });
+  }
+
+  createGroup(name: string): Promise<VaultGroup> {
+    return this.exclusive(async () => {
+      const index = await this.readIndex({ strict: true });
+      const groups = index.groups ?? [];
+      const clean = normalizeGroupName(name);
+      assertNameFree(groups, clean);
+      const group = { id: newGroupId(this.deps.random, groups), name: clean };
+      const next = [...groups, group];
+      assertFits(next);
+      await this.writeIndex({
+        ...index,
+        groups: next,
+        updatedAt: this.nextUpdatedAt(index.updatedAt),
+      });
+      return group;
+    });
+  }
+
+  renameGroup(id: string, name: string): Promise<void> {
+    return this.exclusive(async () => {
+      const index = await this.readIndex({ strict: true });
+      const groups = index.groups ?? [];
+      if (!groups.some((g) => g.id === id))
+        throw new CoreError("group-not-found", "Group not found");
+      const clean = normalizeGroupName(name);
+      assertNameFree(groups, clean, id);
+      const next = groups.map((g) => (g.id === id ? { ...g, name: clean } : g));
+      assertFits(next);
+      await this.writeIndex({
+        ...index,
+        groups: next,
+        updatedAt: this.nextUpdatedAt(index.updatedAt),
+      });
+    });
+  }
+
+  deleteGroup(id: string): Promise<void> {
+    return this.exclusive(async () => {
+      const index = await this.readIndex({ strict: true });
+      const groups = index.groups ?? [];
+      if (!groups.some((g) => g.id === id))
+        throw new CoreError("group-not-found", "Group not found");
+      const { accounts } = await this.listAccounts();
+      const updatedAt = this.nextUpdatedAt(index.updatedAt);
+      // One write for members and index: atomic, and a single sync operation.
+      const items: Record<string, unknown> = {};
+      for (const account of accounts) {
+        if (account.groupId !== id) continue;
+        const cleaned = {
+          ...withoutGroup(account),
+          updatedAt: this.nextUpdatedAt(account.updatedAt),
+        };
+        items[accountKey(account.id)] = await encryptRecord(
+          this.dek,
+          accountKey(account.id),
+          cleaned,
+          cleaned.updatedAt,
+          this.deps.random,
+        );
+      }
+      await this.writeIndex(
+        { ...index, groups: groups.filter((g) => g.id !== id), updatedAt },
+        items,
+      );
+    });
+  }
+
+  reorderGroups(ids: string[]): Promise<void> {
+    return this.exclusive(async () => {
+      const index = await this.readIndex({ strict: true });
+      const groups = index.groups ?? [];
+      const byId = new Map(groups.map((g) => [g.id, g]));
+      const front = [...new Set(ids)].filter((x) => byId.has(x));
+      const rest = groups.map((g) => g.id).filter((x) => !front.includes(x));
+      await this.writeIndex({
+        ...index,
+        groups: [...front, ...rest].map((x) => byId.get(x)!),
+        updatedAt: this.nextUpdatedAt(index.updatedAt),
+      });
     });
   }
 
