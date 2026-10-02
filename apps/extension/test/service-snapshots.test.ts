@@ -38,6 +38,7 @@ describe("service snapshots", () => {
     await service.addAccount({ uri: URI });
     await service.rebuildIndex();
     expect((await service.listSnapshots()).map((s) => s.reason)).toContain("before-rebuild");
+    // Same name, different secret: allow it so the test still adds a second account.
     await service.addAccount(
       { uri: URI.replace("JBSWY3DPEHPK3PXP", "GEZDGNBVGY3TQOJQ") },
       { allowSameName: true },

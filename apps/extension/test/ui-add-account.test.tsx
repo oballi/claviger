@@ -82,8 +82,7 @@ describe("AddAccount", () => {
     await userEvent.click(screen.getByText("Gelişmiş"));
     await userEvent.selectOptions(screen.getByLabelText("Tür"), "hotp");
     await userEvent.selectOptions(screen.getByLabelText("Algoritma"), "SHA256");
-    await userEvent.clear(screen.getByLabelText("Hane"));
-    await userEvent.type(screen.getByLabelText("Hane"), "8");
+    await userEvent.selectOptions(screen.getByLabelText("Hane"), "8");
     await userEvent.clear(screen.getByLabelText("Süre (sn)"));
     await userEvent.type(screen.getByLabelText("Süre (sn)"), "60");
     await userEvent.click(screen.getByRole("button", { name: "Hesabı ekle" }));

@@ -118,14 +118,14 @@ describe("recovery code confirmation", () => {
     let failed = 0;
     p.local.set = async (items) => {
       const settings = items["settings"] as { recoveryCodeConfirmed?: boolean } | undefined;
-      if (settings?.recoveryCodeConfirmed === false && failed === 0) {
+      if (settings?.recoveryCodeConfirmed === false && failed < 2) {
         failed++;
         throw new Error("QUOTA_BYTES quota exceeded");
       }
       return realSet(items);
     };
     const result = await service.unlockWithRecovery(recoveryCode!, "another password 1");
-    expect(failed).toBe(1);
+    expect(failed).toBe(2);
     expect(result.recoveryCode).toBeTruthy();
   });
 });

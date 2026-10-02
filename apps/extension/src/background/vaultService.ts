@@ -643,12 +643,12 @@ export class VaultService {
       if (!opts.allowSameName) {
         const key = (v: string) => v.trim().toLocaleLowerCase("en");
         const { accounts } = await vault.listAccounts();
-        const clash = accounts.some(
-          (a) =>
-            key(a.issuer) === key(input.issuer) &&
-            key(a.label) === key(input.label) &&
-            a.secret !== input.secret,
-        );
+        // A true duplicate must surface as duplicate-account, not as a name warning.
+        const clash =
+          !accounts.some((a) => a.secret === input.secret) &&
+          accounts.some(
+            (a) => key(a.issuer) === key(input.issuer) && key(a.label) === key(input.label),
+          );
         if (clash) throw new ServiceError("same-name", "Another account has the same name");
       }
       const account = await vault.addAccount(input);
@@ -874,10 +874,13 @@ export class VaultService {
 
   // Best effort: the keyslot change is already committed, so the new code must still be returned.
   private async markRecoveryCodeUnconfirmed(): Promise<void> {
-    try {
-      await saveSettings(this.p.local, { recoveryCodeConfirmed: false });
-    } catch {
-      // ignored on purpose
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        await saveSettings(this.p.local, { recoveryCodeConfirmed: false });
+        return;
+      } catch {
+        // retried once, then ignored on purpose
+      }
     }
   }
 

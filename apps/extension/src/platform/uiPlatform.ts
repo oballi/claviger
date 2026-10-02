@@ -2,30 +2,27 @@ import { browser } from "wxt/browser";
 import type { ManageRoute, UiPlatform } from "../ui/platform";
 import { rpc } from "./browserRpc";
 
-async function findManageTab(
-  manageUrl: string,
-): Promise<{ tabId: number; windowId: number } | null> {
-  try {
-    if (browser.runtime.getContexts) {
-      const [ctx] = await browser.runtime.getContexts({
-        contextTypes: ["TAB"],
-        documentUrls: [manageUrl],
-      });
-      if (ctx && ctx.tabId >= 0) return { tabId: ctx.tabId, windowId: ctx.windowId };
+async function findManageTab(): Promise<{ tabId: number; windowId: number } | null> {
+  const origin = new URL(browser.runtime.getURL("/")).origin;
+  const isManage = (documentUrl: string | undefined) => {
+    try {
+      const url = new URL(documentUrl ?? "");
+      return url.origin === origin && url.pathname === "/manage.html";
+    } catch {
+      return false;
     }
-  } catch {
-    // fall through to getViews
+  };
+  // No documentUrls filter: it matches the exact URL, so a tab on a hash route would be missed.
+  if (browser.runtime.getContexts) {
+    const contexts = await browser.runtime.getContexts({ contextTypes: ["TAB"] });
+    const ctx = contexts.find((c) => isManage(c.documentUrl) && c.tabId >= 0);
+    return ctx ? { tabId: ctx.tabId, windowId: ctx.windowId } : null;
   }
-  try {
-    type View = { location: Location; browser?: typeof browser };
-    for (const view of browser.extension.getViews({ type: "tab" }) as unknown as View[]) {
-      if (view.location.pathname !== "/manage.html") continue;
-      // The view's own API object is the only way to learn its tab id without the "tabs" permission.
-      const tab = await view.browser?.tabs.getCurrent();
-      if (tab?.id !== undefined) return { tabId: tab.id, windowId: tab.windowId };
-    }
-  } catch {
-    // no reusable tab
+  type View = { location: Location };
+  for (const view of browser.extension.getViews({ type: "tab" }) as unknown as View[]) {
+    if (view.location.pathname !== "/manage.html") continue;
+    const [tab] = await browser.tabs.query({ url: `${origin}/manage.html*` });
+    if (tab?.id !== undefined) return { tabId: tab.id, windowId: tab.windowId };
   }
   return null;
 }
@@ -33,7 +30,7 @@ async function findManageTab(
 async function openOrFocusManage(hash: string): Promise<void> {
   const manageUrl = browser.runtime.getURL("/manage.html");
   try {
-    const found = await findManageTab(manageUrl);
+    const found = await findManageTab();
     if (found) {
       await browser.tabs.update(found.tabId, { active: true, url: `${manageUrl}${hash}` });
       await browser.windows.update(found.windowId, { focused: true });

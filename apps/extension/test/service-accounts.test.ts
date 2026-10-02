@@ -106,6 +106,22 @@ describe("listing", () => {
     );
   });
 
+  it("reports a true duplicate even when another account shares the name", async () => {
+    const { service } = await unlockedService();
+    await service.addAccount({
+      draft: { secret: "JBSWY3DPEHPK3PXP", issuer: "Bank", label: "me" },
+    });
+    await service.addAccount(
+      { draft: { secret: "JBSWY3DPEHPK3PXQ", issuer: "Bank", label: "me" } },
+      { allowSameName: true },
+    );
+    expect(
+      await codeOf(
+        service.addAccount({ draft: { secret: "JBSWY3DPEHPK3PXP", issuer: "Bank", label: "me" } }),
+      ),
+    ).toBe("duplicate-account");
+  });
+
   it("returns the registrable domain of the page", async () => {
     const { service } = await unlockedService();
     expect(

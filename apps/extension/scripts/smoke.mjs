@@ -67,6 +67,17 @@ try {
   await popup.goto(`chrome-extension://${id}/popup.html`);
   await popup.getByText("Henüz hesap yok.").waitFor();
 
+  // The popup must reuse an open manage tab (even on a hash route) instead of opening another.
+  await page.goto(`chrome-extension://${id}/manage.html#/security`);
+  const manageTabs = () => ctx.pages().filter((p) => p.url().includes("/manage.html"));
+  const manageBefore = manageTabs().length;
+  const reuse = await ctx.newPage();
+  await reuse.goto(`chrome-extension://${id}/popup.html`);
+  await reuse.getByRole("button", { name: "Hesap ekle" }).click();
+  await reuse.getByRole("button", { name: /İçe aktar/ }).click();
+  await page.waitForURL(/manage\.html#\/backup/, { timeout: 10_000 });
+  if (manageTabs().length !== manageBefore) throw new Error("popup opened a second manage tab");
+
   // Clipboard clearing end to end: the real alarm fires the offscreen document. Unpacked extensions may use sub-minute alarms.
   // Playwright cannot grant permissions to extension origins, so the read-back happens on a local http page.
   const server = createServer((_, res) =>

@@ -37,7 +37,7 @@ export function AccountForm({
   const [busy, setBusy] = useState(false);
   const [sameName, setSameName] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const digitsRef = useRef<HTMLInputElement>(null);
+  const digitsRef = useRef<HTMLSelectElement>(null);
   const periodRef = useRef<HTMLInputElement>(null);
 
   // Any edit clears the warning: the next submit must be checked against the new values again.
@@ -52,8 +52,12 @@ export function AccountForm({
     const value = secret.trim();
     const isUri = /^otpauth:\/\//i.test(value);
     if (!isUri) {
-      const badDigits = !/^\d+$/.test(digits.trim()) || Number(digits) < 6 || Number(digits) > 8;
-      const badPeriod = !/^\d+$/.test(period.trim()) || Number(period) < 1 || Number(period) > 300;
+      const badDigits =
+        type !== "steam" &&
+        (!/^\d+$/.test(digits.trim()) || Number(digits) < 6 || Number(digits) > 8);
+      const badPeriod =
+        type === "totp" &&
+        (!/^\d+$/.test(period.trim()) || Number(period) < 1 || Number(period) > 300);
       if (badDigits || badPeriod) {
         setError(t("error.invalid-otp-params"));
         setAdvancedOpen(true);
@@ -153,13 +157,16 @@ export function AccountForm({
           </label>
           <label className="flex flex-col gap-1.5 text-xs text-muted">
             {t("add.digits")}
-            <input
+            <select
               ref={digitsRef}
               className={selectClass}
-              inputMode="numeric"
               value={digits}
               onChange={(e) => edit(setDigits)(e.target.value)}
-            />
+            >
+              <option value="6">6</option>
+              <option value="7">7</option>
+              <option value="8">8</option>
+            </select>
           </label>
           <label className="flex flex-col gap-1.5 text-xs text-muted">
             {t("add.period")}
@@ -181,6 +188,7 @@ export function AccountForm({
             onChange={(e) => {
               setBind(e.target.checked);
               setSameName(false);
+              setError(null);
             }}
             className="h-4 w-4 accent-[var(--ov-text)]"
           />
