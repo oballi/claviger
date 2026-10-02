@@ -23,6 +23,10 @@ const KNOWN: Record<string, MessageKey> = {
   "snapshot-password-required": "error.snapshot-password-required",
   "same-name": "error.same-name",
   "not-linked": "error.not-linked",
+  "invalid-group-name": "error.invalid-group-name",
+  "duplicate-group": "error.duplicate-group",
+  "group-limit": "error.group-limit",
+  "group-not-found": "error.group-not-found",
 };
 
 /** Maps an RPC failure to user-facing text; unknown errors never leak their internal message. */

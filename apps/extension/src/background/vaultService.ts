@@ -27,6 +27,7 @@ import type {
   AccountListView,
   AccountView,
   FillOutcome,
+  GroupView,
   ImportPreviewItemView,
   ImportPreviewView,
   ServiceState,
@@ -60,6 +61,7 @@ export type {
   AccountListView,
   AccountView,
   FillOutcome,
+  GroupView,
   ImportPreviewItemView,
   ImportPreviewView,
   ServiceState,
@@ -651,6 +653,7 @@ export class VaultService {
           period: a.period,
           domains: a.domains,
           pinned: pinned.has(a.id),
+          groupId: a.groupId ?? null,
           code: generated.code,
           remaining: generated.remaining,
         };
@@ -673,6 +676,7 @@ export class VaultService {
     }
     return {
       accounts,
+      groups: listing.groups.map((g) => ({ id: g.id, name: g.name })),
       unreadable: listing.unreadable,
       indexDamaged: listing.indexDamaged,
       matches: {
@@ -715,6 +719,31 @@ export class VaultService {
   updateAccount(id: string, patch: AccountPatch): Promise<void> {
     return this.exclusive(async () => {
       await (await this.requireVault()).updateAccount(id, patch);
+    });
+  }
+
+  createGroup(name: string): Promise<GroupView> {
+    return this.exclusive(async () => {
+      const group = await (await this.requireVault()).createGroup(name);
+      return { id: group.id, name: group.name };
+    });
+  }
+
+  renameGroup(id: string, name: string): Promise<void> {
+    return this.exclusive(async () => (await this.requireVault()).renameGroup(id, name));
+  }
+
+  deleteGroup(id: string): Promise<void> {
+    return this.exclusive(async () => (await this.requireVault()).deleteGroup(id));
+  }
+
+  reorderGroups(ids: string[]): Promise<void> {
+    return this.exclusive(async () => (await this.requireVault()).reorderGroups(ids));
+  }
+
+  setAccountGroup(id: string, groupId: string | null): Promise<void> {
+    return this.exclusive(async () => {
+      await (await this.requireVault()).updateAccount(id, { groupId });
     });
   }
 

@@ -44,6 +44,11 @@ export interface SnapshotInfo {
   sameVault: boolean;
 }
 
+export interface GroupView {
+  id: string;
+  name: string;
+}
+
 export interface AccountView {
   id: string;
   type: Account["type"];
@@ -54,12 +59,14 @@ export interface AccountView {
   period: number;
   domains: string[];
   pinned: boolean;
+  groupId: string | null;
   code: string;
   remaining: number | null;
 }
 
 export interface AccountListView {
   accounts: AccountView[];
+  groups: GroupView[];
   unreadable: string[];
   indexDamaged: boolean;
   /** `remembered` only orders the popup; it never authorises a fill. */

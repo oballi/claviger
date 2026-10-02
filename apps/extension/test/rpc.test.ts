@@ -107,6 +107,12 @@ describe("envelope and sender checks", () => {
     { type: "addAccountManual", draft: { secret: "A", domains: ["d".repeat(254)] } },
     { type: "reorder", order: Array(10001).fill("a") },
     { type: "reorder", order: ["a".repeat(65)] },
+    { type: "createGroup", name: "x".repeat(201) },
+    { type: "renameGroup", id: "a", name: "x".repeat(201) },
+    { type: "reorderGroups", ids: Array(31).fill("a") },
+    { type: "reorderGroups", ids: ["a".repeat(65)] },
+    { type: "setAccountGroup", id: "a", groupId: "" },
+    { type: "updateAccount", id: "a", patch: { groupId: "g".repeat(65) } },
     { type: "importCommit", previewId: "p".repeat(65), indexes: [0] },
     { type: "applyClockSample", serverDate: "d".repeat(65), startMs: 0, endMs: 1 },
     { type: "importCommit", previewId: "p", indexes: Array(10001).fill(0) },
@@ -318,6 +324,14 @@ describe("client", () => {
       draft: { secret: "GEZDGNBVGY3TQOJQ", issuer: "Bank", type: "hotp" },
     });
     await call("updateAccount", { id, patch: { label: "work" } });
+    const grp = await call("createGroup", { name: "Work" });
+    await call("setAccountGroup", { id, groupId: grp.id });
+    await call("renameGroup", { id: grp.id, name: "Office" });
+    await call("reorderGroups", { ids: [grp.id] });
+    expect((await call("listAccounts", {})).groups).toEqual([{ id: grp.id, name: "Office" }]);
+    await call("updateAccount", { id, patch: { groupId: null } });
+    await call("setAccountGroup", { id, groupId: grp.id });
+    await call("deleteGroup", { id: grp.id });
     await call("setPinned", { id: manual.id, pinned: true });
     await call("reorder", { order: [manual.id, id] });
     expect((await call("nextHotp", { id: manual.id })).code).toMatch(/^\d{6}$/);
@@ -390,6 +404,24 @@ describe("client", () => {
 
     await call("deleteVault", { token: await token("final long password") });
     expect((await call("getState", {})).status).toBe("no-vault");
+  });
+});
+
+describe("group rpcs", () => {
+  it.each([
+    { type: "createGroup", name: "A" },
+    { type: "renameGroup", id: "a", name: "B" },
+    { type: "deleteGroup", id: "a" },
+    { type: "reorderGroups", ids: ["a"] },
+    { type: "setAccountGroup", id: "a", groupId: null },
+  ])("forbids $type from an untrusted sender", async (request) => {
+    const response = await handleRpcMessage(
+      new VaultService(memoryPlatform()),
+      { channel: RPC_CHANNEL, request },
+      { id: "ext-id", url: "https://evil.example/" },
+      ctx,
+    );
+    expect(response).toMatchObject({ ok: false, error: { code: "forbidden" } });
   });
 });
 

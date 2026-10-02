@@ -86,6 +86,20 @@ async function dispatch(
     case "updateAccount":
       await service.updateAccount(req.id, req.patch);
       return null;
+    case "createGroup":
+      return service.createGroup(req.name);
+    case "renameGroup":
+      await service.renameGroup(req.id, req.name);
+      return null;
+    case "deleteGroup":
+      await service.deleteGroup(req.id);
+      return null;
+    case "reorderGroups":
+      await service.reorderGroups(req.ids);
+      return null;
+    case "setAccountGroup":
+      await service.setAccountGroup(req.id, req.groupId);
+      return null;
     case "deleteAccount":
       await service.deleteAccount(req.id);
       return null;

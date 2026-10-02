@@ -39,6 +39,7 @@ const accountPatch = z.object({
   algorithm: z.enum(["SHA1", "SHA256", "SHA512"]).optional(),
   digits: z.number().int().optional(),
   period: z.number().int().optional(),
+  groupId: z.string().min(1).max(64).nullable().optional(),
 });
 
 export const rpcRequestSchema = z.discriminatedUnion("type", [
@@ -80,6 +81,17 @@ export const rpcRequestSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("updateAccount"), id, patch: accountPatch }),
   z.object({ type: z.literal("deleteAccount"), id }),
+  // Core does the real name validation; these caps only bound the message.
+  z.object({ type: z.literal("createGroup"), name: z.string().max(200) }),
+  z.object({ type: z.literal("renameGroup"), id, name: z.string().max(200) }),
+  z.object({ type: z.literal("deleteGroup"), id }),
+  // 30 = core MAX_GROUPS (not exported to popup-reachable code).
+  z.object({ type: z.literal("reorderGroups"), ids: z.array(z.string().min(1).max(64)).max(30) }),
+  z.object({
+    type: z.literal("setAccountGroup"),
+    id,
+    groupId: z.string().min(1).max(64).nullable(),
+  }),
   z.object({ type: z.literal("reorder"), order: z.array(z.string().max(64)).max(10_000) }),
   z.object({ type: z.literal("setPinned"), id, pinned: z.boolean() }),
   z.object({ type: z.literal("nextHotp"), id }),
@@ -154,6 +166,11 @@ export interface RpcResults {
   addAccountManual: { id: string; name: string };
   updateAccount: null;
   deleteAccount: null;
+  createGroup: { id: string; name: string };
+  renameGroup: null;
+  deleteGroup: null;
+  reorderGroups: null;
+  setAccountGroup: null;
   reorder: null;
   setPinned: null;
   nextHotp: { code: string };
