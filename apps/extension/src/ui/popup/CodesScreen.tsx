@@ -156,15 +156,17 @@ export function CodesScreen({
         void reload();
         return;
       }
-      if (code) {
-        try {
-          await copy(code);
-        } catch {
-          setActionError(t("codes.copyFailed"));
-          return;
-        }
-        rpc("clipboardCopied", {}).catch(() => {});
+      if (code === null) {
+        setActionError(t("codes.copyFailed"));
+        return;
       }
+      try {
+        await copy(code);
+      } catch {
+        setActionError(t("codes.copyFailed"));
+        return;
+      }
+      rpc("clipboardCopied", {}).catch(() => {});
       setToast(t(result === "copied-instead" ? "fill.copiedNoField" : "fill.copiedRefused"));
     } catch (e) {
       if (e instanceof RpcError && e.code === "not-linked") {

@@ -52,7 +52,7 @@ export function AccountRow({
         hidden ? t("codes.copyHidden", { issuer: name }) : t("codes.copy", { issuer: name, code })
       }
       onClick={() => onCopy(account)}
-      className={`cursor-pointer border-0 bg-transparent p-0 text-left font-mono tracking-wide ${large ? (compact ? "min-h-11 text-2xl leading-tight" : "min-h-11 text-[34px] leading-tight") : compact ? "min-h-11 text-base" : "min-h-11 text-xl"} ${urgent ? "text-warn" : "text-text"}`}
+      className={`shrink-0 cursor-pointer whitespace-nowrap border-0 bg-transparent p-0 text-left font-mono tracking-wide ${large ? (compact ? "min-h-11 text-2xl leading-tight" : "min-h-11 text-[34px] leading-tight") : compact ? "min-h-11 text-base" : "min-h-11 text-xl"} ${urgent ? "text-warn" : "text-text"}`}
     >
       {code}
     </button>
@@ -77,37 +77,34 @@ export function AccountRow({
 
   if (large) {
     return (
-      <li className="flex flex-wrap items-end gap-x-4 border-b border-hair pb-5">
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <div className="truncate text-[13px]">
-            {name}
-            {suggested ? <span className="text-muted"> · {t("codes.suggested")}</span> : null}
-            {remembered && !suggested ? (
-              <span className="text-muted"> · {t("codes.remembered")}</span>
-            ) : null}
-          </div>
-          {copyButton}
+      <li className="flex flex-col gap-1 border-b border-hair pb-5">
+        <div className="truncate text-[13px]">
+          {name}
+          {suggested ? <span className="text-muted"> · {t("codes.suggested")}</span> : null}
+          {remembered && !suggested ? (
+            <span className="text-muted"> · {t("codes.remembered")}</span>
+          ) : null}
         </div>
-        <div className="flex items-center gap-3 pb-1">
-          {fill ? (
+        <div className="flex items-end justify-between gap-4">
+          {copyButton}
+          <div className="pb-3">{tail}</div>
+        </div>
+        {fill ? (
+          <div>
             <Button
+              className="border-text"
               aria-label={t("fill.aria", { issuer: name })}
               onClick={() => fill.onFill(account)}
             >
               {t("fill.button")}
             </Button>
-          ) : null}
-          <div className="pb-2">{tail}</div>
-        </div>
+          </div>
+        ) : null}
         {fill?.prompt === "confirm" ? (
-          <div
-            role="group"
-            aria-label={t("fill.confirm", { issuer: name })}
-            className="basis-full pt-3"
-          >
+          <div role="group" className="pt-3">
             <p className="m-0 pb-2 text-xs text-warn">{t("fill.confirm", { issuer: name })}</p>
             <div className="flex gap-2">
-              <Button variant="primary" onClick={() => fill.onConfirm(account)}>
+              <Button variant="primary" autoFocus onClick={() => fill.onConfirm(account)}>
                 {t("fill.confirmYes")}
               </Button>
               <Button onClick={fill.onCancel}>{t("fill.confirmNo")}</Button>
@@ -115,7 +112,7 @@ export function AccountRow({
           </div>
         ) : null}
         {fill?.prompt === "blocked" ? (
-          <div className="basis-full pt-3">
+          <div className="pt-3">
             <p role="alert" className="m-0 text-xs text-warn">
               {t("fill.blocked")}
             </p>
@@ -125,9 +122,12 @@ export function AccountRow({
           </div>
         ) : null}
         {fill?.prompt === "link" ? (
-          <div className="basis-full pt-3">
+          <div className="flex items-center gap-4 pt-1">
             <Button variant="link" onClick={() => fill.onLink(account)} className="text-xs">
               {t("fill.link")}
+            </Button>
+            <Button variant="link" onClick={fill.onCancel} className="text-xs text-muted">
+              {t("common.close")}
             </Button>
           </div>
         ) : null}

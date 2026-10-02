@@ -18,7 +18,7 @@ export function Button({
   return (
     <button
       type={type}
-      className={`inline-flex cursor-pointer items-center justify-center gap-2 border-0 font-sans text-[13px] font-medium disabled:cursor-not-allowed disabled:opacity-40 ${VARIANTS[variant]} ${className}`}
+      className={`inline-flex cursor-pointer items-center justify-center gap-2 font-sans text-[13px] font-medium disabled:cursor-not-allowed disabled:opacity-40 ${VARIANTS[variant]} ${className}`}
       {...props}
     />
   );

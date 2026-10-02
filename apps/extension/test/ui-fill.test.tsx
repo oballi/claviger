@@ -119,4 +119,78 @@ describe("popup fill", () => {
     const button = await screen.findByRole("button", { name: "Acme kodunu sayfaya doldur" });
     expect(button.getAttribute("aria-label")).not.toMatch(/\d/);
   });
+
+  it("never fills a remembered row directly", async () => {
+    for (const onlyLinked of [false, true]) {
+      const h = await popupOn("https://other.net/login", { fillOnlyLinked: false });
+      const zed = (await h.ui.rpc("listAccounts", {})).accounts.find((a) => a.issuer === "Zed")!;
+      await h.service.fillCode({ id: zed.id, tabId: 1, confirmedDomain: "other.net" });
+      const before = h.p.tabs.fills.length;
+      if (onlyLinked) await h.ui.rpc("setFillOnlyLinked", { value: true });
+      const view = renderUi(<PopupApp pollMs={0} />, h.ui);
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Zed kodunu sayfaya doldur" }),
+      );
+      expect(
+        await screen.findByText(
+          onlyLinked
+            ? "Bu hesap bu siteye bağlı değil."
+            : "Zed bu siteye bağlı değil. Yine de doldurulsun mu?",
+        ),
+      ).toBeTruthy();
+      expect(h.p.tabs.fills).toHaveLength(before);
+      view.unmount();
+    }
+  });
+
+  it("keeps digits out of the toast in hidden mode", async () => {
+    const h = await popupOn("https://acme.com/login");
+    await h.ui.rpc("setViewMode", { mode: "hidden" });
+    open(h);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Acme kodunu sayfaya doldur" }),
+    );
+    expect((await screen.findByText("Dolduruldu")).textContent).not.toMatch(/\d/);
+  });
+
+  it("reports a failed copy instead of a copied toast", async () => {
+    const h = await popupOn("https://acme.com/login");
+    h.p.tabs.next = "no-field";
+    h.ui.copy.mockRejectedValueOnce(new Error("denied"));
+    open(h);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Acme kodunu sayfaya doldur" }),
+    );
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(screen.queryByText(/kod kopyalandı/)).toBeNull();
+  });
+
+  it("shows no fill button without an active tab", async () => {
+    const h = await popupOn("https://acme.com/login");
+    h.ui.activeTab.mockResolvedValue(undefined);
+    open(h);
+    await screen.findByText("Acme");
+    expect(screen.queryByRole("button", { name: /sayfaya doldur/ })).toBeNull();
+  });
+
+  it("shows the message of other fill errors", async () => {
+    const h = await popupOn("https://acme.com/login");
+    open(h);
+    const button = await screen.findByRole("button", { name: "Acme kodunu sayfaya doldur" });
+    h.p.tabs.activeTab = { id: 2, url: "https://acme.com/login" };
+    await userEvent.click(button);
+    expect((await screen.findByRole("alert")).textContent).toMatch(/\S/);
+    expect(h.p.tabs.fills).toHaveLength(0);
+  });
+
+  it("lets the link offer be dismissed", async () => {
+    const h = await popupOn("https://acme.org/login", { fillOnlyLinked: false });
+    open(h);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Acme kodunu sayfaya doldur" }),
+    );
+    await userEvent.click(await screen.findByRole("button", { name: "Doldur" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Kapat" }));
+    expect(screen.queryByRole("button", { name: "Bu siteyi hesaba bağla" })).toBeNull();
+  });
 });
