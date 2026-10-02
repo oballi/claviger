@@ -5,7 +5,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserUiPlatform } from "../../src/platform/uiPlatform";
 import { decodeQr } from "../../src/qr/browserDecode";
-import { ManageApp } from "@otp-vault/ui/manage";
+import { ManageApp, manageMessages } from "@otp-vault/ui/manage";
 
 const locale = pickLocale(navigator.languages);
 document.documentElement.lang = locale;
@@ -14,7 +14,7 @@ applyCachedTheme();
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <UiProvider value={createBrowserUiPlatform("manage", { decodeQr })}>
-      <LocaleProvider locale={locale}>
+      <LocaleProvider locale={locale} extra={manageMessages}>
         <ManageApp />
       </LocaleProvider>
     </UiProvider>

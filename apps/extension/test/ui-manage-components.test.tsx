@@ -11,6 +11,7 @@ import { QrCode } from "@otp-vault/ui";
 import { ReauthForm } from "@otp-vault/ui";
 import { RecoveryCodeDisplay } from "@otp-vault/ui";
 import { translate } from "@otp-vault/ui";
+import { manageMessages } from "@otp-vault/ui/manage";
 import {
   ManageFrame,
   PageTitle,
@@ -22,7 +23,7 @@ import { harness, renderUi } from "./helpers/ui";
 import { PASSWORD } from "./helpers/service";
 
 const t = (key: Parameters<typeof translate>[1], vars?: Record<string, string | number>) =>
-  translate("tr", key, vars);
+  translate("tr", key, vars, manageMessages);
 
 function DialogHarness({ onClose }: { onClose: () => void }) {
   const [open, setOpen] = useState(false);

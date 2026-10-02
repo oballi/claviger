@@ -1,12 +1,14 @@
-import { createContext, useCallback, useContext, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, type ReactNode } from "react";
+import type { ManageKey } from "../manage/i18n/tr";
 import { en } from "./en";
-import { tr, type MessageKey } from "./tr";
+import { tr, type PopupKey } from "./tr";
 
 export type Locale = "tr" | "en";
-export type { MessageKey };
+export type MessageKey = PopupKey | ManageKey;
+export type ExtraMessages = Record<Locale, Partial<Record<MessageKey, string>>>;
 export type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
 
-const dictionaries: Record<Locale, Record<MessageKey, string>> = { tr, en };
+const dictionaries: Record<Locale, Record<PopupKey, string>> = { tr, en };
 
 export function pickLocale(languages: readonly string[]): Locale {
   return languages[0]?.toLowerCase().startsWith("tr") ? "tr" : "en";
@@ -16,23 +18,43 @@ export function translate(
   locale: Locale,
   key: MessageKey,
   vars?: Record<string, string | number>,
+  extra?: ExtraMessages,
 ): string {
-  return dictionaries[locale][key].replace(/\{(\w+)\}/g, (match, name: string) =>
+  // Manage-only strings live in a separate dictionary so the popup bundle never carries them.
+  const text = extra?.[locale][key] ?? dictionaries[locale][key as PopupKey] ?? key;
+  return text.replace(/\{(\w+)\}/g, (match, name: string) =>
     vars && name in vars ? String(vars[name]) : match,
   );
 }
 
-const LocaleContext = createContext<Locale>("en");
+interface LocaleState {
+  locale: Locale;
+  extra?: ExtraMessages;
+}
 
-export function LocaleProvider({ locale, children }: { locale: Locale; children: ReactNode }) {
-  return <LocaleContext.Provider value={locale}>{children}</LocaleContext.Provider>;
+const LocaleContext = createContext<LocaleState>({ locale: "en" });
+
+export function LocaleProvider({
+  locale,
+  extra,
+  children,
+}: {
+  locale: Locale;
+  extra?: ExtraMessages;
+  children: ReactNode;
+}) {
+  const value = useMemo(() => ({ locale, extra }), [locale, extra]);
+  return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;
 }
 
 export function useLocale(): Locale {
-  return useContext(LocaleContext);
+  return useContext(LocaleContext).locale;
 }
 
 export function useT(): Translate {
-  const locale = useLocale();
-  return useCallback<Translate>((key, vars) => translate(locale, key, vars), [locale]);
+  const { locale, extra } = useContext(LocaleContext);
+  return useCallback<Translate>(
+    (key, vars) => translate(locale, key, vars, extra),
+    [locale, extra],
+  );
 }
