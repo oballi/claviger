@@ -128,9 +128,6 @@ describe("envelope and sender checks", () => {
     { type: "setClipboardClear", seconds: 45 },
     { type: "setViewMode", mode: "x" },
     { type: "setTheme", theme: "x" },
-    { type: "fillCode", id: "a", tabId: -1 },
-    { type: "fillCode", id: "a", tabId: 1.5 },
-    { type: "fillCode", id: "", tabId: 1 },
   ])("caps input sizes %#", async (request) => {
     const response = await handleRpcMessage(
       new VaultService(memoryPlatform()),
@@ -145,6 +142,7 @@ describe("envelope and sender checks", () => {
     { type: "nope" },
     { type: "setFillOnlyLinked", value: false },
     { type: "setSiteMemory", value: false },
+    { type: "fillCode", id: "a", tabId: 1 },
     { type: "unlock" },
     { type: "reorder", order: "x" },
     { type: "setRevealRequiresPassword", token: "t" },
@@ -249,42 +247,6 @@ describe("envelope and sender checks", () => {
         endMs: 0,
       }),
     ).rejects.toMatchObject({ code: "invalid-request" });
-  });
-});
-
-describe("fill rpc", () => {
-  it("fills through the service and ignores a UI-supplied tab url", async () => {
-    const p = memoryPlatform();
-    const service = new VaultService(p);
-    const call = clientFor(service);
-    await call("setup", {
-      password: PASSWORD,
-      createRecoveryCode: false,
-      lockPolicy: { kind: "browser-close" },
-      storageArea: "local",
-    });
-    const { id } = await call("addAccountUri", {
-      uri: `otpauth://totp/Bank:me?secret=${SECRET}&issuer=Bank`,
-      sourceUrl: "https://bank.com/",
-    });
-    p.tabs.activeTab = { id: 4, url: "https://evil.io/" };
-    // Extra fields are stripped: the service only trusts the URL it reads itself.
-    const forged = { id, tabId: 4, tabUrl: "https://bank.com/" };
-    await expect(call("fillCode", forged as never)).rejects.toMatchObject({ code: "not-linked" });
-    p.tabs.activeTab = { id: 4, url: "https://bank.com/" };
-    expect(await call("fillCode", { id, tabId: 4 })).toEqual({ result: "filled", code: null });
-    const state = await call("getState", {});
-    expect("fillOnlyLinked" in state || "siteMemory" in state).toBe(false);
-  });
-
-  it("rejects fillCode from an untrusted sender", async () => {
-    const response = await handleRpcMessage(
-      new VaultService(memoryPlatform()),
-      { channel: RPC_CHANNEL, request: { type: "fillCode", id: "a", tabId: 1 } },
-      { id: "ext-id", url: "https://evil.example/" },
-      ctx,
-    );
-    expect(response).toMatchObject({ ok: false, error: { code: "forbidden" } });
   });
 });
 

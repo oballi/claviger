@@ -3,6 +3,7 @@ import { WxtVitest } from "wxt/testing/vitest-plugin";
 
 export default defineConfig({
   plugins: [WxtVitest()],
+  define: { __SMOKE__: false },
   test: {
     include: ["test/**/*.test.ts", "test/**/*.test.tsx"],
     setupFiles: ["test/setup-dom.ts"],

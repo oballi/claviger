@@ -32,18 +32,18 @@ export class KeyCache {
     else await this.p.local.remove([PERSISTED_KEY]);
   }
 
-  async load(policy: LockPolicy): Promise<Uint8Array | null> {
-    if (policy.kind !== "never") {
-      await this.p.local.remove([PERSISTED_KEY]);
-    }
+  /** Returns the cached key without judging it: the caller must check the sealed policy first. */
+  async loadCandidate(): Promise<{ dek: Uint8Array; source: "session" | "persisted" } | null> {
     const session = await this.p.session.get([SESSION_KEY, MANUAL_LOCK_KEY]);
     if (session[MANUAL_LOCK_KEY] === true) return null;
     const fromSession = decodeKey(session[SESSION_KEY]);
-    if (fromSession) return fromSession;
-    if (policy.kind !== "never") {
-      return null;
-    }
-    return decodeKey((await this.p.local.get([PERSISTED_KEY]))[PERSISTED_KEY]);
+    if (fromSession) return { dek: fromSession, source: "session" };
+    const persisted = decodeKey((await this.p.local.get([PERSISTED_KEY]))[PERSISTED_KEY]);
+    return persisted ? { dek: persisted, source: "persisted" } : null;
+  }
+
+  async forgetPersisted(): Promise<void> {
+    await this.p.local.remove([PERSISTED_KEY]);
   }
 
   /** Manual lock: the persistent key is not used either until the browser restarts. */

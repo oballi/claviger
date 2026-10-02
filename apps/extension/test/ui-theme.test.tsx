@@ -108,6 +108,14 @@ describe("theme", () => {
     expect(localStorage.getItem("otp-vault-theme")).toBeNull();
   });
 
+  it("removes the legacy key even when the new one exists", () => {
+    localStorage.setItem("claviger-theme", "light");
+    localStorage.setItem("otp-vault-theme", "dark");
+    applyCachedTheme();
+    expect(html.getAttribute("data-theme")).toBe("light");
+    expect(localStorage.getItem("otp-vault-theme")).toBeNull();
+  });
+
   it("drops an invalid legacy value without migrating it", () => {
     localStorage.setItem("otp-vault-theme", "<x>");
     applyCachedTheme();

@@ -251,7 +251,9 @@ describe("SecurityScreen", () => {
     await confirmPassword(secrets, "Kaydet");
     await vi.waitFor(() => expect(tokens).toHaveLength(2));
     expect(new Set(tokens).size).toBe(2);
-    expect((await h.ui.rpc("getState", {})).revealRequiresPassword).toBe(false);
+    await vi.waitFor(async () =>
+      expect((await h.ui.rpc("getState", {})).revealRequiresPassword).toBe(false),
+    );
   });
 
   it("shows the new recovery code once and only releases it behind the saved checkbox", async () => {

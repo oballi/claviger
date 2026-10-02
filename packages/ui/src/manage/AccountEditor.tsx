@@ -139,6 +139,18 @@ export function AccountEditor({
     setRevealed({ uri, secret: parseOtpauthUri(uri).secret });
   }
 
+  async function copySecret(secret: string) {
+    setError(null);
+    try {
+      await copy(secret);
+    } catch {
+      setError(t("codes.copyFailed"));
+      return;
+    }
+    // Clearing is best effort; a failed report must not turn a good copy into an error.
+    rpc("clipboardCopied", {}).catch(() => {});
+  }
+
   const details: [string, string][] = [
     [t("add.type"), typeLabel(account.type)],
     [t("add.algorithm"), account.algorithm],
@@ -269,7 +281,9 @@ export function AccountEditor({
                 {groupSecret(revealed.secret)}
               </code>
             </div>
-            <Button onClick={() => void copy(revealed.secret)}>{t("account.copySecret")}</Button>
+            <Button onClick={() => void copySecret(revealed.secret)}>
+              {t("account.copySecret")}
+            </Button>
             <p className="m-0 text-[13px] text-warn">{t("account.revealWarning")}</p>
           </div>
         ) : null}

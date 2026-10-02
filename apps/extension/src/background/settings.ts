@@ -12,15 +12,17 @@ import {
 } from "@claviger/ui/protocol";
 import { z } from "zod";
 
+export const MAX_CLOCK_OFFSET_SEC = 12 * 3600;
+
 export { clipboardClearSchema, lockPolicySchema, themeSchema, viewModeSchema };
 export type { ClipboardClearSec, LockPolicy, Theme, ViewMode };
 
 export const settingsSchema = z.object({
+  // Display mirror and legacy migration input only; the sealed lock:policy record is authoritative.
   lockPolicy: lockPolicySchema,
   storageArea: z.enum(["local", "sync"]),
-  clockOffsetSec: z.number().int(),
+  clockOffsetSec: z.number().int().min(-MAX_CLOCK_OFFSET_SEC).max(MAX_CLOCK_OFFSET_SEC),
   clockCheckEnabled: z.boolean(),
-  revealRequiresPassword: z.boolean(),
   lastBackupAt: z.number().int().nullable(),
   viewMode: viewModeSchema,
   theme: themeSchema,
@@ -38,7 +40,6 @@ export const DEFAULT_SETTINGS: Settings = {
   storageArea: "local",
   clockOffsetSec: 0,
   clockCheckEnabled: false,
-  revealRequiresPassword: true,
   lastBackupAt: null,
   viewMode: "normal",
   theme: "system",

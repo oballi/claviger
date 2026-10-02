@@ -95,6 +95,22 @@ describe("Aegis import", () => {
     expect(await asyncCodeOf(parseAegis(file, "test"))).toBe("corrupt-file");
   });
 
+  it("skips a slot with out-of-bounds scrypt parameters and tries the next one", async () => {
+    const file = aegisEncrypted("test");
+    const valid = file.header.slots[1]!;
+    file.header.slots[1] = { ...valid, n: 2 ** 30 };
+    file.header.slots[2] = valid;
+    expect((await parseAegis(file, "test")).accounts.length).toBeGreaterThan(0);
+  });
+
+  it("keeps wrong-password when a sane slot was tried alongside an insane one", async () => {
+    const file = aegisEncrypted("test");
+    const valid = file.header.slots[1]!;
+    file.header.slots[1] = { ...valid, n: 2 ** 30 };
+    file.header.slots[2] = valid;
+    expect(await asyncCodeOf(parseAegis(file, "nope"))).toBe("wrong-password");
+  });
+
   it("reports a tampered body as corrupt", async () => {
     const file = aegisEncrypted("test");
     file.header.params.tag = "00".repeat(16);

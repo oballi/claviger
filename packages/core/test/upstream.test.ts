@@ -1,3 +1,4 @@
+import { argon2id } from "hash-wasm";
 import { describe, expect, it } from "vitest";
 import {
   isUpstreamBackup,
@@ -33,6 +34,27 @@ describe("upstream Authenticator backups", () => {
     const result = await parseUpstreamBackup(plainBackup());
     expect(result.accounts).toEqual(EXPECTED_ACCOUNTS);
     expect(result.issues).toEqual([GOST_ISSUE]);
+  });
+
+  it('imports an entry whose id is "key" when it is not the legacy key object', async () => {
+    const file = {
+      ...plainBackup(),
+      key: {
+        account: "keyed",
+        issuer: "Odd",
+        secret: "JBSWY3DPEHPK3PXP",
+        type: "totp",
+        encrypted: false,
+      },
+    };
+    const result = await parseUpstreamBackup(file);
+    expect(result.accounts).toHaveLength(EXPECTED_ACCOUNTS.length + 1);
+    expect(result.accounts.some((a) => a.label === "keyed")).toBe(true);
+  });
+
+  it('reports a malformed entry with id "key" instead of skipping it', async () => {
+    const result = await parseUpstreamBackup({ ...plainBackup(), key: { secret: 5 } });
+    expect(result.issues).toContainEqual(expect.objectContaining({ reason: "malformed-entry" }));
   });
 
   it("handles secret prefixes, hhex and hex-looking TOTP secrets in plain backups", async () => {
@@ -120,5 +142,50 @@ describe("upstream Authenticator backups", () => {
     });
     expect(result.accounts).toHaveLength(1);
     expect(result.issues).toEqual([{ position: 0, name: "", reason: "malformed-entry" }]);
+  });
+
+  it("reports malformed EncOTPStorage entries as issues instead of dropping them", async () => {
+    const result = await parseUpstreamBackup({
+      a: { dataType: "EncOTPStorage", data: "x" },
+      b: { dataType: "EncOTPStorage", keyId: "k", data: 5 },
+      c: { secret: "GEZDGNBVGY3TQOJQ" },
+    });
+    expect(result.accounts).toHaveLength(1);
+    expect(result.issues).toEqual([
+      { position: 0, name: "", reason: "malformed-entry" },
+      { position: 1, name: "", reason: "malformed-entry" },
+    ]);
+  });
+
+  describe("distinct v3 key cap", () => {
+    const password = "pw";
+    async function keyedBackup(count: number): Promise<Record<string, unknown>> {
+      const file: Record<string, unknown> = {};
+      for (let i = 0; i < count; i++) {
+        const salt = `salt-salt-${i}`;
+        const encoded = await argon2id({ password, salt, ...ARGON, outputType: "encoded" });
+        const hash = await argon2id({
+          password: encoded.split("$")[5]!,
+          salt: "0011223344556677",
+          ...ARGON,
+          outputType: "encoded",
+        });
+        file[`k${i}`] = { dataType: "Key", id: `k${i}`, salt, hash };
+        file[`e${i}`] = { dataType: "EncOTPStorage", keyId: `k${i}`, data: "U2FsdGVkX1" };
+      }
+      return file;
+    }
+    const ARGON = { iterations: 2, parallelism: 1, memorySize: 19456, hashLength: 32 } as const;
+
+    it("rejects more than 4 distinct keyIds before deriving any key", async () => {
+      // Wrong password: without the cap this would run Argon2id and answer wrong-password.
+      const file = await keyedBackup(5);
+      expect(await asyncCodeOf(parseUpstreamBackup(file, "wrong"))).toBe("corrupt-file");
+    });
+
+    it("still derives for exactly 4 distinct keyIds", async () => {
+      const file = await keyedBackup(4);
+      expect(await asyncCodeOf(parseUpstreamBackup(file, "wrong"))).toBe("wrong-password");
+    });
   });
 });

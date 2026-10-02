@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { AccountEditor, AccountsScreen } from "@claviger/ui/manage";
@@ -358,6 +358,33 @@ describe("AccountsScreen", () => {
     expect(screen.getByText("JBSW Y3DP EHPK 3PXP")).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "Gizli anahtarı kopyala" }));
     expect(h.ui.copy).toHaveBeenCalledWith(SECRET);
+  });
+
+  async function revealSecret(h: Harness) {
+    await open(h);
+    await userEvent.click(screen.getByRole("button", { name: /GitHub.*hesabını düzenle/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Gizli anahtarı göster" }));
+    await userEvent.type(screen.getByLabelText("Ana parola"), PASSWORD);
+    await userEvent.click(screen.getByRole("button", { name: "Göster" }));
+    await screen.findByText("JBSW Y3DP EHPK 3PXP");
+  }
+
+  it("schedules the clipboard clear after copying the secret", async () => {
+    const h = await seeded();
+    await h.service.setClipboardClear(30);
+    await revealSecret(h);
+    await userEvent.click(screen.getByRole("button", { name: "Gizli anahtarı kopyala" }));
+    await waitFor(() => expect(h.p.alarms.scheduled.has("clipboard-clear")).toBe(true));
+  });
+
+  it("does not schedule a clear when copying the secret fails", async () => {
+    const h = await seeded();
+    await h.service.setClipboardClear(30);
+    await revealSecret(h);
+    h.ui.copy.mockRejectedValueOnce(new Error("denied"));
+    await userEvent.click(screen.getByRole("button", { name: "Gizli anahtarı kopyala" }));
+    expect(await screen.findByText("Kopyalanamadı.")).toBeTruthy();
+    expect(h.p.alarms.scheduled.has("clipboard-clear")).toBe(false);
   });
 
   it("never puts the secret in the DOM or asks the service before the password is confirmed", async () => {

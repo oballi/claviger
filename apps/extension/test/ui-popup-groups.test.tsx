@@ -128,6 +128,33 @@ describe("popup groups", () => {
     expect(localStorage.getItem("otpv.popup.collapsed")).toBeNull();
   });
 
+  it("drops an invalid legacy collapsed value without copying it", async () => {
+    const h = await seeded();
+    localStorage.setItem("otpv.popup.collapsed", '{"not":"an array"}');
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    expect(await screen.findByText("Alpha")).toBeTruthy();
+    expect(localStorage.getItem("claviger.popup.collapsed")).toBeNull();
+    expect(localStorage.getItem("otpv.popup.collapsed")).toBeNull();
+  });
+
+  it("writes a cleaned copy of a legacy collapsed value", async () => {
+    const h = await seeded();
+    localStorage.setItem("otpv.popup.collapsed", JSON.stringify(["a", 5, "x".repeat(65)]));
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    expect(await screen.findByText("Alpha")).toBeTruthy();
+    expect(localStorage.getItem("claviger.popup.collapsed")).toBe('["a"]');
+  });
+
+  it("removes the legacy collapsed key even when the new one exists", async () => {
+    const h = await seeded();
+    localStorage.setItem("claviger.popup.collapsed", "[]");
+    localStorage.setItem("otpv.popup.collapsed", '["old"]');
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    expect(await screen.findByText("Alpha")).toBeTruthy();
+    expect(localStorage.getItem("otpv.popup.collapsed")).toBeNull();
+    expect(localStorage.getItem("claviger.popup.collapsed")).toBe("[]");
+  });
+
   it("wires aria-controls only while open", async () => {
     const h = await seeded();
     renderUi(<PopupApp pollMs={0} />, h.ui);

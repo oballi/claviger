@@ -25,15 +25,13 @@ export function applyCachedTheme(): void {
   const root = document.documentElement;
   try {
     let cached = localStorage.getItem(CACHE_KEY);
-    if (cached === null) {
-      const old = localStorage.getItem(LEGACY_CACHE_KEY);
-      if (old !== null) {
-        if (isTheme(old)) {
-          localStorage.setItem(CACHE_KEY, old);
-          cached = old;
-        }
-        localStorage.removeItem(LEGACY_CACHE_KEY);
+    const old = localStorage.getItem(LEGACY_CACHE_KEY);
+    if (old !== null) {
+      if (cached === null && isTheme(old)) {
+        localStorage.setItem(CACHE_KEY, old);
+        cached = old;
       }
+      localStorage.removeItem(LEGACY_CACHE_KEY);
     }
     if (cached === "light" || cached === "dark") {
       root.setAttribute("data-theme", cached);

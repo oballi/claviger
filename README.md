@@ -44,6 +44,8 @@ pnpm --filter @claviger/extension build          # Chrome  → apps/extension/.o
 pnpm --filter @claviger/extension build:firefox  # Firefox → apps/extension/.output/firefox-mv3
 ```
 
+To rebuild the exact Firefox package from a source archive, see [docs/build-from-source.md](docs/build-from-source.md).
+
 - **Chrome:** open `chrome://extensions`, enable _Developer mode_, choose _Load unpacked_ and select `apps/extension/.output/chrome-mv3`.
 - **Firefox:** open `about:debugging#/runtime/this-firefox`, choose _Load Temporary Add-on_ and select any file in `apps/extension/.output/firefox-mv3`.
 

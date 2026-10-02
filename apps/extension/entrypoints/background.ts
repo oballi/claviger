@@ -4,7 +4,7 @@ import { defineBackground } from "wxt/utils/define-background";
 import { handleUserTrigger } from "../src/background/triggers";
 import { VaultService } from "../src/background/vaultService";
 import { createBrowserPlatform } from "../src/platform/browserPlatform";
-import { handleRpcMessage, isRpcEnvelope } from "../src/rpc/server";
+import { handleRpcMessage, isRpcEnvelope, isTrustedSender } from "../src/rpc/server";
 
 // Firefox may not report screen lock as "locked", so 5 minutes idle counts as locked there (spec 5.4).
 const IDLE_DETECTION_SECONDS = 300;
@@ -56,15 +56,29 @@ export default defineBackground(() => {
       .catch(logFailure);
   };
 
+  const runFillCommand = () =>
+    handleUserTrigger(
+      service,
+      platform.tabs,
+      () => service.fillFromCommand(),
+      import.meta.env.FIREFOX,
+    );
+
   browser.commands.onCommand.addListener((command) => {
-    if (command === "fill-code")
-      handleUserTrigger(
-        service,
-        platform.tabs,
-        () => service.fillFromCommand(),
-        import.meta.env.FIREFOX,
-      ).catch(logFailure);
+    if (command === "fill-code") runFillCommand().catch(logFailure);
   });
+
+  if (__SMOKE__) {
+    // Drives the shortcut path without a real key press; compiled out of release builds.
+    browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      if (message?.channel !== "claviger/smoke-fill" || !isTrustedSender(sender, ctx)) return false;
+      runFillCommand().then(
+        () => sendResponse({ ok: true }),
+        () => sendResponse({ ok: false }),
+      );
+      return true;
+    });
+  }
 
   browser.contextMenus.onClicked.addListener((info, tab) => {
     if (info.menuItemId !== MENU_ID || tab?.id === undefined || !tab.url) return;

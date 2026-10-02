@@ -49,4 +49,37 @@ describe("moveVaultData", () => {
   it("does nothing when there is no vault", async () => {
     expect(await moveVaultData(new MemoryStorage(), new MemoryStorage())).toBe(0);
   });
+
+  it("verifies by content, not object key order", async () => {
+    const deps = makeDeps();
+    await Vault.create(deps, { password: "pw", createRecoveryCode: false });
+    const target = new MemoryStorage();
+    const get = target.get.bind(target);
+    target.get = async (keys) => {
+      const out = await get(keys);
+      return Object.fromEntries(
+        Object.entries(out).map(([k, v]) => [
+          k,
+          v && typeof v === "object" ? Object.fromEntries(Object.entries(v).reverse()) : v,
+        ]),
+      );
+    };
+    expect(await moveVaultData(deps.storage, target)).toBe(2);
+  });
+
+  it("cleans the target when content differs", async () => {
+    const deps = makeDeps();
+    await Vault.create(deps, { password: "pw", createRecoveryCode: false });
+    const target = new MemoryStorage();
+    const get = target.get.bind(target);
+    target.get = async (keys) => {
+      const out = await get(keys);
+      return Object.fromEntries(
+        Object.entries(out).map(([k, v]) => [k, v && typeof v === "object" ? { ...v, x: 1 } : v]),
+      );
+    };
+    expect(await asyncCodeOf(moveVaultData(deps.storage, target))).toBe("vault-corrupt");
+    expect(target.data.size).toBe(0);
+    expect(deps.storage.data.size).toBe(2);
+  });
 });

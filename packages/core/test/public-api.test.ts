@@ -26,6 +26,7 @@ describe("public API", () => {
       "fromBase64",
       "Vault",
       "moveVaultData",
+      "canonicalJson",
       "isVaultKey",
       "HEADER_KEY",
       "TOMBSTONE_TTL_MS",

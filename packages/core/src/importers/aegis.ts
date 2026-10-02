@@ -74,8 +74,10 @@ async function decryptDb(
   if (passwordSlots.length > 4)
     throw new CoreError("corrupt-file", "Aegis vault has too many password slots");
 
+  let triedSane = false;
   for (const slot of passwordSlots) {
-    if (!saneScrypt(slot)) throw new CoreError("corrupt-file", "Unreasonable scrypt parameters");
+    if (!saneScrypt(slot)) continue;
+    triedSane = true;
     let master: Uint8Array | null;
     try {
       const kek = await scrypt({
@@ -115,6 +117,7 @@ async function decryptDb(
       throw new CoreError("corrupt-file", "Aegis vault body is not valid JSON");
     }
   }
+  if (!triedSane) throw new CoreError("corrupt-file", "Unreasonable scrypt parameters");
   throw new CoreError("wrong-password", "Wrong password");
 }
 
