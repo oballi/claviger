@@ -192,7 +192,7 @@ describe("row menu", () => {
   it("focuses the group header when the row moves into a collapsed group", async () => {
     const h = await seeded();
     const home = await h.ui.rpc("createGroup", { name: "Home" });
-    localStorage.setItem("otpv.popup.collapsed", JSON.stringify([home.id]));
+    localStorage.setItem("claviger.popup.collapsed", JSON.stringify([home.id]));
     renderUi(<PopupApp pollMs={0} />, h.ui);
     await userEvent.click(await trigger("Beta"));
     await userEvent.click(screen.getByRole("menuitem", { name: /Gruba taşı/ }));

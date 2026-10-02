@@ -2,7 +2,9 @@ import { useEffect } from "react";
 import type { Theme } from "./contract/views";
 
 // The vault setting is async; this mirror lets the first paint use the right theme.
-const CACHE_KEY = "otp-vault-theme";
+const CACHE_KEY = "claviger-theme";
+// Renamed from the earlier product name; read once so dark-theme users get no flash.
+const LEGACY_CACHE_KEY = "otp-vault-theme";
 
 const isTheme = (v: unknown): v is Theme => v === "system" || v === "light" || v === "dark";
 
@@ -22,7 +24,17 @@ export function applyTheme(theme: Theme): void {
 export function applyCachedTheme(): void {
   const root = document.documentElement;
   try {
-    const cached = localStorage.getItem(CACHE_KEY);
+    let cached = localStorage.getItem(CACHE_KEY);
+    if (cached === null) {
+      const old = localStorage.getItem(LEGACY_CACHE_KEY);
+      if (old !== null) {
+        if (isTheme(old)) {
+          localStorage.setItem(CACHE_KEY, old);
+          cached = old;
+        }
+        localStorage.removeItem(LEGACY_CACHE_KEY);
+      }
+    }
     if (cached === "light" || cached === "dark") {
       root.setAttribute("data-theme", cached);
       return;

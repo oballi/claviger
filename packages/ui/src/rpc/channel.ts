@@ -1,1 +1,1 @@
-export const RPC_CHANNEL = "otp-vault/rpc";
+export const RPC_CHANNEL = "claviger/rpc";

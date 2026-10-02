@@ -49,7 +49,7 @@ describe("theme", () => {
     await userEvent.setup().click(screen.getByRole("radio", { name: "Koyu" }));
     expect(html.getAttribute("data-theme")).toBe("dark");
     expect(screen.getByRole("radio", { name: "Koyu" }).getAttribute("aria-checked")).toBe("true");
-    expect(localStorage.getItem("otp-vault-theme")).toBe("dark");
+    expect(localStorage.getItem("claviger-theme")).toBe("dark");
 
     cleanup();
     html.removeAttribute("data-theme");
@@ -92,12 +92,28 @@ describe("theme", () => {
   });
 
   it("applies the cached choice synchronously and ignores junk", () => {
+    localStorage.setItem("claviger-theme", "dark");
+    applyCachedTheme();
+    expect(html.getAttribute("data-theme")).toBe("dark");
+    localStorage.setItem("claviger-theme", "<x>");
+    applyCachedTheme();
+    expect(html.hasAttribute("data-theme")).toBe(false);
+  });
+
+  it("reads the legacy cache key once and migrates it", () => {
     localStorage.setItem("otp-vault-theme", "dark");
     applyCachedTheme();
     expect(html.getAttribute("data-theme")).toBe("dark");
+    expect(localStorage.getItem("claviger-theme")).toBe("dark");
+    expect(localStorage.getItem("otp-vault-theme")).toBeNull();
+  });
+
+  it("drops an invalid legacy value without migrating it", () => {
     localStorage.setItem("otp-vault-theme", "<x>");
     applyCachedTheme();
     expect(html.hasAttribute("data-theme")).toBe(false);
+    expect(localStorage.getItem("claviger-theme")).toBeNull();
+    expect(localStorage.getItem("otp-vault-theme")).toBeNull();
   });
 
   it("shows English strings", async () => {

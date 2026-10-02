@@ -246,7 +246,7 @@ describe("popup sort mode", () => {
     const calls: string[] = [];
     const data = { ...dt(), setData: (type: string) => void calls.push(type) };
     fireEvent.dragStart(rowOf(h, "W1"), { dataTransfer: data });
-    expect(calls).toEqual(["application/x-otp-vault-account"]);
+    expect(calls).toEqual(["application/x-claviger-account"]);
     expect(data.effectAllowed).toBe("move");
   });
 

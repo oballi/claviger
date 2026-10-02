@@ -13,20 +13,17 @@ import qrcode from "qrcode-generator";
 const ext = process.env.EXTENSION_DIR
   ? resolve(process.env.EXTENSION_DIR)
   : resolve(import.meta.dirname, "../.output-smoke/chrome-mv3");
-const ctx = await chromium.launchPersistentContext(
-  mkdtempSync(join(tmpdir(), "otp-vault-smoke-")),
-  {
-    executablePath: process.env.CHROMIUM_PATH || undefined,
-    headless: true,
-    locale: "tr-TR",
-    args: [
-      `--disable-extensions-except=${ext}`,
-      `--load-extension=${ext}`,
-      "--headless=new",
-      "--lang=tr-TR",
-    ],
-  },
-);
+const ctx = await chromium.launchPersistentContext(mkdtempSync(join(tmpdir(), "claviger-smoke-")), {
+  executablePath: process.env.CHROMIUM_PATH || undefined,
+  headless: true,
+  locale: "tr-TR",
+  args: [
+    `--disable-extensions-except=${ext}`,
+    `--load-extension=${ext}`,
+    "--headless=new",
+    "--lang=tr-TR",
+  ],
+});
 const errors = [];
 // Chromium reports CSP violations (e.g. eval) as console errors too; this names them explicitly.
 await ctx.addInitScript(() => {
@@ -106,7 +103,7 @@ try {
   const origin = `http://127.0.0.1:${server.address().port}`;
   const rpc = (request) =>
     popup.evaluate(
-      (req) => chrome.runtime.sendMessage({ channel: "otp-vault/rpc", request: req }),
+      (req) => chrome.runtime.sendMessage({ channel: "claviger/rpc", request: req }),
       request,
     );
   const must = async (request) => {
