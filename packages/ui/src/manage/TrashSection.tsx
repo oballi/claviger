@@ -6,10 +6,8 @@ import { Dialog } from "../components/Dialog";
 import { errorMessage } from "../errors";
 import { useLocale, useT } from "../i18n/i18n";
 import { useUi } from "../platform";
-import { trashName } from "../trash";
+import { LOW_DAYS, trashName } from "../trash";
 import { deletedLabel } from "./trashLabels";
-
-const LOW_DAYS = 7;
 
 type Confirm = { kind: "one"; item: TrashItemView } | { kind: "all" };
 
@@ -35,6 +33,7 @@ export function TrashSection({
   const load = useCallback(async () => {
     try {
       setItems(await rpc("listTrash", {}));
+      setError(null);
     } catch (e) {
       setError(errorMessage(t, e));
     }
@@ -89,7 +88,9 @@ export function TrashSection({
     >
       <h2 ref={heading} tabIndex={-1} className="m-0 text-xl font-medium outline-none">
         {t("trash.manageTitle")}{" "}
-        <span className="font-mono text-[13px] font-normal text-muted">{list.length}</span>
+        <span className="font-mono text-[13px] font-normal text-muted">
+          {items ? list.length : ""}
+        </span>
       </h2>
       <p className="m-0 pb-4 text-[13px] leading-normal text-muted">
         {t("trash.manageNote", { days: TRASH_RETENTION_DAYS })}
@@ -103,69 +104,71 @@ export function TrashSection({
         <p className="m-0 border-t border-hair py-4 text-[13px] text-muted">{t("trash.empty")}</p>
       ) : null}
       {list.length > 0 ? (
-        <table className="w-full border-collapse text-left text-sm">
-          <caption className="sr-only">{t("trash.manageTitle")}</caption>
-          <thead>
-            <tr className="border-b border-line text-xs text-muted">
-              <th scope="col" className="pb-2.5 font-normal">
-                {t("add.issuer")}
-              </th>
-              <th scope="col" className="pb-2.5 font-normal">
-                {t("add.label")}
-              </th>
-              <th scope="col" className="pb-2.5 font-normal">
-                {t("trash.col.deleted")}
-              </th>
-              <th scope="col" className="pb-2.5 font-normal">
-                {t("trash.col.left")}
-              </th>
-              <th scope="col" className="pb-2.5 font-normal">
-                <span className="sr-only">{t("accounts.actions")}</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {list.map((item, index) => (
-              <tr key={item.id} className="h-[60px] border-b border-hair">
-                <td className="max-w-[200px] truncate pr-4">{nameOf(item)}</td>
-                <td className="max-w-[200px] truncate pr-4 text-muted">
-                  {item.issuer ? item.label : ""}
-                </td>
-                <td className="pr-4 text-muted">{deletedLabel(locale, t, item)}</td>
-                <td
-                  className={`pr-4 font-mono text-xs ${item.daysLeft <= LOW_DAYS ? "text-warn" : ""}`}
-                >
-                  {t(item.daysLeft === 1 ? "trash.daysOne" : "trash.days", {
-                    count: item.daysLeft,
-                  })}
-                </td>
-                <td className="text-right whitespace-nowrap">
-                  <Button
-                    data-restore=""
-                    aria-label={t("trash.restoreRow", { name: nameOf(item) })}
-                    onClick={() =>
-                      void run(
-                        () => rpc("restoreTrash", { id: item.id }),
-                        t("trash.restored", { name: nameOf(item) }) + ".",
-                        index,
-                      )
-                    }
-                  >
-                    {t("trash.restore")}
-                  </Button>{" "}
-                  <Button
-                    variant="link"
-                    className="ml-2 text-muted"
-                    aria-label={t("trash.purgeRow", { name: nameOf(item) })}
-                    onClick={() => setConfirm({ kind: "one", item })}
-                  >
-                    {t("trash.purge")}
-                  </Button>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] border-collapse text-left text-sm">
+            <caption className="sr-only">{t("trash.manageTitle")}</caption>
+            <thead>
+              <tr className="border-b border-line text-xs text-muted">
+                <th scope="col" className="pb-2.5 font-normal">
+                  {t("add.issuer")}
+                </th>
+                <th scope="col" className="pb-2.5 font-normal">
+                  {t("add.label")}
+                </th>
+                <th scope="col" className="pb-2.5 font-normal">
+                  {t("trash.col.deleted")}
+                </th>
+                <th scope="col" className="pb-2.5 font-normal">
+                  {t("trash.col.left")}
+                </th>
+                <th scope="col" className="pb-2.5 font-normal">
+                  <span className="sr-only">{t("accounts.actions")}</span>
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {list.map((item, index) => (
+                <tr key={item.id} className="h-[60px] border-b border-hair">
+                  <td className="max-w-[200px] truncate pr-4">{nameOf(item)}</td>
+                  <td className="max-w-[200px] truncate pr-4 text-muted">
+                    {item.issuer ? item.label : ""}
+                  </td>
+                  <td className="pr-4 text-muted">{deletedLabel(locale, t, item)}</td>
+                  <td
+                    className={`pr-4 font-mono text-xs ${item.daysLeft <= LOW_DAYS ? "text-warn" : ""}`}
+                  >
+                    {t(item.daysLeft === 1 ? "trash.daysOne" : "trash.days", {
+                      count: item.daysLeft,
+                    })}
+                  </td>
+                  <td className="text-right whitespace-nowrap">
+                    <Button
+                      data-restore=""
+                      aria-label={t("trash.restoreRow", { name: nameOf(item) })}
+                      onClick={() =>
+                        void run(
+                          () => rpc("restoreTrash", { id: item.id }),
+                          t("trash.restored", { name: nameOf(item) }) + ".",
+                          index,
+                        )
+                      }
+                    >
+                      {t("trash.restore")}
+                    </Button>{" "}
+                    <Button
+                      variant="danger"
+                      className="ml-2"
+                      aria-label={t("trash.purgeRow", { name: nameOf(item) })}
+                      onClick={() => setConfirm({ kind: "one", item })}
+                    >
+                      {t("trash.purge")}
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : null}
       {list.length > 0 ? (
         <div className="flex justify-end pt-3">

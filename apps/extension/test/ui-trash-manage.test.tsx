@@ -94,31 +94,78 @@ describe("manage: recently deleted", () => {
     expect((await h.ui.rpc("listAccounts", {})).accounts).toHaveLength(2);
   });
 
-  it("moves focus to the next row after a removal, or to the section when none is left", async () => {
+  it("moves focus to the next row's restore button after a removal, then to the heading", async () => {
     const h = await seeded();
     await h.ui.rpc("deleteAccount", { id: h.ids.Dropbox! });
     await h.ui.rpc("deleteAccount", { id: h.ids.Instagram! });
     const { section } = await open(h);
-    for (const name of ["Instagram", "Dropbox"]) {
-      await userEvent.click(
-        await within(section).findByRole("button", {
-          name: `${name} hesabını listeden kaldır`,
-        }),
-      );
-      await userEvent.click(
-        within(await screen.findByRole("dialog")).getByRole("button", {
-          name: "Listeden kaldır",
-        }),
-      );
-      await within(section)
-        .findByText(`${name} listeden kaldırıldı.`, {
-          selector: "*",
-        })
-        .catch(() => undefined);
-      await vi.waitFor(() => expect(section.contains(document.activeElement)).toBe(true));
-    }
-    expect(await within(section).findByText("Silinen hesap yok.")).toBeTruthy();
-    expect(section.contains(document.activeElement)).toBe(true);
+    // Newest first: Instagram, then Dropbox.
+    await userEvent.click(
+      await within(section).findByRole("button", {
+        name: "Instagram hesab\u0131n\u0131 listeden kald\u0131r",
+      }),
+    );
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Listeden kald\u0131r",
+      }),
+    );
+    const next = await within(section).findByRole("button", {
+      name: "Dropbox hesab\u0131n\u0131 geri y\u00fckle",
+    });
+    await vi.waitFor(() => expect(document.activeElement).toBe(next));
+    await userEvent.click(within(section).getByRole("button", { name: ROW_REMOVE }));
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Listeden kald\u0131r",
+      }),
+    );
+    await within(section).findByText("Silinen hesap yok.");
+    await vi.waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(section).getByRole("heading", { name: /Son silinenler/ }),
+      ),
+    );
+  });
+
+  it("refreshes on focus and visibilitychange, and stops listening after unmount", async () => {
+    const h = await seeded();
+    const onChanged = vi.fn();
+    const rpc = vi.fn(h.ui.rpc);
+    const view = renderUi(
+      <AccountsScreen state={await h.ui.rpc("getState", {})} onChanged={onChanged} pollMs={0} />,
+      { ...h.ui, rpc: rpc as typeof h.ui.rpc },
+    );
+    const section = await screen.findByRole("region", { name: "Son silinenler" });
+    await within(section).findByText("Silinen hesap yok.");
+    await h.ui.rpc("deleteAccount", { id: h.ids.Dropbox! });
+    window.dispatchEvent(new Event("focus"));
+    expect(await within(section).findByText("Dropbox")).toBeTruthy();
+    await h.ui.rpc("deleteAccount", { id: h.ids.Keep! });
+    document.dispatchEvent(new Event("visibilitychange"));
+    expect(await within(section).findByText("Keep")).toBeTruthy();
+    view.unmount();
+    rpc.mockClear();
+    window.dispatchEvent(new Event("focus"));
+    document.dispatchEvent(new Event("visibilitychange"));
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("clears a stale error once a reload succeeds", async () => {
+    const h = await seeded();
+    await h.ui.rpc("deleteAccount", { id: h.ids.Dropbox! });
+    await h.ui.rpc("addAccountManual", {
+      draft: { secret: "JBSWY3DPEHPK3PXB", issuer: "Dropbox again" },
+    });
+    const { section } = await open(h);
+    await userEvent.click(
+      await within(section).findByRole("button", {
+        name: "Dropbox hesab\u0131n\u0131 geri y\u00fckle",
+      }),
+    );
+    await within(section).findByRole("alert");
+    window.dispatchEvent(new Event("focus"));
+    await vi.waitFor(() => expect(within(section).queryByRole("alert")).toBeNull());
   });
 
   it("empties the whole list after a confirmation that names the count", async () => {

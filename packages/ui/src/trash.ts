@@ -1,6 +1,9 @@
 import type { TrashItemView } from "./contract/views";
 import type { Translate } from "./i18n/i18n";
 
+/** Remaining days at or below which the bin warns. */
+export const LOW_DAYS = 7;
+
 export const trashName = (item: TrashItemView, t: Translate) =>
   item.issuer || item.label || t("add.unnamed");
 

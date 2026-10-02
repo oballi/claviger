@@ -1,10 +1,12 @@
 import type { TrashItemView } from "../contract/views";
-import { formatDate } from "../format";
 import type { Locale, Translate } from "../i18n/i18n";
 
-/** "bugün 14:32" / "dün 14:32" / "12 Eki 2026"; relative days follow the service clock (ageDays). */
+/** "bugün 14:32" / "dün 14:32" / "6 Eyl"; relative days follow the service clock (ageDays). */
 export function deletedLabel(locale: Locale, t: Translate, item: TrashItemView): string {
-  if (item.ageDays > 1) return formatDate(locale, item.deletedAt);
+  if (item.ageDays > 1)
+    return new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(
+      new Date(item.deletedAt),
+    );
   const time = new Intl.DateTimeFormat(locale, {
     hour: "2-digit",
     minute: "2-digit",
