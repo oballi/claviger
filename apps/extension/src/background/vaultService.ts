@@ -830,7 +830,7 @@ export class VaultService {
     token: string,
     id: string,
     password?: string,
-  ): Promise<{ added: number; skipped: number; unreadable: number }> {
+  ): Promise<{ added: number; skipped: number; unreadable: number; ungrouped: number }> {
     return this.exclusive(async () => {
       const snap = await this.snapshots.get(id);
       if (!snap) throw new ServiceError("not-found", "The local copy no longer exists");
@@ -886,8 +886,8 @@ export class VaultService {
       await this.snapshot("before-restore");
       // Same vault: the accounts that are still there keep their current group, so groups are not touched.
       const names = new Map(listing.groups.map((g) => [g.id, g.name]));
-      const { added, duplicates } = sameVault
-        ? await vault.addAccounts(listing.accounts)
+      const { added, duplicates, ungrouped } = sameVault
+        ? { ...(await vault.addAccounts(listing.accounts)), ungrouped: 0 }
         : await vault.addAccountsWithGroups(
             listing.accounts,
             listing.accounts.map((a) => (a.groupId ? names.get(a.groupId) : undefined)),
@@ -897,6 +897,7 @@ export class VaultService {
         added: added.length,
         skipped: duplicates.length,
         unreadable: listing.unreadable.length,
+        ungrouped,
       };
     });
   }

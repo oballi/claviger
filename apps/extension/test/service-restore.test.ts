@@ -42,6 +42,7 @@ describe("restoreSnapshot", () => {
       added: 1,
       skipped: 1,
       unreadable: 0,
+      ungrouped: 0,
     });
     const names = (await service.listAccounts()).accounts.map((a) => a.issuer).sort();
     expect(names).toEqual(["Acme", "Beta"]);
@@ -75,6 +76,7 @@ describe("restoreSnapshot", () => {
       added: 2,
       skipped: 0,
       unreadable: 0,
+      ungrouped: 0,
     });
     // Now spent.
     expect(await codeOf(fresh.restoreSnapshot(token, snap.id, PASSWORD))).toBe("invalid-token");
@@ -306,7 +308,10 @@ describe("restoreSnapshot groups", () => {
       storageArea: "local",
     });
     const { token } = await fresh.reauth(NEW_PASSWORD);
-    await fresh.restoreSnapshot(token, snap.id, PASSWORD);
+    expect(await fresh.restoreSnapshot(token, snap.id, PASSWORD)).toMatchObject({
+      added: 1,
+      ungrouped: 0,
+    });
     const listing = await fresh.listAccounts();
     expect(listing.groups.map((x) => x.name)).toEqual(["Work"]);
     expect(listing.accounts[0]!.groupId).toBe(listing.groups[0]!.id);

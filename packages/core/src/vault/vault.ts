@@ -554,7 +554,10 @@ export class Vault {
       }
       for (const entry of accepted) {
         const clean = entry.name === undefined ? undefined : cleanGroupName(entry.name);
-        if (clean === undefined) continue;
+        if (clean === undefined) {
+          if (entry.name !== undefined) ungrouped++;
+          continue;
+        }
         const id = byKey.get(groupNameKey(clean));
         if (id) entry.account.groupId = id;
         else ungrouped++;

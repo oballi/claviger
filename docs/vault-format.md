@@ -94,7 +94,7 @@ The plaintext is UTF-8 JSON. The AAD is `otp-vault/v1/<storage key>` (for exampl
 
 A random 256-bit file key encrypts the payload with AAD `otp-vault/v1/export/<exportId>`. The password slot is built as above with `<exportId>` in place of `<vaultId>`. The payload plaintext is `{ "accounts": [ { "type", "secret", "issuer", "label", "algorithm", "digits", "period", "counter", "domains" } ] }`. Issuers and labels are encrypted too.
 
-Groups are additive and keep `version` at 1: an account may carry `"group": "<name>"` and the payload may carry `"groups": ["<name>", ...]` (display order). Names are matched on import by case-insensitive NFC key, reusing existing groups; invalid or over-limit names import the account ungrouped. Older readers ignore both fields and import everything ungrouped.
+Groups are additive and keep `version` at 1: an account may carry `"group": "<name>"` and the payload may carry `"groups": ["<name>", ...]` (display order). Names are matched on import by case-insensitive NFC key, reusing existing groups; invalid or over-limit names import the account ungrouped. Groups that none of the imported accounts use are not created. Older readers ignore both fields and import everything ungrouped.
 
 ## Versioning rules
 

@@ -159,7 +159,7 @@ export interface RpcResults {
   unlockWithRecovery: { recoveryCode: string };
   lock: null;
   listSnapshots: SnapshotInfo[];
-  restoreSnapshot: { added: number; skipped: number; unreadable: number };
+  restoreSnapshot: { added: number; skipped: number; unreadable: number; ungrouped: number };
   quarantineVault: { moved: number };
   listAccounts: AccountListView;
   addAccountUri: { id: string; name: string };

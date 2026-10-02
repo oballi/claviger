@@ -309,7 +309,7 @@ describe("addAccountsWithGroups", () => {
     const { vault } = await setup();
     const r = await vault.addAccountsWithGroups([input("A")], ["x".repeat(41)], []);
     expect(r.added).toHaveLength(1);
-    expect(r.ungrouped).toBe(0);
+    expect(r.ungrouped).toBe(1);
     expect((await vault.listAccounts()).groups).toEqual([]);
   });
 

@@ -28,7 +28,7 @@ const exportSchema = z.object({
 // Group fields are parsed leniently: a bad name must never cost the account.
 const payloadSchema = z.object({
   accounts: z.array(z.unknown()),
-  groups: z.array(z.unknown()).optional(),
+  groups: z.unknown().optional(),
 });
 const groupNameSchema = z.string().max(200);
 const payloadAad = (exportId: string) => `otp-vault/v1/export/${exportId}`;
@@ -123,11 +123,13 @@ export async function parseOtpvaultExport(json: unknown, password: string): Prom
     const before = result.accounts.length;
     collect(result, position, d.issuer ? `${d.issuer}: ${d.label ?? ""}` : (d.label ?? ""), d);
     if (result.accounts.length > before) {
-      const group = groupNameSchema.safeParse((raw as { group?: unknown }).group);
-      groupNames.push(group.success ? group.data : undefined);
+      const value = (raw as { group?: unknown }).group;
+      const group = groupNameSchema.safeParse(value);
+      // "" fails normalization on commit, so the account is imported ungrouped and counted.
+      groupNames.push(group.success ? group.data : value === undefined ? undefined : "");
     }
   });
-  const groups = (body.groups ?? []).slice(0, 200).flatMap((g) => {
+  const groups = (Array.isArray(body.groups) ? body.groups : []).slice(0, 200).flatMap((g) => {
     const name = groupNameSchema.safeParse(g);
     return name.success ? [name.data] : [];
   });

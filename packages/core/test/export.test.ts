@@ -156,6 +156,18 @@ describe(".otpvault groups", () => {
     expect(result).toEqual({ accounts, issues: [] });
   });
 
+  it("ignores a non-array groups value without failing the file", async () => {
+    for (const groups of ["x", null, {}]) {
+      const result = await parseOtpvaultExport(
+        await sealedFile({ accounts: [{ secret: "JBSWY3DPEHPK3PXP" }], groups }),
+        "pw",
+      );
+      expect(result.accounts).toHaveLength(1);
+      expect(result.groups).toBeUndefined();
+      expect(result.groupNames).toBeUndefined();
+    }
+  });
+
   it("keeps an account whose group value is invalid, ungrouped", async () => {
     const text = await sealedFile({
       accounts: [
@@ -167,7 +179,7 @@ describe(".otpvault groups", () => {
     });
     const result = await parseOtpvaultExport(text, "pw");
     expect(result.accounts).toHaveLength(3);
-    expect(result.groupNames).toEqual([undefined, undefined, "Ok"]);
+    expect(result.groupNames).toEqual(["", "", "Ok"]);
     expect(result.groups).toEqual(["Ok"]);
   });
 });
