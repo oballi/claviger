@@ -40,6 +40,7 @@
 - `clipboardWrite`: kodları kopyalamak.
 - `contextMenus`: sağ tık "claviger ile doldur" girişi.
 - `offscreen` (yalnızca Chrome): seçtiğin süre dolunca panoyu temizleyen kısa ömürlü gizli bir sayfa; arka plan servisinin panoya erişimi yoktur.
+- `sidePanel` (yalnızca Chrome): bu açılış kipini seçtiğinde claviger'i tarayıcının yan panelinde göstermek.
 - İsteğe bağlı `www.google.com`: yalnızca saat kontrolü için istenir.
 
 ## Kaynak koddan derleme

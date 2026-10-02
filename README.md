@@ -33,6 +33,7 @@ Nothing leaves your device, except the opt-in clock check, which contacts `www.g
 - `clipboardWrite`: copy codes.
 - `contextMenus`: the right-click "Fill with claviger" entry.
 - `offscreen` (Chrome only): a short-lived hidden page that clears the clipboard after the time you chose, because the background service has no clipboard access.
+- `sidePanel` (Chrome only): show claviger in the browser side panel when you pick that open mode.
 - Optional `www.google.com`: requested only for the clock check.
 
 ## Building from source

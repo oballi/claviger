@@ -1445,6 +1445,8 @@ export class VaultService {
       await Promise.all([this.throttle.reset(), this.oldPasswordThrottle.reset()]);
       await this.p.alarms.clear(AUTOLOCK_ALARM);
       await saveSettings(this.p.local, DEFAULT_SETTINGS);
+      // The browser still holds the old panel/window action until it is told the default again.
+      await this.onOpenModeChange(DEFAULT_SETTINGS.openMode).catch(() => {});
       // Last, so a failure here can never leave the key cached.
       await this.snapshots.removeAll();
       await this.p.local.remove([PURGE_PENDING_KEY]);
