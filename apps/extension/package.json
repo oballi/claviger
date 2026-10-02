@@ -17,12 +17,14 @@
     "coverage": "vitest run --coverage",
     "build:smoke": "SMOKE=1 wxt build",
     "smoke": "node scripts/smoke.mjs",
+    "size:popup": "node scripts/popup-size.mjs",
     "lint:firefox": "web-ext lint --source-dir .output/firefox-mv3 --self-hosted"
   },
   "dependencies": {
     "@fontsource/geist": "5.3.0",
     "@fontsource/geist-mono": "5.3.0",
     "@otp-vault/core": "workspace:*",
+    "@otp-vault/ui": "workspace:*",
     "qrcode-generator": "2.0.4",
     "react": "19.3.0",
     "react-dom": "19.3.0",

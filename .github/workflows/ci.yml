@@ -15,6 +15,7 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm coverage
       - run: pnpm --filter @otp-vault/extension build
+      - run: pnpm --filter @otp-vault/extension size:popup
       - run: pnpm --filter @otp-vault/extension build:firefox
       - run: pnpm --filter @otp-vault/extension lint:firefox
       - run: pnpm test:scripts

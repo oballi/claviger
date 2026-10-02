@@ -30,7 +30,12 @@ const branch = git("rev-parse", "--abbrev-ref", "HEAD");
 if (branch !== "master" && branch !== "main")
   fail(`releases are cut from master or main, not ${branch}`);
 if (git("status", "--porcelain")) fail("working tree is not clean");
-const PKGS = ["package.json", "apps/extension/package.json", "packages/core/package.json"];
+const PKGS = [
+  "package.json",
+  "apps/extension/package.json",
+  "packages/core/package.json",
+  "packages/ui/package.json",
+];
 const current = JSON.parse(readFileSync(join(root, PKGS[0]), "utf8")).version;
 if (cmp(version, current) <= 0) fail(`${version} is not greater than ${current}`);
 if (git("tag", "--list", `v${version}`)) fail(`tag v${version} already exists`);

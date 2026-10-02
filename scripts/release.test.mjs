@@ -24,7 +24,12 @@ function makeRepo() {
   git(dir, "config", "commit.gpgsign", "false");
   git(dir, "config", "tag.gpgsign", "false");
   const pkg = JSON.stringify({ name: "x", version: "0.0.1" }, null, 2) + "\n";
-  for (const f of ["package.json", "apps/extension/package.json", "packages/core/package.json"]) {
+  for (const f of [
+    "package.json",
+    "apps/extension/package.json",
+    "packages/core/package.json",
+    "packages/ui/package.json",
+  ]) {
     write(dir, f, pkg);
   }
   write(dir, "packages/core/src/index.ts", 'export const CORE_VERSION = "0.0.1";\n');
@@ -41,7 +46,12 @@ test("bumps versions, writes changelog, commits and tags", () => {
   const dir = makeRepo();
   const res = run(dir, "0.1.0");
   assert.equal(res.status, 0, res.stderr);
-  for (const f of ["package.json", "apps/extension/package.json", "packages/core/package.json"]) {
+  for (const f of [
+    "package.json",
+    "apps/extension/package.json",
+    "packages/core/package.json",
+    "packages/ui/package.json",
+  ]) {
     assert.equal(JSON.parse(readFileSync(join(dir, f), "utf8")).version, "0.1.0");
   }
   assert.match(

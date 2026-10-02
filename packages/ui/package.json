@@ -1,0 +1,45 @@
+{
+  "name": "@otp-vault/ui",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "sideEffects": [
+    "**/*.css",
+    "./src/protocol/zodConfig.ts"
+  ],
+  "exports": {
+    ".": "./src/index.ts",
+    "./popup": "./src/popup/index.ts",
+    "./manage": "./src/manage/index.ts",
+    "./protocol": "./src/protocol/index.ts",
+    "./zod-config": "./src/protocol/zodConfig.ts",
+    "./views": "./src/contract/views.ts",
+    "./rpc-client": "./src/rpc/client.ts",
+    "./qr-limits": "./src/contract/qrLimits.ts",
+    "./testing": "./src/testing/index.tsx",
+    "./styles.css": "./src/styles.css"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@fontsource/geist": "5.3.0",
+    "@fontsource/geist-mono": "5.3.0",
+    "@otp-vault/core": "workspace:*",
+    "qrcode-generator": "2.0.4",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "tailwindcss": "4.3.3",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@testing-library/react": "16.3.3",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "5.9.3",
+    "vitest": "4.1.11"
+  }
+}

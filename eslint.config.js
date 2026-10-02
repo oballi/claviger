@@ -64,6 +64,35 @@ export default defineConfig(
     },
   },
   {
+    files: ["packages/ui/src/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-globals": [
+        "error",
+        { name: "chrome", message: "packages/ui reaches the platform only through UiPlatform." },
+        { name: "browser", message: "packages/ui reaches the platform only through UiPlatform." },
+      ],
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["wxt", "wxt/*"],
+              message: "packages/ui reaches the platform only through UiPlatform.",
+            },
+            {
+              group: ["@tauri-apps/*"],
+              message: "packages/ui reaches the platform only through UiPlatform.",
+            },
+            {
+              group: ["@otp-vault/extension", "@otp-vault/extension/*", "**/apps/**"],
+              message: "packages/ui must not depend on an app.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["apps/extension/src/ui/**/*.{ts,tsx}"],
     rules: {
       "no-restricted-globals": [

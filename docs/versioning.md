@@ -30,7 +30,7 @@ otp-vault follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH
 ## Rules
 
 1. **Store format.** The manifest version may contain only numbers and dots (up to four parts, each 0–65535) with no `-beta` style suffixes, and every upload must be higher than the previous one. A rollback ships as a new, higher version. Test builds may use a fourth part (`1.2.0.1`).
-2. **One version for the repository.** All packages (root, `@otp-vault/core`, `@otp-vault/extension`) carry the same version, tagged `vX.Y.Z`. `@otp-vault/core` is not published to npm.
+2. **One version for the repository.** All packages (root, `@otp-vault/core`, `@otp-vault/ui`, `@otp-vault/extension`) carry the same version, tagged `vX.Y.Z`. `@otp-vault/core` is not published to npm.
 3. **Single source.** The extension manifest reads its version from `apps/extension/package.json`; it is never written by hand in a second place.
 4. **Data formats are versioned separately.** The vault header `format`, the record `v` and the `.otpvault` backup `version` are integers independent of the app version (see [vault-format.md](vault-format.md)). A release that raises one of them must migrate older data automatically and without loss, and must never modify data written by a newer version.
 5. **Commits and changelog.** Commit messages follow Conventional Commits (`feat:`, `fix:`, `docs:` …). Release tooling derives the next version and `CHANGELOG.md` from them.
