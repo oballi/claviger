@@ -23,10 +23,11 @@
 - **QR kodlar.** Ekrandan QR kod tara (dondurulmuş görüntü, otomatik algılama veya alan seçimi) ya da bir resim dosyasından içe aktar. Çözme işlemi yerelde yapılır.
 - **Otomatik yerel kopyalar.** Bu cihazda her gün ve riskli değişikliklerden önce şifreli kopya alınır; son 7 tanesi saklanır. Geri yükleme yalnızca eksik hesapları ekler. Kasa boşsa geri yükleme önerilir; bozuk kasa silinmeden kenara alınabilir. Parola veya kurtarma kodu değişince bu kopyalar da yeniden anahtarlanır.
 - **Görünüm ve pano.** Normal, Kompakt ve Gizli görünüm modları. İstersen kod kopyalandıktan 30 sn veya 1 dk sonra pano temizlenir. Kurtarma kodunun saklandığı hiç onaylanmadıysa hatırlatma çıkar.
+- **Açılış biçimi ve boyut.** claviger'ı açılır pencere (küçük, orta, büyük), ayrı pencere veya yan panel (Firefox'ta kenar çubuğu) olarak aç. Gizli modda kod satır satır gösterilebilir. Dil Sistem, Türkçe veya English seçilebilir. Belirli gün boyunca dosya olarak dışa aktarma yapılmazsa yedek hatırlatması çıkar.
 - **Düzenleme.** Hesapları sürükle-bırak ile sırala; aynı adlı hesap eklerken uyarı gösterilir.
 - **İsteğe bağlı saat kontrolü.** Saatini tek bir HTTPS kaynağıyla (`www.google.com`) karşılaştırır. Varsayılan olarak kapalıdır; tarayıcı bu izni yalnızca o istek için sorar.
-- **İçe aktarma.** Google Authenticator, Authenticator eklentisi, Aegis, 2FAS ve düz `otpauth://` bağlantıları desteklenir. Neyin ekleneceği önce önizlemede gösterilir; zaten kayıtlı hesaplar kopyalanmaz.
-- **Yedekleme.** Önerilen yol şifreli `.claviger` dosyasıdır. Başka bir uygulamaya geçmek için düz `otpauth://` listesi de alınabilir.
+- **İçe aktarma.** Google Authenticator, Authenticator eklentisi, Aegis, 2FAS, Proton Authenticator, Bitwarden (şifresiz JSON), andOTP, FreeOTP+, Stratum / Authenticator Pro, Raivo ve düz `otpauth://` bağlantıları desteklenir. QR görselleri yapıştırılabilir (Ctrl+V) veya sürüklenebilir; yinelenen hesaplar bulunup birleştirilebilir. Neyin ekleneceği önce önizlemede gösterilir; zaten kayıtlı hesaplar kopyalanmaz.
+- **Yedekleme.** Önerilen yol şifreli `.claviger` dosyasıdır. Başka bir uygulamaya geçmek için Aegis uyumlu dosya (şifreli veya düz JSON) ya da düz `otpauth://` listesi de alınabilir. Hesaplar Google Authenticator taşıma QR'ı veya tek hesap QR'ı olarak da gösterilebilir.
 - **Chrome ve Firefox** (Manifest V3; Chrome 116+, Firefox 140+). Yalnızca gereken izinler istenir; uzaktan kod, yazı tipi ya da analitik yoktur.
 
 İsteğe bağlı saat kontrolü dışında (`www.google.com`'a bağlanır) hiçbir şey cihazından çıkmaz. Sürüm politikası: [docs/versioning.md](docs/versioning.md).
