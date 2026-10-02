@@ -60,6 +60,8 @@ export const STRATUM_JSON = {
 };
 
 const text = (s: string): Uint8Array => new TextEncoder().encode(s);
+// A Uint8Array payload is encrypted as-is (to test non-JSON plaintext).
+const body = (p: unknown): Uint8Array => (p instanceof Uint8Array ? p : text(JSON.stringify(p)));
 const concat = (...parts: Uint8Array[]): Uint8Array => Buffer.concat(parts);
 
 export async function stratumEncrypted(
@@ -78,7 +80,7 @@ export async function stratumEncrypted(
     outputType: "binary",
   });
   const cipher = createCipheriv("aes-256-gcm", key, iv);
-  const ct = concat(cipher.update(JSON.stringify(payload), "utf8"), cipher.final());
+  const ct = concat(cipher.update(body(payload)), cipher.final());
   return concat(text("AUTHENTICATORPRO"), salt, iv, ct, cipher.getAuthTag());
 }
 
@@ -87,6 +89,6 @@ export function stratumLegacy(password: string, payload: unknown = STRATUM_JSON)
   const iv = randomBytes(16);
   const key = pbkdf2Sync(password, salt, 64_000, 32, "sha1");
   const cipher = createCipheriv("aes-256-cbc", key, iv);
-  const ct = concat(cipher.update(JSON.stringify(payload), "utf8"), cipher.final());
+  const ct = concat(cipher.update(body(payload)), cipher.final());
   return concat(text("AuthenticatorPro"), salt, iv, ct);
 }

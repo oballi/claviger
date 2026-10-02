@@ -46,6 +46,18 @@ export const isStratumJson = (json: unknown): boolean => {
   );
 };
 
+const LEGACY_MIN = HEADER_LEGACY.length + LEGACY_SALT + LEGACY_IV + 16;
+const CURRENT_MIN = HEADER.length + SALT + IV + TAG;
+
+// Cheap structural check, run before any KDF and before asking for a password.
+export function assertStratumComplete(bytes: Uint8Array): void {
+  const legacy = startsWith(bytes, HEADER_LEGACY);
+  if (bytes.length < (legacy ? LEGACY_MIN : CURRENT_MIN))
+    throw new CoreError("corrupt-file", "Stratum backup is truncated");
+  if (legacy && (bytes.length - HEADER_LEGACY.length - LEGACY_SALT - LEGACY_IV) % 16 !== 0)
+    throw new CoreError("corrupt-file", "Stratum backup is truncated");
+}
+
 export const isStratumEncrypted = (bytes: Uint8Array): boolean =>
   startsWith(bytes, HEADER) || startsWith(bytes, HEADER_LEGACY);
 
@@ -106,8 +118,7 @@ export async function parseStratumEncrypted(
 
 async function parseCurrent(bytes: Uint8Array, password: string): Promise<ImportResult> {
   const start = HEADER.length;
-  if (bytes.length < start + SALT + IV + TAG)
-    throw new CoreError("corrupt-file", "Stratum backup is truncated");
+  assertStratumComplete(bytes);
   const key = await argon2id({
     password: utf8Encode(password),
     salt: bytes.subarray(start, start + SALT),
@@ -123,8 +134,7 @@ async function parseCurrent(bytes: Uint8Array, password: string): Promise<Import
 
 async function parseLegacy(bytes: Uint8Array, password: string): Promise<ImportResult> {
   const start = HEADER_LEGACY.length;
-  if (bytes.length < start + LEGACY_SALT + LEGACY_IV + 16)
-    throw new CoreError("corrupt-file", "Stratum backup is truncated");
+  assertStratumComplete(bytes);
   const key = await pbkdf2Sha1(
     password,
     bytes.subarray(start, start + LEGACY_SALT),

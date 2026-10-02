@@ -101,4 +101,39 @@ describe("Stratum import", () => {
     const cut = encodeBinaryImport(stratumLegacy("pw").subarray(0, 40));
     expect(await asyncCodeOf(parseImport(cut, "pw"))).toBe("corrupt-file");
   });
+
+  it("a correct key over non-JSON bytes is corrupt-file without a cause", async () => {
+    const bytes = await stratumEncrypted("pw", new TextEncoder().encode("not json {"));
+    const err = await parseImport(encodeBinaryImport(bytes), "pw").catch((e: unknown) => e);
+    expect(err).toMatchObject({ code: "corrupt-file" });
+    expect((err as Error).cause).toBeUndefined();
+  }, 20_000);
+
+  it("legacy: ciphertext that is not block-aligned is corrupt-file, before the KDF", async () => {
+    const good = stratumLegacy("pw");
+    const text = encodeBinaryImport(good.subarray(0, good.length - 1));
+    const started = Date.now();
+    expect(await asyncCodeOf(parseImport(text, "pw"))).toBe("corrupt-file");
+    expect(Date.now() - started).toBeLessThan(200);
+  });
+
+  it("legacy: valid non-Stratum JSON after decryption is reported as wrong-password", async () => {
+    // Indistinguishable from a wrong key that happened to pass CBC padding.
+    const text = encodeBinaryImport(stratumLegacy("pw", { x: 1 }));
+    expect(await asyncCodeOf(parseImport(text, "pw"))).toBe("wrong-password");
+  });
+
+  it("a header-only binary is corrupt-file at detection, with or without a password", async () => {
+    for (const header of ["AUTHENTICATORPRO", "AuthenticatorPro"]) {
+      const text = encodeBinaryImport(new TextEncoder().encode(header));
+      expect(await asyncCodeOf(parseImport(text))).toBe("corrupt-file");
+      expect(await asyncCodeOf(parseImport(text, "pw"))).toBe("corrupt-file");
+    }
+  });
+
+  it("an empty Authenticators list is a valid, empty Stratum file", async () => {
+    const out = await okResult(JSON.stringify({ Authenticators: [] }));
+    expect(out.format).toBe("stratum");
+    expect(out.result).toMatchObject({ accounts: [], issues: [] });
+  });
 });

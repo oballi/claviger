@@ -36,4 +36,34 @@ describe("Raivo import", () => {
     big.push(RAIVO_ENTRIES[0]);
     expect(await parseImport(JSON.stringify(big))).toEqual({ status: "unrecognized" });
   });
+
+  it("accepts only totp/hotp kinds; STEAM and MOTP are unsupported-type", async () => {
+    const steam = { ...RAIVO_ENTRIES[0], kind: "STEAM", secret: "MFRGG" };
+    const out = await parseImport(JSON.stringify([steam, RAIVO_ENTRIES[0]]));
+    if (out.status !== "ok") throw new Error("expected ok");
+    expect(out.result.accounts).toHaveLength(1);
+    expect(out.result.issues).toMatchObject([{ position: 0, reason: "unsupported-type" }]);
+  });
+
+  it("numeric fields: real numbers and digit strings pass, lenient strings do not", async () => {
+    const base = RAIVO_ENTRIES[0]!;
+    const entries = [
+      { ...base, digits: 8, timer: 60 },
+      { ...base, digits: " 6" },
+      { ...base, digits: "6abc" },
+      { ...base, timer: "0x1e" },
+      { ...base, counter: "-1" },
+      { ...base, digits: "1e1" },
+    ];
+    const out = await parseImport(JSON.stringify(entries));
+    if (out.status !== "ok") throw new Error("expected ok");
+    expect(out.result.accounts).toMatchObject([{ digits: 8, period: 60 }]);
+    expect(out.result.issues.map((i) => [i.position, i.reason])).toEqual([
+      [1, "invalid-params"],
+      [2, "invalid-params"],
+      [3, "invalid-params"],
+      [4, "invalid-params"],
+      [5, "invalid-params"],
+    ]);
+  });
 });

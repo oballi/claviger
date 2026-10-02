@@ -8,6 +8,7 @@ import { CoreError } from "../errors";
 import { parseOtpauthText } from "./otpauthText";
 import { isRaivo, parseRaivo } from "./raivo";
 import {
+  assertStratumComplete,
   isStratumEncrypted,
   isStratumJson,
   parseStratumEncrypted,
@@ -144,6 +145,7 @@ async function parseBinary(text: string, password?: string): Promise<ImportParse
     if (looksLikeText(decoded)) return parseImport(decoded, password);
   }
   if (isStratumEncrypted(bytes)) {
+    assertStratumComplete(bytes);
     if (!password) return { status: "needs-password", format: "stratum" };
     return {
       status: "ok",
