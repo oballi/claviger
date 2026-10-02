@@ -306,10 +306,11 @@ export class VaultService {
       if (epoch !== this.lockEpoch) return null;
       this.vault = vault;
       await this.clearPurgeMarker();
-      // Not awaited: it queues on the vault, which a concurrent credential write may hold.
-      void this.purgeLegacySiteMemory(vault);
       // Queued, not awaited: callers may already hold the queue. Repairs a crash after a keyslot write.
-      this.reconciling = this.exclusive(() => this.reconcileIfActive(vault));
+      this.reconciling = this.exclusive(async () => {
+        await this.reconcileIfActive(vault);
+        if (this.vault === vault) await this.purgeLegacySiteMemory(vault);
+      });
       return vault;
     } catch (e) {
       if (isCoreError(e, "wrong-password") || isCoreError(e, "vault-not-found")) {
@@ -1263,7 +1264,11 @@ export class VaultService {
   private async purgeLegacySiteMemory(vault: Vault): Promise<void> {
     try {
       await vault.clearSiteMemory();
-      await this.p.local.remove(["siteMemoryClearPending"]);
+      if (
+        (await this.p.local.get(["siteMemoryClearPending"])).siteMemoryClearPending !== undefined
+      ) {
+        await this.p.local.remove(["siteMemoryClearPending"]);
+      }
     } catch {
       // Housekeeping only; never fails an unlock.
     }

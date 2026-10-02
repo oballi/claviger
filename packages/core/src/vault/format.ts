@@ -5,7 +5,8 @@ export const HEADER_KEY = "vault:header";
 export const INDEX_KEY = "vault:index";
 export const ACCOUNT_PREFIX = "vault:acct:";
 export const TOMB_PREFIX = "vault:tomb:";
-// Legacy: no longer written; removed on unlock.
+// Legacy: no longer written; removed on unlock. Reserved: never reuse this key name, because
+// builds delete it on every unlock without checking its version.
 export const SITEMEM_KEY = "vault:sitemem";
 export const TOMBSTONE_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 

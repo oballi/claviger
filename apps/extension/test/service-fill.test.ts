@@ -1,7 +1,7 @@
 import { generateCode } from "@claviger/core";
 import { describe, expect, it, vi } from "vitest";
 import { handleUserTrigger } from "../src/background/triggers";
-import { MIN_FILL_REMAINING_SEC } from "../src/background/vaultService";
+import { MIN_FILL_REMAINING_SEC, VaultService } from "../src/background/vaultService";
 import { codeOf, PASSWORD, unlockedService } from "./helpers/service";
 
 const SECRET = "JBSWY3DPEHPK3PXP";
@@ -240,6 +240,33 @@ describe("legacy site memory", () => {
     const remove = vi.spyOn(p.local, "remove");
     await service.unlock(PASSWORD);
     expect(remove.mock.calls.flatMap((c) => c[0] as string[])).not.toContain(KEY);
+  });
+
+  it("removes a stored record when the vault loads from the cached key", async () => {
+    const { p } = await unlockedService(undefined, { kind: "never" });
+    await p.local.set({ [KEY]: { v: 1, data: "legacy" } });
+    expect((await new VaultService(p).getState()).status).toBe("unlocked");
+    expect(await stored(p)).toBeUndefined();
+  });
+
+  it("removes a stored record on recovery unlock", async () => {
+    const { p, service, recoveryCode } = await unlockedService();
+    await service.lock();
+    await p.local.set({ [KEY]: { v: 1, data: "legacy" } });
+    await service.unlockWithRecovery(recoveryCode!, "another password 1");
+    expect(await stored(p)).toBeUndefined();
+  });
+
+  it("reads siteMemoryClearPending first and only removes it when present", async () => {
+    const { p } = await unlockedService(undefined, { kind: "never" });
+    const remove = vi.spyOn(p.local, "remove");
+    await new VaultService(p).getState();
+    expect(remove.mock.calls.flatMap((c) => c[0] as string[])).not.toContain(
+      "siteMemoryClearPending",
+    );
+    await p.local.set({ siteMemoryClearPending: true });
+    await new VaultService(p).getState();
+    expect(remove.mock.calls.flatMap((c) => c[0] as string[])).toContain("siteMemoryClearPending");
   });
 
   it("a failing storage read never fails an unlock", async () => {
