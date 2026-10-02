@@ -253,6 +253,7 @@ describe("AccountsScreen", () => {
     renderUi(
       <AccountEditor
         account={account!}
+        groups={[]}
         revealRequiresPassword={false}
         canMove={{ up: true, down: true }}
         onMove={async () => false}
@@ -439,7 +440,7 @@ describe("AccountsScreen", () => {
     await open(h);
     const table = screen.getByRole("table");
     expect(table.className).toContain("table-fixed");
-    expect(table.querySelectorAll("colgroup col")).toHaveLength(6);
+    expect(table.querySelectorAll("colgroup col")).toHaveLength(7);
   });
 
   it("reveals without a password when the user turned that off", async () => {

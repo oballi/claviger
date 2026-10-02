@@ -100,6 +100,11 @@ export const en: Record<MessageKey, string> = {
   "codes.deleteConfirm":
     "Delete this account? You won't be able to generate its codes any more. A backup copy is taken first.",
   "menu.deleteYes": "Delete",
+  "groups.filter": "Group filter",
+  "groups.all": "All",
+  "groups.column": "Group",
+  "groups.nameLabel": "Group name",
+  "groups.created": "Group {name} created.",
   "group.none": "Ungrouped",
   "group.new": "+ New group",
   "group.newName": "New group name",

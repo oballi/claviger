@@ -98,6 +98,11 @@ export const tr = {
   "codes.deleteConfirm":
     "Bu hesap silinsin mi? Bu sitenin kodunu artık üretemezsin. Silmeden önce otomatik bir kopya alınır.",
   "menu.deleteYes": "Sil",
+  "groups.filter": "Grup süzgeci",
+  "groups.all": "Tümü",
+  "groups.column": "Grup",
+  "groups.nameLabel": "Grup adı",
+  "groups.created": "{name} grubu oluşturuldu.",
   "group.none": "Grupsuz",
   "group.new": "+ Yeni grup",
   "group.newName": "Yeni grup adı",

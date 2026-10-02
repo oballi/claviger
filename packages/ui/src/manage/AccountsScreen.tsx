@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import type { AccountView, ServiceState } from "../contract/views";
 import { AccountForm } from "../components/AccountForm";
 import { Button } from "../components/Button";
@@ -10,8 +10,10 @@ import { useAccountList } from "../hooks";
 import { useLocale, useT } from "../i18n/i18n";
 import { useUi } from "../platform";
 import { AccountEditor } from "./AccountEditor";
+import { GroupChips, type GroupFilter } from "./GroupChips";
 import { PageTitle } from "./ManageFrame";
-import { reorderByDrop } from "../reorder";
+import { TextField } from "../components/TextField";
+import { neighbourOf, reorderByDrop, swapOrder } from "../reorder";
 
 /** Design board "Yönetim — hesaplar". */
 export function AccountsScreen({
@@ -50,13 +52,30 @@ export function AccountsScreen({
   const [reorderError, setReorderError] = useState<string | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
 
+  const [filter, setFilter] = useState<GroupFilter>("all");
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [groupError, setGroupError] = useState<string | null>(null);
+  const [savingGroup, setSavingGroup] = useState(false);
+
   const accounts = list?.accounts ?? [];
+  const groups = list?.groups ?? [];
+  // A deleted group falls back to "all" without an effect.
+  const effective =
+    filter === "all" || filter === "none" || groups.some((g) => g.id === filter) ? filter : "all";
+  const inGroup = (a: AccountView) =>
+    effective === "all"
+      ? true
+      : effective === "none"
+        ? !groups.some((g) => g.id === a.groupId)
+        : a.groupId === effective;
   const q = query.trim().toLocaleLowerCase(locale);
-  const rows = q
-    ? accounts.filter((a) =>
-        `${a.issuer} ${a.label} ${a.domains.join(" ")}`.toLocaleLowerCase(locale).includes(q),
-      )
-    : accounts;
+  const rows = accounts.filter(
+    (a) =>
+      inGroup(a) &&
+      (!q || `${a.issuer} ${a.label} ${a.domains.join(" ")}`.toLocaleLowerCase(locale).includes(q)),
+  );
+  const groupName = (a: AccountView) => groups.find((g) => g.id === a.groupId)?.name;
   const selected = accounts.find((a) => a.id === editing);
 
   function changed(text: string) {
@@ -66,21 +85,27 @@ export function AccountsScreen({
     onChanged();
   }
 
-  // Reordering swaps with the neighbour in the same group, so pinned and other accounts never mix.
+  // Reordering swaps with the neighbour in the same group and pin state, so they never mix.
+  const knownGroup = (a: AccountView) =>
+    groups.some((g) => g.id === a.groupId) ? a.groupId : null;
   function neighbours(account: AccountView) {
-    const group = accounts.filter((a) => a.pinned === account.pinned);
-    const index = group.findIndex((a) => a.id === account.id);
-    return { up: group[index - 1], down: group[index + 1] };
+    const peers = accounts.map((a) => ({ ...a, groupId: knownGroup(a) }));
+    return {
+      up: neighbourOf(peers, account.id, -1),
+      down: neighbourOf(peers, account.id, 1),
+    };
   }
 
   async function move(account: AccountView, delta: -1 | 1): Promise<boolean> {
     const other = delta === -1 ? neighbours(account).up : neighbours(account).down;
     if (!other) return false;
-    const order = accounts.map((a) => a.id);
-    const i = order.indexOf(account.id);
-    const j = order.indexOf(other.id);
-    [order[i], order[j]] = [order[j]!, order[i]!];
-    await rpc("reorder", { order });
+    await rpc("reorder", {
+      order: swapOrder(
+        accounts.map((a) => a.id),
+        account.id,
+        other.id,
+      ),
+    });
     return true;
   }
 
@@ -91,14 +116,24 @@ export function AccountsScreen({
   const sameGroup = (id: string, other: string | null) => {
     const a = accounts.find((x) => x.id === id);
     const b = accounts.find((x) => x.id === other);
-    return Boolean(a && b && a.id !== b.id && a.pinned === b.pinned);
+    return Boolean(
+      a &&
+      b &&
+      a.id !== b.id &&
+      a.pinned === b.pinned &&
+      (knownGroup(a) ?? null) === (knownGroup(b) ?? null),
+    );
   };
 
   async function drop(target: string) {
     const dragged = dragging;
     setDragging(null);
     if (!dragged || q) return;
-    const order = reorderByDrop(accounts, dragged, target);
+    const order = reorderByDrop(
+      accounts.map((a) => ({ ...a, groupId: knownGroup(a) })),
+      dragged,
+      target,
+    );
     if (!order) return;
     setReorderError(null);
     try {
@@ -106,6 +141,24 @@ export function AccountsScreen({
       changed(t("accounts.moved", { name: nameOf(dragged) }));
     } catch (e) {
       setReorderError(errorMessage(t, e));
+    }
+  }
+
+  async function createGroup(event: FormEvent) {
+    event.preventDefault();
+    if (savingGroup) return;
+    setGroupError(null);
+    setSavingGroup(true);
+    try {
+      const group = await rpc("createGroup", { name: newName });
+      setCreating(false);
+      setNewName("");
+      setFilter(group.id);
+      changed(t("groups.created", { name: group.name }));
+    } catch (e) {
+      setGroupError(errorMessage(t, e));
+    } finally {
+      setSavingGroup(false);
     }
   }
 
@@ -143,6 +196,18 @@ export function AccountsScreen({
           </Button>
         </div>
       </div>
+
+      <GroupChips
+        groups={groups}
+        accounts={accounts}
+        value={effective}
+        onChange={setFilter}
+        onCreate={() => {
+          setGroupError(null);
+          setNewName("");
+          setCreating(true);
+        }}
+      />
 
       <p role="status" className="m-0 -my-6 min-h-4 text-sm">
         {message}
@@ -230,10 +295,11 @@ export function AccountsScreen({
         <table className="w-full min-w-[680px] table-fixed border-collapse text-left text-sm">
           <colgroup>
             <col style={{ width: "32px" }} />
-            <col style={{ width: "18%" }} />
-            <col style={{ width: "27%" }} />
-            <col style={{ width: "27%" }} />
-            <col style={{ width: "9%" }} />
+            <col style={{ width: "17%" }} />
+            <col style={{ width: "22%" }} />
+            <col style={{ width: "12%" }} />
+            <col style={{ width: "22%" }} />
+            <col style={{ width: "8%" }} />
             <col style={{ width: "96px" }} />
           </colgroup>
           <caption className="sr-only">{t("accounts.title")}</caption>
@@ -249,6 +315,9 @@ export function AccountsScreen({
                 {t("add.label")}
               </th>
               <th scope="col" className="pb-2.5 font-normal">
+                {t("groups.column")}
+              </th>
+              <th scope="col" className="pb-2.5 font-normal">
                 {t("accounts.site")}
               </th>
               <th scope="col" className="pb-2.5 font-normal">
@@ -262,7 +331,7 @@ export function AccountsScreen({
           <tbody>
             {list && rows.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-6 text-muted">
+                <td colSpan={7} className="py-6 text-muted">
                   {q ? t("accounts.noMatch") : t("codes.empty")}
                   {!q && state.snapshotOffer ? (
                     <Button
@@ -327,6 +396,9 @@ export function AccountsScreen({
                     </span>
                   </td>
                   <td className="truncate pr-4 text-muted">{a.issuer ? a.label : ""}</td>
+                  <td className={`truncate pr-4 text-xs ${groupName(a) ? "" : "text-muted"}`}>
+                    {groupName(a) ?? "\u2014"}
+                  </td>
                   <td
                     className={`truncate pr-4 font-mono text-xs ${a.domains.length ? "" : "text-muted"}`}
                   >
@@ -381,10 +453,33 @@ export function AccountsScreen({
         </Dialog>
       ) : null}
 
+      {creating ? (
+        <Dialog title={t("group.new")} onClose={() => setCreating(false)}>
+          <form onSubmit={(e) => void createGroup(e)} className="flex flex-col gap-5">
+            <TextField
+              id="new-group-name"
+              label={t("groups.nameLabel")}
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              autoFocus
+            />
+            <p role="alert" className="m-0 min-h-4 text-sm text-warn">
+              {groupError}
+            </p>
+            <div>
+              <Button type="submit" variant="primary" disabled={savingGroup}>
+                {t("common.save")}
+              </Button>
+            </div>
+          </form>
+        </Dialog>
+      ) : null}
+
       {selected ? (
         <AccountEditor
           key={selected.id}
           account={selected}
+          groups={groups}
           revealRequiresPassword={state.revealRequiresPassword}
           canMove={{
             up: Boolean(neighbours(selected).up),

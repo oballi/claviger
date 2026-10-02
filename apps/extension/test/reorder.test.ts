@@ -43,3 +43,13 @@ describe("neighbourOf / swapOrder", () => {
     expect(swapOrder(["a", "b"], "a", "zz")).toEqual(["a", "b"]);
   });
 });
+
+describe("reorderByDrop groups", () => {
+  it("refuses to reorder across groups", () => {
+    const grouped = [
+      { id: "a", pinned: false, groupId: "g1" },
+      { id: "b", pinned: false, groupId: "g2" },
+    ];
+    expect(reorderByDrop(grouped, "a", "b")).toBeNull();
+  });
+});

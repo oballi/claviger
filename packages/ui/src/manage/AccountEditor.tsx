@@ -1,9 +1,10 @@
 import { parseOtpauthUri } from "@otp-vault/core";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import type { AccountView } from "../contract/views";
+import type { AccountView, GroupView } from "../contract/views";
 import { RpcError } from "../rpc/client";
 import { Button } from "../components/Button";
 import { Dialog } from "../components/Dialog";
+import { GroupSelect } from "../components/GroupSelect";
 import { QrCode } from "../components/QrCode";
 import { ReauthForm } from "../components/ReauthForm";
 import { TextField } from "../components/TextField";
@@ -19,6 +20,7 @@ const groupSecret = (secret: string) => secret.match(/.{1,4}/g)?.join(" ") ?? se
 /** The "Düzenle" dialog of the Accounts page: edit, pin, reorder, reveal and delete one account. */
 export function AccountEditor({
   account,
+  groups,
   revealRequiresPassword,
   canMove,
   onMove,
@@ -27,6 +29,7 @@ export function AccountEditor({
   onChanged,
 }: {
   account: AccountView;
+  groups: readonly GroupView[];
   revealRequiresPassword: boolean;
   canMove: { up: boolean; down: boolean };
   /** Resolves to false when there was no neighbour to swap with. */
@@ -43,6 +46,9 @@ export function AccountEditor({
   const [issuer, setIssuer] = useState(account.issuer);
   const [label, setLabel] = useState(account.label);
   const [domains, setDomains] = useState(account.domains.join(", "));
+  const [groupId, setGroupId] = useState(
+    groups.some((g) => g.id === account.groupId) ? (account.groupId ?? "") : "",
+  );
   const [error, setError] = useState<string | null>(null);
   const [revealed, setRevealed] = useState<{ uri: string; secret: string } | null>(null);
   // Starts from the cached setting but falls back to asking if the service says otherwise.
@@ -112,7 +118,12 @@ export function AccountEditor({
       () =>
         rpc("updateAccount", {
           id: account.id,
-          patch: { issuer: issuer.trim(), label: label.trim(), domains: list },
+          patch: {
+            issuer: issuer.trim(),
+            label: label.trim(),
+            domains: list,
+            groupId: groupId || null,
+          },
         }),
       t("accounts.saved", { name: issuer.trim() || label.trim() || name }),
     );
@@ -162,6 +173,7 @@ export function AccountEditor({
                 onChange={(e) => setDomains(e.target.value)}
                 mono
               />
+              <GroupSelect id="edit-group" value={groupId} groups={groups} onChange={setGroupId} />
               <div>
                 <Button type="submit" variant="primary">
                   {t("common.save")}
