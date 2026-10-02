@@ -12,7 +12,7 @@ import { clipboardClearSchema, lockPolicySchema, themeSchema, viewModeSchema } f
 
 export { RPC_CHANNEL } from "../rpc/channel";
 
-const id = z.string().min(1);
+const id = z.string().min(1).max(64);
 const token = z.string().min(1);
 // Caps bound the work a malformed message can cause before the service sees it.
 const password = z.string().max(1024);
