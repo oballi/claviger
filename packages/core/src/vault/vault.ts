@@ -19,6 +19,9 @@ import {
   INDEX_KEY,
   indexSchema,
   isNewerVersion,
+  MAX_SITE_MEMORY,
+  SITEMEM_KEY,
+  siteMemorySchema,
   TOMB_PREFIX,
   tombKey,
   tombSchema,
@@ -620,6 +623,48 @@ export class Vault {
     if (record.data.updatedAt <= deletedAt) return true;
     const account = await decryptRecord(this.dek, key, record.data, accountSchema);
     return account !== null && account.updatedAt <= deletedAt;
+  }
+
+  private async readSiteMemory(): Promise<{ entries: [string, string][]; newer: boolean }> {
+    const raw = (await this.deps.storage.get([SITEMEM_KEY]))[SITEMEM_KEY];
+    if (raw === undefined) return { entries: [], newer: false };
+    if (isNewerVersion(raw, "v")) return { entries: [], newer: true };
+    const record = encryptedRecordSchema.safeParse(raw);
+    if (!record.success) return { entries: [], newer: false };
+    const value = await decryptRecord(this.dek, SITEMEM_KEY, record.data, siteMemorySchema);
+    return { entries: value?.entries ?? [], newer: false };
+  }
+
+  /** Convenience data only: never authorises anything, and damage yields an empty result. */
+  async getSiteMemory(liveIds?: Set<string>): Promise<Record<string, string>> {
+    const live = liveIds ?? new Set((await this.listAccounts()).accounts.map((a) => a.id));
+    const { entries } = await this.readSiteMemory();
+    return Object.fromEntries(entries.filter(([, id]) => live.has(id)));
+  }
+
+  rememberSite(domain: string, accountId: string): Promise<void> {
+    return this.exclusive(async () => {
+      const { entries: stored, newer } = await this.readSiteMemory();
+      // A newer client's record must not be overwritten by this version.
+      if (newer) return;
+      const live = new Set((await this.listAccounts()).accounts.map((a) => a.id));
+      const entries = stored.filter(([d, id]) => d !== domain && live.has(id));
+      entries.push([domain, accountId]);
+      const now = this.deps.clock.now();
+      await this.deps.storage.set({
+        [SITEMEM_KEY]: await encryptRecord(
+          this.dek,
+          SITEMEM_KEY,
+          { entries: entries.slice(-MAX_SITE_MEMORY), updatedAt: now },
+          now,
+          this.deps.random,
+        ),
+      });
+    });
+  }
+
+  clearSiteMemory(): Promise<void> {
+    return this.exclusive(() => this.deps.storage.remove([SITEMEM_KEY]));
   }
 
   purgeTombstones(maxAgeMs = TOMBSTONE_TTL_MS): Promise<number> {
