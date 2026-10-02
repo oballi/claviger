@@ -13,6 +13,7 @@ import { AccountEditor } from "./AccountEditor";
 import { GroupsSection } from "./GroupsSection";
 import { GroupChips, type GroupFilter } from "./GroupChips";
 import { PageTitle } from "./ManageFrame";
+import { TrashSection } from "./TrashSection";
 import { TextField } from "../components/TextField";
 import { neighbourOf, reorderByDrop, swapOrder } from "../reorder";
 
@@ -52,6 +53,7 @@ export function AccountsScreen({
   const [maintenanceError, setMaintenanceError] = useState<string | null>(null);
   const [reorderError, setReorderError] = useState<string | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
+  const [trashVersion, setTrashVersion] = useState(0);
 
   const [filter, setFilter] = useState<GroupFilter>("all");
   const [creating, setCreating] = useState(false);
@@ -80,6 +82,7 @@ export function AccountsScreen({
   const selected = accounts.find((a) => a.id === editing);
 
   function changed(text: string): Promise<void> {
+    setTrashVersion((v) => v + 1);
     setMessage(text);
     setReorderError(null);
     onChanged();
@@ -449,6 +452,8 @@ export function AccountsScreen({
           </dd>
         </div>
       </dl>
+
+      <TrashSection version={trashVersion} onMessage={(text) => void changed(text)} />
 
       {adding ? (
         <Dialog title={t("add.title")} onClose={() => setAdding(false)}>

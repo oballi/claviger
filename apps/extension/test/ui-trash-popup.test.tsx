@@ -481,6 +481,27 @@ describe("recently deleted list in the popup", () => {
     expect(screen.queryByText(/kasa kopyas\u0131|Kopya/)).toBeNull();
   });
 
+  it("does not flash the snapshot offer before the bin has loaded", async () => {
+    const h = await harness();
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const ui: typeof h.ui = {
+      ...h.ui,
+      rpc: (async (type: string, payload: unknown) => {
+        if (type === "getState")
+          return { ...(await h.ui.rpc("getState", {})), snapshotOffer: { accountCount: 3 } };
+        if (type === "listTrash") await gate;
+        return h.ui.rpc(type as never, payload as never);
+      }) as typeof h.ui.rpc,
+    };
+    renderUi(<PopupApp pollMs={0} />, ui);
+    await screen.findByText("Hen\u00fcz hesap yok.");
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByText(/Otomatik kopyadan/)).toBeNull();
+    release();
+    expect(await screen.findByText(/Otomatik kopyadan/)).toBeTruthy();
+  });
+
   it("renders in English", async () => {
     const h = await seeded();
     await h.ui.rpc("deleteAccount", { id: h.ids.Beta! });

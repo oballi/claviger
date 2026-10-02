@@ -205,7 +205,7 @@ export const tr = {
   "error.trash-corrupt": "Bu kayıt okunamadı. Listeden kaldırabilirsin.",
   "trash.link": "Son silinenler \u00b7 {count}",
   "trash.title": "Son silinenler.",
-  "trash.listLabel": "Son silinenler",
+  "trash.manageTitle": "Son silinenler",
   "trash.popupNote":
     "Silinen hesaplar {days} gün şifreli olarak saklanır, sonra buradan kaldırılır. Kod gösterilmez.",
   "trash.popupFoot": "Listeden kaldırmak için yönetim sayfasını kullan.",

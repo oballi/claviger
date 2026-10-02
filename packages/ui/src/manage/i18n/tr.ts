@@ -320,6 +320,24 @@ export const manageTr = {
   "setup.account.qrImport": "QR görselini içe aktar",
   "scan.drawHint":
     "Fareyle ya da dokunarak çiz. Klavyede görüntüye odaklanıp ok tuşlarıyla kutuyu taşı, Shift ile boyutlandır.",
+  "trash.manageNote":
+    "Bu cihazda silinen hesaplar {days} gün şifreli olarak saklanır, sonra buradan kaldırılır. Başka cihazlara eşitlenmez.",
+  "trash.empty": "Silinen hesap yok.",
+  "trash.col.deleted": "Silindi",
+  "trash.col.left": "Kalan",
+  "trash.today": "bugün {time}",
+  "trash.yesterday": "dün {time}",
+  "trash.days": "{count} gün",
+  "trash.daysOne": "{count} gün",
+  "trash.purge": "Listeden kaldır",
+  "trash.purgeRow": "{name} hesabını listeden kaldır",
+  "trash.purgeAll": "Tümünü listeden kaldır…",
+  "trash.purgeTitle": "Listeden kaldırılsın mı?",
+  "trash.purgeConfirm": "{name} Son silinenler listesinden kaldırılsın mı?",
+  "trash.purgeAllConfirm": "Son silinenlerdeki {count} hesap listeden kaldırılsın mı?",
+  "trash.purgeYes": "Listeden kaldır",
+  "trash.purged": "{name} listeden kaldırıldı.",
+  "trash.purgedAll": "Son silinenler listesi boşaltıldı.",
 } as const;
 
 export type ManageKey = keyof typeof manageTr;

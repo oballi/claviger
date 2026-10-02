@@ -676,7 +676,7 @@ export function CodesScreen({
           <div className="flex flex-col items-start gap-4 pt-10">
             {trashLink}
             <p className="m-0 text-sm text-muted">{t("codes.empty")}</p>
-            {state.snapshotOffer && trash.items.length === 0 ? (
+            {state.snapshotOffer && trash.loaded && trash.items.length === 0 ? (
               <Button
                 variant="link"
                 onClick={() => openManage("backup")}

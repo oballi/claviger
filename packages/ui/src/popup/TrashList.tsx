@@ -71,7 +71,7 @@ export function TrashList({
             {error}
           </p>
         ) : null}
-        <ul aria-label={t("trash.listLabel")} className="m-0 list-none p-0">
+        <ul aria-label={t("trash.manageTitle")} className="m-0 list-none p-0">
           {items.map((item) => {
             const name = trashName(item, t);
             return (

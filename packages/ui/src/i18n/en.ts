@@ -208,7 +208,7 @@ export const en: Record<PopupKey, string> = {
   "error.trash-corrupt": "This entry could not be read. You can remove it from the list.",
   "trash.link": "Recently deleted \u00b7 {count}",
   "trash.title": "Recently deleted.",
-  "trash.listLabel": "Recently deleted",
+  "trash.manageTitle": "Recently deleted",
   "trash.popupNote":
     "Deleted accounts are kept encrypted for {days} days, then removed from here. Codes are never shown.",
   "trash.popupFoot": "To remove entries from the list, use the manage page.",

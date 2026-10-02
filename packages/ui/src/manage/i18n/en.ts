@@ -328,4 +328,22 @@ export const manageEn: Record<ManageKey, string> = {
   "setup.account.qrImport": "Import a QR image",
   "scan.drawHint":
     "Draw with the mouse or by touch. With the keyboard, focus the image, move the box with the arrow keys and resize it with Shift.",
+  "trash.manageNote":
+    "Accounts deleted on this device are kept encrypted on this device for {days} days, then removed from here. They are not synced to other devices.",
+  "trash.empty": "Nothing deleted recently.",
+  "trash.col.deleted": "Deleted",
+  "trash.col.left": "Left",
+  "trash.today": "today {time}",
+  "trash.yesterday": "yesterday {time}",
+  "trash.days": "{count} days",
+  "trash.daysOne": "{count} day",
+  "trash.purge": "Remove from list",
+  "trash.purgeRow": "Remove {name} from list",
+  "trash.purgeAll": "Remove all from list\u2026",
+  "trash.purgeTitle": "Remove from list?",
+  "trash.purgeConfirm": "Remove {name} from Recently deleted?",
+  "trash.purgeAllConfirm": "Remove the {count} account(s) in Recently deleted from the list?",
+  "trash.purgeYes": "Remove from list",
+  "trash.purged": "{name} removed from the list.",
+  "trash.purgedAll": "Recently deleted list emptied.",
 };
