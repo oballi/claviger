@@ -690,29 +690,14 @@ export class VaultService {
     );
     const matches = opts.pageUrl
       ? matchAccounts(listing.accounts, opts.pageUrl)
-      : { exact: [] as Account[], suggested: [] as Account[] };
+      : { exact: [] as Account[] };
     const pageDomain = opts.pageUrl ? registrableDomain(opts.pageUrl) : null;
-    const remembered: string[] = [];
-    if (pageDomain && (await this.settings()).siteMemory) {
-      try {
-        const id = (await vault.getSiteMemory(new Set(listing.accounts.map((a) => a.id))))[
-          pageDomain
-        ];
-        if (id && !matches.exact.some((a) => a.id === id)) remembered.push(id);
-      } catch {
-        // Ordering hint only.
-      }
-    }
     return {
       accounts,
       groups: listing.groups.map((g) => ({ id: g.id, name: g.name })),
       unreadable: listing.unreadable,
       indexDamaged: listing.indexDamaged,
-      matches: {
-        exact: matches.exact.map((a) => a.id),
-        suggested: matches.suggested.map((a) => a.id),
-        remembered,
-      },
+      matches: { exact: matches.exact.map((a) => a.id) },
       pageDomain,
     };
   }
@@ -1314,8 +1299,8 @@ export class VaultService {
   }
 
   /**
-   * Types a code into a page. The page URL is always re-read here and never taken from the caller;
-   * site memory never authorises a fill.
+   * Types a code into a page. The page URL is always re-read here and never taken from the caller.
+   * Only account domains authorise a fill.
    */
   private async fillInto(opts: {
     id: string;
@@ -1451,7 +1436,7 @@ export class VaultService {
     const subframe = frameId !== undefined && frameId !== 0;
     const url = subframe ? frameUrl : tab.url;
     const vault = await this.requireVault();
-    // Only account domains count; site memory and issuer-name suggestions never authorise.
+    // Only account domains count; names never authorise.
     const exact =
       url && fillableUrl(url)
         ? matchAccounts((await vault.listAccounts()).accounts, url).exact

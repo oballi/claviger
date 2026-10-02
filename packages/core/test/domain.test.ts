@@ -23,111 +23,38 @@ describe("registrableDomain", () => {
 });
 
 describe("matchAccounts", () => {
-  const bound = { issuer: "GitHub", domains: ["github.com"] };
-  const unbound = { issuer: "GitHub", domains: [] as string[] };
-  const google = { issuer: "Google", domains: ["google.com"] };
-  const aws = { issuer: "AWS", domains: [] as string[] };
-  const accounts = [bound, unbound, google, aws];
-
-  it("matches exact registrable domains, including subdomains of the page", () => {
-    expect(matchAccounts(accounts, "https://gist.github.com/x")).toEqual({
-      exact: [bound],
-      suggested: [unbound],
-    });
+  it("returns only accounts whose domains include the registrable domain of the page", () => {
+    const accounts = [
+      { issuer: "Acme", label: "me", domains: ["acme.com"] },
+      { issuer: "Acme", label: "work@acme.com", domains: [] as string[] },
+      { issuer: "acme", label: "", domains: ["other.com"] },
+    ];
+    expect(matchAccounts(accounts, "https://login.acme.com/x")).toEqual({ exact: [accounts[0]] });
   });
 
-  it("suggests (never auto-fills) on an exact issuer/domain-label match", () => {
-    expect(matchAccounts(accounts, "https://accounts.google.co.uk")).toEqual({
-      exact: [],
-      suggested: [google],
-    });
+  it("never matches look-alike hosts", () => {
+    const bank = { domains: ["bank.com"] };
+    for (const url of [
+      "https://bank.com.evil.io/",
+      "https://evil-bank.com/login",
+      "https://bank.co/",
+    ]) {
+      expect(matchAccounts([bank], url)).toEqual({ exact: [] });
+    }
   });
 
-  it("does not suggest look-alike phishing domains", () => {
-    expect(matchAccounts(accounts, "https://evil-github.com/login")).toEqual({
-      exact: [],
-      suggested: [],
-    });
-    // Suggestions are hints only; fill is gated on linked domains (see service-fill tests).
-    expect(matchAccounts(accounts, "https://github.com.evil.io/login").exact).toEqual([]);
+  it("matches nothing on non-web pages and non-URLs", () => {
+    const a = { domains: ["settings"] };
+    expect(matchAccounts([a], "chrome://settings")).toEqual({ exact: [] });
+    expect(matchAccounts([a], "not a url")).toEqual({ exact: [] });
   });
 
-  it("ignores short labels and non-web pages", () => {
-    const short = { issuer: "AB", domains: [] as string[] };
-    expect(matchAccounts([short], "https://ab.example.com").suggested).toEqual([]);
-    expect(matchAccounts(accounts, "chrome://settings")).toEqual({ exact: [], suggested: [] });
-    expect(matchAccounts(accounts, "not a url")).toEqual({ exact: [], suggested: [] });
-  });
-
-  describe("broader suggestions", () => {
-    const idrive = { issuer: "iDrive", domains: [] as string[] };
-    const acme = { issuer: "Acme", domains: [] as string[] };
-    const mail = { issuer: "Work", label: "ada@acme.example", domains: [] as string[] };
-    const other = { issuer: "Other", label: "me@example.com", domains: [] as string[] };
-    const list = [other, mail, acme, idrive];
-
-    it("suggests on any non-suffix host label, in list order, without duplicates", () => {
-      const r = matchAccounts(list, "https://idrive.acme.example/x");
-      expect(r.exact).toEqual([]);
-      expect(r.suggested).toEqual([mail, acme, idrive]);
-    });
-
-    it("suggests on an e-mail whose registrable domain is the page's", () => {
-      expect(matchAccounts([other, mail], "https://acme.example").suggested).toEqual([mail]);
-      const byIssuer = { issuer: "a@sub.acme.example", domains: [] as string[] };
-      expect(matchAccounts([byIssuer], "https://www.acme.example").suggested).toEqual([byIssuer]);
-    });
-
-    it("keeps exact first and out of suggestions", () => {
-      const bound = { issuer: "Acme", domains: ["acme.example"] };
-      const r = matchAccounts([acme, bound], "https://idrive.acme.example");
-      expect(r).toEqual({ exact: [bound], suggested: [acme] });
-    });
-
-    it("ignores public-suffix labels, www, short labels and look-alike e-mails", () => {
-      const co = { issuer: "com", domains: [] as string[] };
-      const tr = { issuer: "tr", domains: [] as string[] };
-      const www = { issuer: "www", domains: [] as string[] };
-      const lookalike = { issuer: "X", label: "a@acme.example.evil.io", domains: [] as string[] };
-      const r = matchAccounts([co, tr, www, lookalike], "https://www.acme.example");
-      expect(r.suggested).toEqual([]);
-    });
-
-    it("does not use labels for IPs", () => {
-      const ip = { issuer: "192", domains: [] as string[] };
-      expect(matchAccounts([ip], "http://192.168.1.10").suggested).toEqual([]);
-    });
-
-    it("suggests a host-label issuer on localhost-style dotless hosts", () => {
-      const lh = { issuer: "localhost", domains: [] as string[] };
-      expect(matchAccounts([lh], "http://localhost:3000").suggested).toEqual([lh]);
-    });
-
-    it("suggests on a look-alike page host (hint only; fill is gated separately)", () => {
-      const bank = { issuer: "Bank", domains: ["bank.com"] };
-      expect(matchAccounts([bank], "https://bank.com.evil.io/")).toEqual({
-        exact: [],
-        suggested: [bank],
-      });
-    });
-  });
-
-  describe("hostile input", () => {
-    it("stays fast on huge labels", () => {
-      const huge = [
-        { issuer: "x", label: "a".repeat(200_000), domains: [] as string[] },
-        { issuer: "x", label: "a@" + "b".repeat(200_000), domains: [] as string[] },
-        { issuer: "x", label: "a@".repeat(100_000), domains: [] as string[] },
-        { issuer: "x", label: "a.".repeat(100_000) + "@b", domains: [] as string[] },
-      ];
-      const start = performance.now();
-      matchAccounts(huge, "https://acme.example");
-      expect(performance.now() - start).toBeLessThan(50);
-    });
-
-    it("still finds an e-mail near the start of a long label", () => {
-      const a = { issuer: "x", label: "me@acme.example " + "z".repeat(10_000), domains: [] };
-      expect(matchAccounts([a], "https://acme.example").suggested).toEqual([a]);
-    });
+  it("matches localhost and IPs only when linked to that exact host", () => {
+    const lh = { domains: ["localhost"] };
+    const ip = { domains: ["192.168.1.10"] };
+    const none = { domains: [] as string[] };
+    expect(matchAccounts([lh, ip, none], "http://localhost:3000")).toEqual({ exact: [lh] });
+    expect(matchAccounts([lh, ip, none], "http://192.168.1.10:8080/x")).toEqual({ exact: [ip] });
+    expect(matchAccounts([lh, ip, none], "http://192.168.1.11")).toEqual({ exact: [] });
   });
 });

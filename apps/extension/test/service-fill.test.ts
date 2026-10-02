@@ -68,9 +68,6 @@ describe("fillCode", () => {
     expect(r.result).toBe("refused");
     expect(r.code).toBe(p.tabs.fills[0]?.code);
     p.tabs.next = "filled";
-    expect(
-      (await service.listAccounts({ pageUrl: "https://other.com/" })).matches.remembered,
-    ).toEqual([]);
   });
 
   it("re-reads the tab url again after the wait, right before injecting", async () => {
@@ -132,13 +129,12 @@ describe("fillCode", () => {
     expect(p.tabs.fills).toHaveLength(0);
   });
 
-  it("never fills an account that is only suggested for the page", async () => {
+  it("never lists or fills an account only because the page host looks like its domain", async () => {
     const { p, service, id } = await setup();
     const evil = "https://bank.com.evil.io/";
     p.tabs.activeTab = { id: TAB, url: evil };
     const view = await service.listAccounts({ pageUrl: evil });
-    expect(view.matches.exact).toEqual([]);
-    expect(view.matches.suggested).toEqual([id]);
+    expect(view.matches).toEqual({ exact: [] });
     expect(await codeOf(service.fillCode({ id, tabId: TAB }))).toBe("not-linked");
     expect(p.tabs.fills).toHaveLength(0);
   });
@@ -252,7 +248,6 @@ describe("site memory", () => {
     await service.fillCode({ id, tabId: TAB, confirmedDomain: "other.com" });
     const view = await service.listAccounts({ pageUrl: "https://other.com/x" });
     expect(view.matches.exact).toEqual([]);
-    expect(view.matches.remembered).toEqual([id]);
     // The shortcut uses account domains only.
     p.tabs.fills.length = 0;
     await service.fillFromCommand();
@@ -265,13 +260,11 @@ describe("site memory", () => {
     const { p, service, id } = await setup();
     p.tabs.next = "no-field";
     await service.fillCode({ id, tabId: TAB });
-    expect((await service.listAccounts({ pageUrl: BANK })).matches.remembered).toEqual([]);
     p.tabs.next = "filled";
     await service.setSiteMemory(false);
     await service.fillCode({ id, tabId: TAB });
     await service.setSiteMemory(true);
     p.tabs.activeTab = { id: TAB, url: "https://app.bank.com/" };
-    expect((await service.listAccounts({ pageUrl: BANK })).matches.remembered).toEqual([]);
   });
 
   it("keeps ordering hints out of the exact list", async () => {
@@ -279,7 +272,6 @@ describe("site memory", () => {
     await service.fillCode({ id, tabId: TAB });
     const view = await service.listAccounts({ pageUrl: BANK });
     expect(view.matches.exact).toEqual([id]);
-    expect(view.matches.remembered).toEqual([]);
   });
 
   it("forgets all sites when site memory is turned off", async () => {
@@ -289,9 +281,6 @@ describe("site memory", () => {
     await service.fillCode({ id, tabId: TAB, confirmedDomain: "other.com" });
     await service.setSiteMemory(false);
     await service.setSiteMemory(true);
-    expect(
-      (await service.listAccounts({ pageUrl: "https://other.com/" })).matches.remembered,
-    ).toEqual([]);
   });
 
   it("clears memory on the next unlock when it was turned off while locked", async () => {
@@ -303,9 +292,6 @@ describe("site memory", () => {
     await service.setSiteMemory(false);
     await service.setSiteMemory(true);
     await service.unlock("correct horse battery");
-    expect(
-      (await service.listAccounts({ pageUrl: "https://other.com/" })).matches.remembered,
-    ).toEqual([]);
   });
 
   it("still reports filled when remembering fails", async () => {

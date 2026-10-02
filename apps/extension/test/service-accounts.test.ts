@@ -41,7 +41,7 @@ describe("listing", () => {
       groups: [],
       unreadable: [],
       indexDamaged: false,
-      matches: { exact: [], suggested: [], remembered: [] },
+      matches: { exact: [] },
       pageDomain: null,
     });
     expect(JSON.stringify(view)).not.toContain(SECRET);
@@ -56,22 +56,19 @@ describe("listing", () => {
     );
   });
 
-  it("binds the source tab's domain and matches the current page", async () => {
+  it("binds the source tab's domain; an unlinked account named after the site stays out of exact", async () => {
     const { service } = await unlockedService();
     const bound = await service.addAccount(
       { uri: `otpauth://totp/GitHub:me?secret=${SECRET}` },
       { sourceUrl: "https://login.github.com/session" },
     );
-    const guessed = await service.addAccount({
+    const unlinked = await service.addAccount({
       draft: { secret: "GEZDGNBVGY3TQOJQ", issuer: "GitHub", label: "work" },
     });
     const view = await service.listAccounts({ pageUrl: "https://github.com/login" });
     expect(view.accounts.find((a) => a.id === bound.id)!.domains).toEqual(["github.com"]);
-    expect(view.matches).toEqual({
-      exact: [bound.id],
-      suggested: [guessed.id],
-      remembered: [],
-    });
+    expect(view.matches).toEqual({ exact: [bound.id] });
+    expect(view.matches.exact).not.toContain(unlinked.id);
   });
 
   it("ignores non-web source pages when binding domains", async () => {
