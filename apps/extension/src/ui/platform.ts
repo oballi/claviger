@@ -18,6 +18,8 @@ export interface UiPlatform {
   requestClockPermission(): Promise<boolean>;
   removeClockPermission(): Promise<void>;
   fetchServerDate(): Promise<{ serverDate: string; startMs: number; endMs: number }>;
+  /** Every QR text found in the image; rejects with QR_IMAGE_TOO_LARGE for oversized images. */
+  decodeQr(image: Blob | ImageData): Promise<string[]>;
   download(filename: string, content: string): void;
   print(): void;
 }

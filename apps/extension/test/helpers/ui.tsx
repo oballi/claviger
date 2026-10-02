@@ -50,6 +50,7 @@ export async function harness(
       const now = p.clock.now();
       return { serverDate: new Date(now).toUTCString(), startMs: now, endMs: now };
     }),
+    decodeQr: vi.fn(async (_image: Blob | ImageData): Promise<string[]> => []),
     download: vi.fn(),
     print: vi.fn(),
   } satisfies UiPlatform;

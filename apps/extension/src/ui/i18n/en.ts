@@ -355,6 +355,9 @@ export const en: Record<MessageKey, string> = {
   "backup.syncRemoval":
     "The vault is removed from browser sync and disappears from your other synced devices.",
   "error.move-quota": "Not enough sync storage; the vault stayed on this device.",
+  "import.qrNone": "No QR code was found in this image.",
+  "import.qrNotOtp": "Found a QR code, but it isn't a 2FA code.",
+  "import.imageTooLarge": "The image is too large.",
   "import.unreadable": "The file could not be read.",
   "import.breadcrumb": "Location",
   "import.crumb": "import",

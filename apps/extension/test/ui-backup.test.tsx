@@ -1,10 +1,13 @@
 // @vitest-environment jsdom
 import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { BackupScreen } from "../src/ui/manage/BackupScreen";
+import { BackupScreen, type ImportSource } from "../src/ui/manage/BackupScreen";
+import { ImportScreen } from "../src/ui/manage/ImportScreen";
 import { harness, renderUi, type Harness } from "./helpers/ui";
 import { PASSWORD } from "./helpers/service";
+import { migrationUri } from "./helpers/qr";
 
 const ACME = "otpauth://totp/Acme:bob?secret=JBSWY3DPEHPK3PXP&issuer=Acme";
 
@@ -169,6 +172,75 @@ describe("BackupScreen import", () => {
       expect(screen.getByText("Dosya çok büyük (en fazla 5 MB).")).toBeTruthy(),
     );
     expect(onImport).not.toHaveBeenCalled();
+  });
+});
+
+describe("BackupScreen QR images", () => {
+  const BANK = "otpauth://totp/Bank:ali?secret=GEZDGNBVGY3TQOJQ&issuer=Bank";
+  const MIGRATION = migrationUri([
+    ["Acme", "carol", [11, 12, 13, 14, 15, 16, 17, 18, 19, 20]],
+    ["Shop", "eve", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]],
+  ]);
+
+  it("imports accounts from QR images, merging several files into one preview", async () => {
+    const hh = await harness();
+    await hh.ui.rpc("addAccountUri", { uri: ACME });
+    const texts: Record<string, string[]> = { "export.png": [MIGRATION], "acme.png": [ACME] };
+    hh.ui.decodeQr.mockImplementation(async (image) => texts[(image as File).name] ?? []);
+    const state = await hh.ui.rpc("getState", {});
+    function Wrapper() {
+      const [source, setSource] = useState<ImportSource | null>(null);
+      return source ? (
+        <ImportScreen source={source} onDone={vi.fn()} onCancel={vi.fn()} />
+      ) : (
+        <BackupScreen state={state} onChanged={vi.fn()} onImport={setSource} />
+      );
+    }
+    renderUi(<Wrapper />, hh.ui);
+    await userEvent.upload(screen.getByLabelText("Dosya seç"), [
+      new File(["x"], "export.png", { type: "image/png" }),
+      new File(["x"], "acme.png", { type: "image/png" }),
+    ]);
+    const table = await screen.findByRole("table", { name: "İçe aktarılacak hesaplar" });
+    expect(within(table).getAllByRole("checkbox")).toHaveLength(3);
+    const rows = within(table).getAllByRole("row").slice(1);
+    expect(rows.filter((r) => within(r).queryByText("Zaten kayıtlı"))).toHaveLength(1);
+    expect(screen.getByRole("checkbox", { name: "Shop (eve) hesabını seç" })).toHaveProperty(
+      "checked",
+      true,
+    );
+    expect(screen.getByRole("checkbox", { name: "Acme (bob) hesabını seç" })).toHaveProperty(
+      "checked",
+      false,
+    );
+    expect(hh.ui.decodeQr).toHaveBeenCalledTimes(2);
+  });
+
+  it("says when an image has no QR", async () => {
+    const { ui, onImport } = await open();
+    await userEvent.upload(
+      screen.getByLabelText("Dosya seç"),
+      new File(["x"], "blank.png", { type: "image/png" }),
+    );
+    expect(await screen.findByText("Bu görselde QR kod bulunamadı.")).toBeTruthy();
+    expect(onImport).not.toHaveBeenCalled();
+    ui.decodeQr.mockResolvedValue(["https://example.com", BANK.replace("otpauth", "nope")]);
+    await userEvent.upload(
+      screen.getByLabelText("Dosya seç"),
+      new File(["x"], "web.png", { type: "image/png" }),
+    );
+    expect(await screen.findByText("QR bulundu ama 2FA kodu değil.")).toBeTruthy();
+    expect(onImport).not.toHaveBeenCalled();
+  });
+
+  it("reports images that are too large", async () => {
+    const { ui } = await open();
+    ui.decodeQr.mockRejectedValue(new Error("qr-image-too-large"));
+    await userEvent.upload(
+      screen.getByLabelText("Dosya seç"),
+      new File(["x"], "huge.png", { type: "image/png" }),
+    );
+    expect(await screen.findByText("Görsel çok büyük.")).toBeTruthy();
   });
 });
 

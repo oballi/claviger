@@ -349,6 +349,9 @@ export const tr = {
   "backup.syncRemoval":
     "Kasa senkronizasyondan kaldırılır; eşitlenen diğer cihazlarında artık görünmez.",
   "error.move-quota": "Senkronizasyon kotası yetmiyor; kasa bu cihazda kaldı.",
+  "import.qrNone": "Bu görselde QR kod bulunamadı.",
+  "import.qrNotOtp": "QR bulundu ama 2FA kodu değil.",
+  "import.imageTooLarge": "Görsel çok büyük.",
   "import.unreadable": "Dosya okunamadı.",
   "import.breadcrumb": "Konum",
   "import.crumb": "içe aktar",

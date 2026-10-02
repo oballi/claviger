@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import type { ServiceState, StorageUsageView } from "../../background/vaultService";
+import { QR_IMAGE_TOO_LARGE } from "../../qr/limits";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { NewPasswordFields, newPasswordProblem } from "../components/NewPasswordFields";
@@ -19,6 +20,12 @@ import { PageTitle, SettingsRow, SettingsSection } from "./ManageFrame";
 import { SnapshotsSection } from "./SnapshotsSection";
 
 export const MAX_IMPORT_CHARS = 5_000_000;
+const MAX_IMAGE_BYTES = 20_000_000;
+const OTP_TEXT = /^otpauth(-migration)?:/i;
+
+function isImage(file: File): boolean {
+  return file.type.startsWith("image/") || /\.(png|jpe?g|webp|gif)$/i.test(file.name);
+}
 
 export interface ImportSource {
   text: string;
@@ -81,7 +88,7 @@ export function BackupScreen({
   onChanged: () => void;
   onImport: (source: ImportSource) => void;
 }) {
-  const { rpc, download } = useUi();
+  const { rpc, download, decodeQr } = useUi();
   const t = useT();
   const locale = useLocale();
   const [format, setFormat] = useState<"otpvault" | "otpauth">("otpvault");
@@ -151,25 +158,58 @@ export function BackupScreen({
     else onImport({ text, name });
   }
 
-  async function readFile(file: File | undefined) {
-    if (!file) return;
-    if (file.size > MAX_IMPORT_CHARS) {
-      setImportError(t("import.tooLarge"));
+  async function readFiles(files: File[]) {
+    if (files.length === 0) return;
+    setImportError(null);
+    const parts: string[] = [];
+    let qrFound = false;
+    let sawImage = false;
+    for (const file of files) {
+      if (isImage(file)) {
+        sawImage = true;
+        if (file.size > MAX_IMAGE_BYTES) {
+          setImportError(t("import.imageTooLarge"));
+          return;
+        }
+        let texts: string[];
+        try {
+          texts = await decodeQr(file);
+        } catch (e) {
+          setImportError(
+            e instanceof Error && e.message === QR_IMAGE_TOO_LARGE
+              ? t("import.imageTooLarge")
+              : t("import.unreadable"),
+          );
+          return;
+        }
+        if (texts.length > 0) qrFound = true;
+        parts.push(...texts.filter((text) => OTP_TEXT.test(text)));
+        continue;
+      }
+      if (file.size > MAX_IMPORT_CHARS) {
+        setImportError(t("import.tooLarge"));
+        return;
+      }
+      try {
+        parts.push(await file.text());
+      } catch {
+        setImportError(t("import.unreadable"));
+        return;
+      }
+    }
+    if (parts.length === 0 && sawImage) {
+      setImportError(qrFound ? t("import.qrNotOtp") : t("import.qrNone"));
       return;
     }
-    let text: string;
-    try {
-      text = await file.text();
-    } catch {
-      setImportError(t("import.unreadable"));
-      return;
-    }
-    readText(text, file.name);
+    readText(
+      parts.join("\n"),
+      files.length === 1 ? (files[0]?.name ?? null) : files.map((f) => f.name).join(", "),
+    );
   }
 
   function onDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
-    void readFile(event.dataTransfer.files[0]);
+    void readFiles(Array.from(event.dataTransfer.files));
   }
 
   const status =
@@ -350,10 +390,11 @@ export function BackupScreen({
             <input
               type="file"
               className="sr-only"
-              accept=".json,.txt,.2fas,.otpvault,application/json,text/plain"
+              multiple
+              accept=".json,.txt,.2fas,.otpvault,application/json,text/plain,image/png,image/jpeg,image/webp,image/gif"
               onChange={(e) => {
                 const input = e.currentTarget;
-                void readFile(input.files?.[0]).finally(() => {
+                void readFiles(Array.from(input.files ?? [])).finally(() => {
                   input.value = "";
                 });
               }}

@@ -74,6 +74,11 @@ export function createBrowserUiPlatform(context: "popup" | "manage"): UiPlatform
       if (!serverDate) throw new Error("The response has no Date header");
       return { serverDate, startMs, endMs };
     },
+    async decodeQr(image) {
+      // Lazy: the wasm decoder must stay out of the popup bundle.
+      const { decodeQrBlob, decodeQrImageData } = await import("../qr/decode");
+      return image instanceof Blob ? decodeQrBlob(image) : decodeQrImageData(image);
+    },
     download(filename, content) {
       const url = URL.createObjectURL(new Blob([content], { type: "application/octet-stream" }));
       const anchor = document.createElement("a");

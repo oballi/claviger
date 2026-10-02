@@ -10,7 +10,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/**/*.{ts,tsx}"],
-      exclude: ["src/platform/browserRpc.ts", "src/platform/uiPlatform.ts"],
+      exclude: ["src/platform/browserRpc.ts", "src/platform/uiPlatform.ts", "src/qr/imageData.ts"],
       thresholds: { lines: 90, statements: 90, functions: 90, branches: 85 },
     },
   },
