@@ -1,3 +1,5 @@
+@source ".";
+/* Tailwind scans only the importing app root on its own; this makes it scan the package sources. */
 @import "tailwindcss";
 @import "@fontsource/geist/latin-400.css";
 @import "@fontsource/geist/latin-500.css";

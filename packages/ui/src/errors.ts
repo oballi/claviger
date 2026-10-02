@@ -1,4 +1,4 @@
-import { RpcError } from "@otp-vault/ui/rpc-client";
+import { RpcError } from "./rpc/client";
 import type { MessageKey, Translate } from "./i18n/i18n";
 
 const KNOWN: Record<string, MessageKey> = {

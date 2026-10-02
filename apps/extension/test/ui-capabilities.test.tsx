@@ -2,8 +2,7 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { AddAccount } from "../src/ui/popup/AddAccount";
-import { PopupApp } from "../src/ui/popup/PopupApp";
+import { AddAccount, PopupApp } from "@otp-vault/ui/popup";
 import { SecurityScreen } from "../src/ui/manage/SecurityScreen";
 import { SetupWizard } from "../src/ui/manage/SetupWizard";
 import { harness, renderUi } from "./helpers/ui";
@@ -23,6 +22,30 @@ describe("a platform without page, clock or sync abilities", () => {
     await screen.findByRole("button", { name: /Hesap ekle|Ekle/ });
     expect(h.ui.activeTab).not.toHaveBeenCalled();
     expect(screen.queryByText("Bu site")).toBeNull();
+  });
+
+  it("shows no fill control and no site section for a seeded matching account", async () => {
+    const seed = async (capabilities?: Partial<typeof NONE>) => {
+      const h = await harness({ tabUrl: "https://acme.com/login", capabilities });
+      await h.ui.rpc("addAccountUri", {
+        uri: "otpauth://totp/Acme:me?secret=JBSWY3DPEHPK3PXP&issuer=Acme",
+        sourceUrl: "https://acme.com",
+      });
+      return h;
+    };
+    const control = await seed();
+    const view = renderUi(<PopupApp pollMs={0} />, control.ui);
+    await screen.findByRole("button", { name: "Acme kodunu sayfaya doldur" });
+    expect(screen.getByText("Bu site")).toBeTruthy();
+    view.unmount();
+
+    const h = await seed(NONE);
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await screen.findByText("Acme");
+    expect(screen.queryByRole("button", { name: /doldur/i })).toBeNull();
+    expect(screen.queryByText("Doldur")).toBeNull();
+    expect(screen.queryByText("Bu site")).toBeNull();
+    expect(h.ui.activeTab).not.toHaveBeenCalled();
   });
 
   it("hides the page QR scan option", async () => {

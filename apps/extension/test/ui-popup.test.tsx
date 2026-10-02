@@ -4,9 +4,9 @@ import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { RpcError } from "@otp-vault/ui/rpc-client";
-import { formatCode } from "../src/ui/format";
-import type { UiPlatform } from "../src/ui/platform";
-import { PopupApp } from "../src/ui/popup/PopupApp";
+import { formatCode } from "@otp-vault/ui";
+import type { UiPlatform } from "@otp-vault/ui";
+import { PopupApp } from "@otp-vault/ui/popup";
 import { harness, renderUi, withStatus } from "./helpers/ui";
 import { PASSWORD } from "./helpers/service";
 

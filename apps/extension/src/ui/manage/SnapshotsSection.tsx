@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SnapshotInfo } from "@otp-vault/ui/views";
 import { RpcError } from "@otp-vault/ui/rpc-client";
-import { Button } from "../components/Button";
-import { ReauthForm } from "../components/ReauthForm";
-import { TextField } from "../components/TextField";
-import { errorMessage } from "../errors";
-import { formatDate, snapshotReasonLabel } from "../format";
-import { useLocale, useT } from "../i18n/i18n";
-import { useUi } from "../platform";
+import { Button } from "@otp-vault/ui";
+import { ReauthForm } from "@otp-vault/ui";
+import { TextField } from "@otp-vault/ui";
+import { errorMessage } from "@otp-vault/ui";
+import { formatDate, snapshotReasonLabel } from "@otp-vault/ui";
+import { useLocale, useT } from "@otp-vault/ui";
+import { useUi } from "@otp-vault/ui";
 import { SettingsRow, SettingsSection } from "./ManageFrame";
 
 // A wrong password from restoreSnapshot is the copy's old password, not the master password

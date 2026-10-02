@@ -3,7 +3,7 @@ import { act, fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ScanApp } from "../src/ui/scan/ScanApp";
-import { AddAccount } from "../src/ui/popup/AddAccount";
+import { AddAccount } from "@otp-vault/ui/popup";
 import { migrationUri } from "./helpers/qr";
 import { harness, renderUi, type Harness } from "./helpers/ui";
 

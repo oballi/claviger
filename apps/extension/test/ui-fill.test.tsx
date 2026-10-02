@@ -2,7 +2,7 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { PopupApp } from "../src/ui/popup/PopupApp";
+import { PopupApp } from "@otp-vault/ui/popup";
 import { harness, renderUi } from "./helpers/ui";
 
 const SECRET = "JBSWY3DPEHPK3PXP";

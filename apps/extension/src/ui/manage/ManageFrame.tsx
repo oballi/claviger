@@ -1,7 +1,7 @@
 import type { ReactNode, Ref } from "react";
-import { Icon } from "../components/Icon";
-import { useT } from "../i18n/i18n";
-import type { ManageRoute } from "../platform";
+import { Icon } from "@otp-vault/ui";
+import { useT } from "@otp-vault/ui";
+import type { ManageRoute } from "@otp-vault/ui";
 
 const SECTIONS = [
   { route: "accounts", key: "manage.nav.accounts" },

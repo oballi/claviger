@@ -2,7 +2,7 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { PopupApp } from "../src/ui/popup/PopupApp";
+import { PopupApp } from "@otp-vault/ui/popup";
 import { SecurityScreen } from "../src/ui/manage/SecurityScreen";
 import { harness, renderUi, type Harness } from "./helpers/ui";
 

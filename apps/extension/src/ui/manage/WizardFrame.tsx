@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import { Icon } from "../components/Icon";
-import { useT, type MessageKey } from "../i18n/i18n";
+import { Icon } from "@otp-vault/ui";
+import { useT, type MessageKey } from "@otp-vault/ui";
 
 const STEPS: MessageKey[] = [
   "setup.step.password",

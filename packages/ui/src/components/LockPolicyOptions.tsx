@@ -1,5 +1,5 @@
 import { useId, type ReactNode } from "react";
-import type { LockPolicy } from "@otp-vault/ui/views";
+import type { LockPolicy } from "../contract/views";
 import { useT } from "../i18n/i18n";
 import { useUi } from "../platform";
 

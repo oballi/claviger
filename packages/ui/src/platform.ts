@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import type { RpcPayload, RpcResults, RpcType } from "@otp-vault/ui/protocol";
+import type { RpcPayload, RpcResults, RpcType } from "./protocol/protocol";
 
 export type Rpc = <T extends RpcType>(type: T, payload: RpcPayload<T>) => Promise<RpcResults[T]>;
 

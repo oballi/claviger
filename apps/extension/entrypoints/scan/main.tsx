@@ -1,11 +1,10 @@
 import "../../src/zodConfig";
-import "../../src/ui/styles.css";
+import "../../src/styles.css";
+import { LocaleProvider, pickLocale, UiProvider } from "@otp-vault/ui";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserUiPlatform } from "../../src/platform/uiPlatform";
 import { decodeQr } from "../../src/qr/browserDecode";
-import { LocaleProvider, pickLocale } from "../../src/ui/i18n/i18n";
-import { UiProvider } from "../../src/ui/platform";
 import { ScanApp } from "../../src/ui/scan/ScanApp";
 
 const locale = pickLocale(navigator.languages);

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { screen } from "@testing-library/react";
 import { RpcError } from "@otp-vault/ui/rpc-client";
-import type { UiPlatform } from "../src/ui/platform";
+import type { UiPlatform } from "@otp-vault/ui";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ManageApp, parseRoute } from "../src/ui/manage/ManageApp";

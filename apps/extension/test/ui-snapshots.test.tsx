@@ -5,10 +5,10 @@ import { describe, expect, it } from "vitest";
 import { VaultService } from "../src/background/vaultService";
 import { createRpcClient, RpcError } from "@otp-vault/ui/rpc-client";
 import { handleRpcMessage } from "../src/rpc/server";
-import type { UiPlatform } from "../src/ui/platform";
+import type { UiPlatform } from "@otp-vault/ui";
 import { BackupScreen } from "../src/ui/manage/BackupScreen";
 import { CorruptScreen } from "../src/ui/manage/CorruptScreen";
-import { CodesScreen } from "../src/ui/popup/CodesScreen";
+import { CodesScreen } from "@otp-vault/ui/popup";
 import { harness, renderUi } from "./helpers/ui";
 import { PASSWORD } from "./helpers/service";
 

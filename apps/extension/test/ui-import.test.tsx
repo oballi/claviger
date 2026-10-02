@@ -2,8 +2,8 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { LocaleProvider } from "../src/ui/i18n/i18n";
-import { UiProvider } from "../src/ui/platform";
+import { LocaleProvider } from "@otp-vault/ui";
+import { UiProvider } from "@otp-vault/ui";
 import { ImportScreen } from "../src/ui/manage/ImportScreen";
 import { harness, renderUi, type Harness } from "./helpers/ui";
 import { PASSWORD } from "./helpers/service";

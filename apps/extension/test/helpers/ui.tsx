@@ -1,12 +1,9 @@
-import { render } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { vi } from "vitest";
 import type { LockPolicy } from "../../src/background/settings";
 import { VaultService } from "../../src/background/vaultService";
 import { createRpcClient } from "@otp-vault/ui/rpc-client";
 import { handleRpcMessage } from "../../src/rpc/server";
-import { LocaleProvider, type Locale } from "../../src/ui/i18n/i18n";
-import { UiProvider, type UiCapabilities, type UiPlatform } from "../../src/ui/platform";
+import type { UiCapabilities, UiPlatform } from "@otp-vault/ui";
 import { memoryPlatform } from "./platform";
 import { PASSWORD } from "./service";
 
@@ -81,19 +78,4 @@ export async function harness(
 
 export type Harness = Awaited<ReturnType<typeof harness>>;
 
-/** Wraps `getState` so a test can force a status the real service only reaches after corruption. */
-export function withStatus(ui: UiPlatform, status: "unsupported" | "corrupt"): UiPlatform {
-  const rpc: UiPlatform["rpc"] = async (type, payload) => {
-    if (type === "getState") return { ...(await ui.rpc("getState", {})), status } as never;
-    return ui.rpc(type, payload);
-  };
-  return { ...ui, rpc };
-}
-
-export function renderUi(node: ReactNode, ui: UiPlatform, locale: Locale = "tr") {
-  return render(
-    <UiProvider value={ui}>
-      <LocaleProvider locale={locale}>{node}</LocaleProvider>
-    </UiProvider>,
-  );
-}
+export { renderUi, withStatus } from "@otp-vault/ui/testing";

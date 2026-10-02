@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import type { AccountListView } from "@otp-vault/ui/views";
+import type { AccountListView } from "./contract/views";
 import { useUi } from "./platform";
 
 /**

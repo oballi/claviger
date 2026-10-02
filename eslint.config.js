@@ -116,13 +116,6 @@ export default defineConfig(
   {
     // Popup bundle: runtime imports of core, zod and the background modules would pull them in.
     files: [
-      "apps/extension/src/ui/popup/**/*.{ts,tsx}",
-      "apps/extension/src/ui/components/**/*.{ts,tsx}",
-      "apps/extension/src/ui/hooks.ts",
-      "apps/extension/src/ui/format.ts",
-      "apps/extension/src/ui/errors.ts",
-      "apps/extension/src/ui/i18n/**/*.ts",
-      "apps/extension/src/ui/platform.ts",
       "apps/extension/src/platform/uiPlatform.ts",
       "apps/extension/src/platform/browserRpc.ts",
       "apps/extension/entrypoints/popup/**/*.{ts,tsx}",
@@ -183,6 +176,13 @@ export default defineConfig(
       "packages/ui/src/contract/**/*.ts",
       "packages/ui/src/rpc/**/*.ts",
       "packages/ui/src/index.ts",
+      "packages/ui/src/components/**/*.{ts,tsx}",
+      "packages/ui/src/popup/**/*.{ts,tsx}",
+      "packages/ui/src/hooks.ts",
+      "packages/ui/src/format.ts",
+      "packages/ui/src/errors.ts",
+      "packages/ui/src/i18n/**/*.{ts,tsx}",
+      "packages/ui/src/platform.ts",
     ],
     rules: {
       "@typescript-eslint/consistent-type-imports": [
@@ -201,6 +201,8 @@ export default defineConfig(
               group: [
                 "**/protocol",
                 "**/protocol/*",
+                "**/zod-config",
+                "**/zodConfig",
                 "**/manage",
                 "**/manage/*",
                 "**/testing",

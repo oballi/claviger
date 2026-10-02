@@ -1,4 +1,4 @@
-import type { LockPolicy, SnapshotReason } from "@otp-vault/ui/views";
+import type { LockPolicy, SnapshotReason } from "./contract/views";
 import type { MessageKey, Translate } from "./i18n/i18n";
 
 /** Same grouping as formatCode for numeric codes, but no digit ever reaches the DOM. */

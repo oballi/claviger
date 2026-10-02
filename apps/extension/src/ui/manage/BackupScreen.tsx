@@ -9,13 +9,13 @@ import {
 } from "react";
 import type { ServiceState, StorageUsageView } from "@otp-vault/ui/views";
 import { QrImageTooLargeError } from "@otp-vault/ui/qr-limits";
-import { Button } from "../components/Button";
-import { Icon } from "../components/Icon";
-import { NewPasswordFields, newPasswordProblem } from "../components/NewPasswordFields";
-import { ReauthForm } from "../components/ReauthForm";
-import { formatDate, isoDate } from "../format";
-import { useLocale, useT } from "../i18n/i18n";
-import { useUi } from "../platform";
+import { Button } from "@otp-vault/ui";
+import { Icon } from "@otp-vault/ui";
+import { NewPasswordFields, newPasswordProblem } from "@otp-vault/ui";
+import { ReauthForm } from "@otp-vault/ui";
+import { formatDate, isoDate } from "@otp-vault/ui";
+import { useLocale, useT } from "@otp-vault/ui";
+import { useUi } from "@otp-vault/ui";
 import { PageTitle, SettingsRow, SettingsSection } from "./ManageFrame";
 import { SnapshotsSection } from "./SnapshotsSection";
 

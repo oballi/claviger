@@ -2,8 +2,8 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { LockScreen } from "../src/ui/components/LockScreen";
-import { StatusScreen } from "../src/ui/components/StatusScreen";
+import { LockScreen } from "@otp-vault/ui";
+import { StatusScreen } from "@otp-vault/ui";
 import { harness, renderUi, type Harness } from "./helpers/ui";
 import { PASSWORD } from "./helpers/service";
 

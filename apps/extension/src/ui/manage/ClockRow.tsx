@@ -1,9 +1,9 @@
 import { useState } from "react";
 import type { ServiceState } from "@otp-vault/ui/views";
-import { Button } from "../components/Button";
-import { errorMessage } from "../errors";
-import { useT } from "../i18n/i18n";
-import { useUi } from "../platform";
+import { Button } from "@otp-vault/ui";
+import { errorMessage } from "@otp-vault/ui";
+import { useT } from "@otp-vault/ui";
+import { useUi } from "@otp-vault/ui";
 import { SettingsRow } from "./ManageFrame";
 
 // Mirrors the service cap; the UI must not import background code.

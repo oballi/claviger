@@ -9,16 +9,16 @@ import {
 } from "react";
 import type { LockPolicy } from "@otp-vault/ui/views";
 import { RpcError } from "@otp-vault/ui/rpc-client";
-import { AccountForm } from "../components/AccountForm";
-import { Button } from "../components/Button";
-import { Icon } from "../components/Icon";
-import { LockPolicyOptions } from "../components/LockPolicyOptions";
-import { NewPasswordFields, newPasswordProblem } from "../components/NewPasswordFields";
-import { Notice } from "../components/Notice";
-import { RecoveryCodeDisplay } from "../components/RecoveryCodeDisplay";
-import { errorMessage } from "../errors";
-import { useT } from "../i18n/i18n";
-import { useUi } from "../platform";
+import { AccountForm } from "@otp-vault/ui";
+import { Button } from "@otp-vault/ui";
+import { Icon } from "@otp-vault/ui";
+import { LockPolicyOptions } from "@otp-vault/ui";
+import { NewPasswordFields, newPasswordProblem } from "@otp-vault/ui";
+import { Notice } from "@otp-vault/ui";
+import { RecoveryCodeDisplay } from "@otp-vault/ui";
+import { errorMessage } from "@otp-vault/ui";
+import { useT } from "@otp-vault/ui";
+import { useUi } from "@otp-vault/ui";
 import { WizardFrame } from "./WizardFrame";
 
 function Heading({
