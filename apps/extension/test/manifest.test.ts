@@ -204,21 +204,21 @@ describe("side panel entrypoint", () => {
   const built = (dir: string) => new URL(`../.output/${dir}/manifest.json`, import.meta.url);
 
   describe.skipIf(!existsSync(built("chrome-mv3")))("built Chrome manifest", () => {
-    const manifest = JSON.parse(readFileSync(built("chrome-mv3"), "utf8")) as Built;
+    const manifest = () => JSON.parse(readFileSync(built("chrome-mv3"), "utf8")) as Built;
     it("has the side panel page and permission, and no sidebar_action", () => {
-      expect(manifest.side_panel?.default_path).toBe("sidepanel.html");
-      expect(manifest.permissions).toContain("sidePanel");
-      expect(manifest.sidebar_action).toBeUndefined();
+      expect(manifest().side_panel?.default_path).toBe("sidepanel.html");
+      expect(manifest().permissions).toContain("sidePanel");
+      expect(manifest().sidebar_action).toBeUndefined();
     });
   });
 
   describe.skipIf(!existsSync(built("firefox-mv3")))("built Firefox manifest", () => {
-    const manifest = JSON.parse(readFileSync(built("firefox-mv3"), "utf8")) as Built;
+    const manifest = () => JSON.parse(readFileSync(built("firefox-mv3"), "utf8")) as Built;
     it("has a sidebar that does not open at install, and no sidePanel permission", () => {
-      expect(manifest.sidebar_action?.default_panel).toBe("sidepanel.html");
-      expect(manifest.sidebar_action?.open_at_install).toBe(false);
-      expect(manifest.permissions).not.toContain("sidePanel");
-      expect(manifest.side_panel).toBeUndefined();
+      expect(manifest().sidebar_action?.default_panel).toBe("sidepanel.html");
+      expect(manifest().sidebar_action?.open_at_install).toBe(false);
+      expect(manifest().permissions).not.toContain("sidePanel");
+      expect(manifest().side_panel).toBeUndefined();
     });
   });
 });

@@ -48,6 +48,21 @@ describe("open mode and popup size", () => {
     expect((await service.getState()).openMode).toBe("panel");
   });
 
+  it("re-applies the popup mode in the browser when the vault is deleted", async () => {
+    const { service, calls } = withHook(async () => {});
+    await service.setup({
+      password: PASSWORD,
+      createRecoveryCode: false,
+      lockPolicy: { kind: "browser-close" },
+      storageArea: "local",
+    });
+    await service.setOpenMode("panel");
+    const { token } = await service.reauth(PASSWORD);
+    await service.deleteVault(token);
+    expect(calls).toEqual(["panel", "popup"]);
+    expect((await service.getState()).openMode).toBe("popup");
+  });
+
   it("keeps the old mode when the browser refuses the new one", async () => {
     const { service, calls } = withHook(async (mode) => {
       if (mode === "panel") throw new Error("unsupported");
