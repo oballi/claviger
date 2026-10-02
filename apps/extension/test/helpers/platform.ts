@@ -88,11 +88,16 @@ export interface TestPlatform extends Platform {
   clock: FakeClock;
 }
 
-export function memoryPlatform(): TestPlatform {
+export type TestPlatformNoSync = Omit<TestPlatform, "sync">;
+
+export function memoryPlatform(): TestPlatform;
+export function memoryPlatform(opts: { sync: false }): TestPlatformNoSync;
+export function memoryPlatform(opts?: { sync: false }): TestPlatform | TestPlatformNoSync {
   const clock = new FakeClock();
+  const sync = opts?.sync === false ? {} : { sync: new MemoryStorage() };
   return {
     local: new MemoryStorage(),
-    sync: new MemoryStorage(),
+    ...sync,
     session: new MemoryStorage(),
     alarms: new FakeAlarms(clock),
     clipboard: new FakeClipboard(),
@@ -107,6 +112,6 @@ export function memoryPlatform(): TestPlatform {
 }
 
 /** Browser closed and reopened: session is emptied and alarms are cleared; local, sync and the clock stay the same. */
-export function restartBrowser(p: TestPlatform): TestPlatform {
+export function restartBrowser<T extends TestPlatform | TestPlatformNoSync>(p: T): T {
   return { ...p, session: new MemoryStorage(), alarms: new FakeAlarms(p.clock) };
 }

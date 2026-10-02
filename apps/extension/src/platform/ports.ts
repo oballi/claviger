@@ -30,7 +30,8 @@ export interface TabsPort {
 /** Everything the background logic needs from the browser. Events (alarm, idle) are fed to the service from outside. */
 export interface Platform {
   local: StoragePort;
-  sync: StoragePort;
+  /** Absent where there is no browser sync area (the desktop app); the vault then lives in `local` only. */
+  sync?: StoragePort;
   session: StoragePort;
   alarms: AlarmPort;
   clipboard: ClipboardPort;

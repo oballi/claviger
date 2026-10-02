@@ -10,7 +10,8 @@ export type ServiceErrorCode =
   | "not-found"
   | "snapshot-password-required"
   | "same-name"
-  | "not-linked";
+  | "not-linked"
+  | "storage-area-unavailable";
 
 export class ServiceError extends Error {
   readonly code: ServiceErrorCode;

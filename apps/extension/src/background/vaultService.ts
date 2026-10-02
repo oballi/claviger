@@ -126,6 +126,10 @@ export interface AccountListView {
 
 export type FillOutcome = "filled" | "copied-instead" | "refused";
 
+function unavailable(): ServiceError {
+  return new ServiceError("storage-area-unavailable", "No synced storage area on this platform");
+}
+
 /** Fill is allowed on https pages, and on plain http only for local development hosts. */
 function fillableUrl(raw: string): boolean {
   let u: URL;
@@ -204,7 +208,10 @@ export class VaultService {
   /** Best effort: a failed copy must never block the operation it protects. */
   private async snapshot(reason: SnapshotReason): Promise<void> {
     try {
-      await this.snapshots.take(this.area((await this.settings()).storageArea), reason);
+      await this.snapshots.take(
+        this.area(this.effective((await this.settings()).storageArea)),
+        reason,
+      );
     } catch {
       // Ignored on purpose.
     }
@@ -221,7 +228,9 @@ export class VaultService {
     const now = this.p.clock.now();
     this.lastDailyCheck = now;
     try {
-      await this.snapshots.takeDaily(this.area((await this.settings()).storageArea));
+      await this.snapshots.takeDaily(
+        this.area(this.effective((await this.settings()).storageArea)),
+      );
     } catch {
       // Ignored on purpose.
     }
@@ -287,7 +296,14 @@ export class VaultService {
   }
 
   protected area(name: StorageAreaName): StoragePort {
-    return name === "sync" ? this.p.sync : this.p.local;
+    if (name !== "sync") return this.p.local;
+    if (!this.p.sync) throw unavailable();
+    return this.p.sync;
+  }
+
+  /** A persisted "sync" without a sync port (platform change) is served from local, never a crash. */
+  private effective(name: StorageAreaName): StorageAreaName {
+    return name === "sync" && !this.p.sync ? "local" : name;
   }
 
   protected deps(storage: StoragePort): VaultDeps {
@@ -297,8 +313,11 @@ export class VaultService {
   /** Adopts a vault in the other area (sync arrival on a new device, or an interrupted area move). */
   private async locateVault(): Promise<{ settings: Settings; exists: boolean }> {
     let settings = await this.settings();
-    if (await Vault.exists(this.area(settings.storageArea))) return { settings, exists: true };
-    const other: StorageAreaName = settings.storageArea === "local" ? "sync" : "local";
+    if (await Vault.exists(this.area(this.effective(settings.storageArea))))
+      return { settings, exists: true };
+    const other: StorageAreaName =
+      this.effective(settings.storageArea) === "local" ? "sync" : "local";
+    if (other === "sync" && !this.p.sync) return { settings, exists: false };
     if (await Vault.exists(this.area(other))) {
       settings = await saveSettings(this.p.local, { storageArea: other });
       return { settings, exists: true };
@@ -323,7 +342,7 @@ export class VaultService {
     const dek = await this.keys.load(lockPolicy);
     if (!dek || epoch !== this.lockEpoch) return null;
     try {
-      const vault = await Vault.fromKey(this.deps(this.area(storageArea)), dek);
+      const vault = await Vault.fromKey(this.deps(this.area(this.effective(storageArea))), dek);
       if (epoch !== this.lockEpoch) return null;
       this.vault = vault;
       await this.clearPurgeMarker();
@@ -405,7 +424,7 @@ export class VaultService {
     const { settings, exists } = await this.locateVault();
     const base = {
       lockPolicy: settings.lockPolicy,
-      storageArea: settings.storageArea,
+      storageArea: this.effective(settings.storageArea),
       clockOffsetSec: settings.clockOffsetSec,
       clockCheckEnabled: settings.clockCheckEnabled,
       revealRequiresPassword: settings.revealRequiresPassword,
@@ -432,7 +451,7 @@ export class VaultService {
     // Safe here: getState never runs inside the queue.
     await this.reconciling;
     // Header-only read: reports unsupported/corrupt, the recovery flag and the count even while locked.
-    const info = await Vault.inspect(this.area(settings.storageArea));
+    const info = await Vault.inspect(this.area(this.effective(settings.storageArea)));
     if (info.status === "unsupported" || info.status === "corrupt") {
       return { ...base, status: info.status, ...none };
     }
@@ -483,7 +502,7 @@ export class VaultService {
     storageArea: StorageAreaName;
   }): Promise<{ recoveryCode: string | null }> {
     const epoch = this.lockEpoch;
-    if ((await Vault.exists(this.p.local)) || (await Vault.exists(this.p.sync))) {
+    if ((await Vault.exists(this.p.local)) || (this.p.sync && (await Vault.exists(this.p.sync)))) {
       throw new ServiceError("already-set-up", "A vault already exists");
     }
     // Only a deleteVault that did not finish purging leaves copies that belong to no vault;
@@ -518,7 +537,7 @@ export class VaultService {
       let vault: Vault;
       try {
         vault = await Vault.unlockWithPassword(
-          this.deps(this.area(settings.storageArea)),
+          this.deps(this.area(this.effective(settings.storageArea))),
           password,
         );
       } catch (e) {
@@ -551,7 +570,7 @@ export class VaultService {
       let result: { vault: Vault; recoveryCode: string };
       try {
         result = await Vault.unlockWithRecovery(
-          this.deps(this.area(settings.storageArea)),
+          this.deps(this.area(this.effective(settings.storageArea))),
           code,
           newPassword,
         );
@@ -893,7 +912,7 @@ export class VaultService {
   quarantineVault(): Promise<{ moved: number }> {
     return this.exclusive(async () => {
       const { settings } = await this.locateVault();
-      const active = this.area(settings.storageArea);
+      const active = this.area(this.effective(settings.storageArea));
       if ((await Vault.inspect(active)).status !== "corrupt") {
         throw new ServiceError("invalid-request", "Only a corrupt vault can be moved aside");
       }
@@ -1007,8 +1026,10 @@ export class VaultService {
   setStorageArea(token: string, area: StorageAreaName): Promise<void> {
     return this.exclusive(async () => {
       const epoch = this.lockEpoch;
+      const storageArea = this.effective((await this.settings()).storageArea);
+      // Checked before the token is spent so a refused move leaves the token usable.
+      if (storageArea !== area && area === "sync" && !this.p.sync) throw unavailable();
       const vault = await this.spendToken(token);
-      const { storageArea } = await this.settings();
       if (storageArea === area) return;
       await this.snapshot("before-move");
       const target = this.area(area);
@@ -1035,7 +1056,7 @@ export class VaultService {
       this.vault = null;
       this.onLock();
       // Only the active area: a vault in the other area may belong to another device (user decision).
-      const active = this.area((await this.settings()).storageArea);
+      const active = this.area(this.effective((await this.settings()).storageArea));
       const keys = Object.keys(await active.get()).filter(isVaultKey);
       if (keys.length > 0) await active.remove(keys);
       // Only once the vault is gone: a marker next to a surviving vault would later wipe quarantine.
@@ -1117,7 +1138,7 @@ export class VaultService {
 
   async storageUsage(): Promise<StorageUsageView> {
     await this.requireVault();
-    const { storageArea } = await this.settings();
+    const storageArea = this.effective((await this.settings()).storageArea);
     let bytes = 0;
     let indexBytes = 0;
     for (const [key, value] of Object.entries(await this.area(storageArea).get())) {

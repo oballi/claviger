@@ -25,7 +25,7 @@ const offscreenPort: OffscreenPort = {
   sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 };
 
-export function createBrowserPlatform(): Platform {
+export function createBrowserPlatform(): Platform & { sync: StoragePort } {
   return {
     local: storagePort(browser.storage.local),
     sync: storagePort(browser.storage.sync),
