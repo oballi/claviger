@@ -63,6 +63,8 @@ export function createBrowserUiPlatform(context: "popup" | "manage"): UiPlatform
       const startMs = Date.now();
       const response = await fetch(CLOCK_URL, {
         method: "HEAD",
+        redirect: "error",
+        signal: AbortSignal.timeout(10_000),
         cache: "no-store",
         credentials: "omit",
         referrerPolicy: "no-referrer",

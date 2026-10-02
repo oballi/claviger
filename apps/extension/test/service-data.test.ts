@@ -154,6 +154,15 @@ describe("clock", () => {
     expect((await service.getState()).clockOffsetSec).toBe(0);
   });
 
+  it("refuses a sample that took longer than 10 seconds", async () => {
+    const { service } = await unlockedService();
+    await service.setClockCheckEnabled(true);
+    const slow = { serverDate: new Date(0).toUTCString(), startMs: 0, endMs: 10_001 };
+    expect(await codeOf(service.applyClockSample(slow))).toBe("invalid-request");
+    const ok = { ...slow, endMs: 10_000 };
+    expect((await service.applyClockSample(ok)).offsetSec).toBe(-5);
+  });
+
   it("toggles the clock check and clears the offset when turned off", async () => {
     const { service } = await unlockedService();
     await service.setClockCheckEnabled(true);

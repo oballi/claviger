@@ -6,6 +6,9 @@ import { useT } from "../i18n/i18n";
 import { useUi } from "../platform";
 import { SettingsRow } from "./ManageFrame";
 
+// Mirrors the service cap; the UI must not import background code.
+const MAX_SAMPLE_MS = 10_000;
+
 /** Opt-in: the host permission is requested only when the user clicks, and the check never runs by itself. */
 export function ClockRow({
   state,
@@ -21,6 +24,15 @@ export function ClockRow({
   const [busy, setBusy] = useState(false);
   const [text, setText] = useState("");
 
+  // The grant is only needed for one request, so it never outlives the attempt.
+  async function dropPermission() {
+    try {
+      await removeClockPermission();
+    } catch {
+      setText((prev) => `${prev} ${t("clock.permissionKept")}`.trim());
+    }
+  }
+
   async function check() {
     setText("");
     // First await: the permission prompt needs the click's user gesture.
@@ -30,28 +42,39 @@ export function ClockRow({
       return;
     }
     setBusy(true);
+    let keepEnabled = false;
+    let result = "";
     try {
       await rpc("setClockCheckEnabled", { enabled: true });
-      onChanged();
       let sample;
       try {
         sample = await fetchServerDate();
       } catch {
-        setText(t("clock.failed"));
-        return;
+        result = t("clock.failed");
       }
-      if (sample.endMs < sample.startMs) {
-        setText(t("clock.changed"));
-        return;
+      if (sample) {
+        if (sample.endMs < sample.startMs) {
+          result = t("clock.changed");
+        } else if (sample.endMs - sample.startMs > MAX_SAMPLE_MS) {
+          result = t("clock.failed");
+        } else {
+          const { offsetSec, applied } = await rpc("applyClockSample", sample);
+          keepEnabled = applied !== 0;
+          result = t(keepEnabled ? "clock.applied" : "clock.ok", { offset: offsetSec });
+        }
       }
-      const { offsetSec, applied } = await rpc("applyClockSample", sample);
-      setText(t(applied === 0 ? "clock.ok" : "clock.applied", { offset: offsetSec }));
-      onChanged();
     } catch (e) {
-      setText(errorMessage(t, e));
-    } finally {
-      setBusy(false);
+      result = errorMessage(t, e);
     }
+    try {
+      if (!keepEnabled) await rpc("setClockCheckEnabled", { enabled: false });
+    } catch (e) {
+      result = errorMessage(t, e);
+    }
+    setText(result);
+    await dropPermission();
+    onChanged();
+    setBusy(false);
   }
 
   async function remove() {
@@ -59,13 +82,12 @@ export function ClockRow({
     setBusy(true);
     try {
       await rpc("setClockCheckEnabled", { enabled: false });
-      await removeClockPermission().catch(() => {});
-      onChanged();
     } catch (e) {
       setText(errorMessage(t, e));
-    } finally {
-      setBusy(false);
     }
+    await dropPermission();
+    onChanged();
+    setBusy(false);
   }
 
   return (
@@ -77,7 +99,7 @@ export function ClockRow({
           <Button disabled={disabled || busy} onClick={() => void check()}>
             {t("clock.check")}
           </Button>
-          {state.clockOffsetSec !== 0 ? (
+          {state.clockCheckEnabled ? (
             <Button disabled={disabled || busy} onClick={() => void remove()}>
               {t("clock.remove")}
             </Button>

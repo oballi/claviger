@@ -51,6 +51,8 @@ export const CLIPBOARD_ALARM = "clipboard-clear";
 export const MIN_PASSWORD_LENGTH = 8;
 export const TOKEN_TTL_MS = 60_000;
 export const PREVIEW_TTL_MS = 10 * 60_000;
+/** A slower round trip makes the midpoint too uncertain. */
+export const MAX_CLOCK_SAMPLE_MS = 10_000;
 export const MAX_CLOCK_OFFSET_SEC = 12 * 3600;
 export const DAILY_CHECK_MS = 60 * 60_000;
 export const SYNC_QUOTA_BYTES = 102_400;
@@ -1098,6 +1100,9 @@ export class VaultService {
       // The clock went back during the request; the midpoint would be meaningless.
       if (sample.endMs < sample.startMs) {
         throw new ServiceError("invalid-request", "The measurement ran backwards");
+      }
+      if (sample.endMs - sample.startMs > MAX_CLOCK_SAMPLE_MS) {
+        throw new ServiceError("invalid-request", "The measurement took too long");
       }
       const offset = computeClockOffset(sample.serverDate, sample.startMs, sample.endMs);
       if (offset === null)

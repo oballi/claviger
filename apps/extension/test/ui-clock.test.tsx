@@ -41,6 +41,7 @@ describe("clock check", () => {
       clockCheckEnabled: true,
       clockOffsetSec: 120,
     });
+    expect(h.ui.removeClockPermission).toHaveBeenCalled();
   });
 
   it("reports a correct clock without applying", async () => {
@@ -48,8 +49,12 @@ describe("clock check", () => {
     h.ui.fetchServerDate.mockImplementation(async () => sampleAt(h, 5));
     await open(h);
     await userEvent.click(screen.getByRole("button", { name: "Kontrol et" }));
-    expect(await screen.findByText("Saatin doğru (fark 5 sn).")).toBeTruthy();
-    expect((await h.ui.rpc("getState", {})).clockOffsetSec).toBe(0);
+    expect(await screen.findByText("Saatin doğru (fark 5 sn). Kontrol kapatıldı.")).toBeTruthy();
+    expect(await h.ui.rpc("getState", {})).toMatchObject({
+      clockCheckEnabled: false,
+      clockOffsetSec: 0,
+    });
+    expect(h.ui.removeClockPermission).toHaveBeenCalled();
     expect(screen.queryByRole("button", { name: "Düzeltmeyi kaldır" })).toBeNull();
   });
 
@@ -62,8 +67,12 @@ describe("clock check", () => {
     }));
     await open(h);
     await userEvent.click(screen.getByRole("button", { name: "Kontrol et" }));
-    expect(await screen.findByText("Saat ölçüm sırasında değişti; tekrar dene.")).toBeTruthy();
-    expect((await h.ui.rpc("getState", {})).clockOffsetSec).toBe(0);
+    expect(await screen.findByText(/Saat ölçüm sırasında değişti; tekrar dene\./)).toBeTruthy();
+    expect(await h.ui.rpc("getState", {})).toMatchObject({
+      clockCheckEnabled: false,
+      clockOffsetSec: 0,
+    });
+    expect(h.ui.removeClockPermission).toHaveBeenCalled();
   });
 
   it("keeps the check enabled without an offset when the fetch fails", async () => {
@@ -73,9 +82,40 @@ describe("clock check", () => {
     await userEvent.click(screen.getByRole("button", { name: "Kontrol et" }));
     expect(await screen.findByText(/Google'a ulaşılamadı/)).toBeTruthy();
     expect(await h.ui.rpc("getState", {})).toMatchObject({
-      clockCheckEnabled: true,
+      clockCheckEnabled: false,
       clockOffsetSec: 0,
     });
+    expect(h.ui.removeClockPermission).toHaveBeenCalled();
+  });
+
+  it("refuses a sample that took too long and turns the check off", async () => {
+    const h = await harness();
+    h.ui.fetchServerDate.mockImplementation(async () => ({
+      ...sampleAt(h, 120),
+      endMs: h.p.clock.now() + 10_001,
+    }));
+    await open(h);
+    await userEvent.click(screen.getByRole("button", { name: "Kontrol et" }));
+    expect(await screen.findByText(/Google'a ulaşılamadı/)).toBeTruthy();
+    expect(await h.ui.rpc("getState", {})).toMatchObject({
+      clockCheckEnabled: false,
+      clockOffsetSec: 0,
+    });
+  });
+
+  it("notes when the permission cannot be removed", async () => {
+    const h = await harness();
+    h.ui.removeClockPermission.mockRejectedValue(new Error("nope"));
+    await open(h);
+    await userEvent.click(screen.getByRole("button", { name: "Kontrol et" }));
+    expect(await screen.findByText(/İzin kaldırılamadı/)).toBeTruthy();
+  });
+
+  it("shows the remove button whenever the check is enabled", async () => {
+    const h = await harness();
+    await h.ui.rpc("setClockCheckEnabled", { enabled: true });
+    await open(h);
+    expect(screen.getByRole("button", { name: "Düzeltmeyi kaldır" })).toBeTruthy();
   });
 
   it("removing the correction disables the check and resets the offset", async () => {
