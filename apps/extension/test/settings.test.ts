@@ -18,6 +18,7 @@ describe("settings", () => {
       revealRequiresPassword: true,
       lastBackupAt: null,
       viewMode: "normal",
+      theme: "system",
       clipboardClearSec: 0,
       recoveryCodeConfirmed: true,
       fillOnlyLinked: true,
@@ -67,6 +68,7 @@ describe("settings", () => {
     await local.set({ [SETTINGS_KEY]: { storageArea: "sync", lastBackupAt: 7 } });
     expect(await loadSettings(local)).toMatchObject({
       viewMode: "normal",
+      theme: "system",
       clipboardClearSec: 0,
       recoveryCodeConfirmed: true,
       fillOnlyLinked: true,

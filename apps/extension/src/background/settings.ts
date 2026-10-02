@@ -3,15 +3,17 @@ import type { StoragePort } from "@otp-vault/core";
 import {
   clipboardClearSchema,
   lockPolicySchema,
+  themeSchema,
   viewModeSchema,
   type ClipboardClearSec,
   type LockPolicy,
+  type Theme,
   type ViewMode,
 } from "@otp-vault/ui/protocol";
 import { z } from "zod";
 
-export { clipboardClearSchema, lockPolicySchema, viewModeSchema };
-export type { ClipboardClearSec, LockPolicy, ViewMode };
+export { clipboardClearSchema, lockPolicySchema, themeSchema, viewModeSchema };
+export type { ClipboardClearSec, LockPolicy, Theme, ViewMode };
 
 export const settingsSchema = z.object({
   lockPolicy: lockPolicySchema,
@@ -21,6 +23,7 @@ export const settingsSchema = z.object({
   revealRequiresPassword: z.boolean(),
   lastBackupAt: z.number().int().nullable(),
   viewMode: viewModeSchema,
+  theme: themeSchema,
   clipboardClearSec: clipboardClearSchema,
   recoveryCodeConfirmed: z.boolean(),
   fillOnlyLinked: z.boolean(),
@@ -40,6 +43,7 @@ export const DEFAULT_SETTINGS: Settings = {
   revealRequiresPassword: true,
   lastBackupAt: null,
   viewMode: "normal",
+  theme: "system",
   clipboardClearSec: 0,
   // 0.0.1 users already confirmed their code during setup.
   recoveryCodeConfirmed: true,

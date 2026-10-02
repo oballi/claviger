@@ -33,3 +33,25 @@ describe("focus styling", () => {
     }
   });
 });
+
+describe("theme tokens", () => {
+  it("keeps light on :root and applies dark under the media query and data-theme", () => {
+    expect(css).toMatch(/:root\s*\{[^}]*--ov-bg:\s*#f6f5f2/i);
+    const media = css.match(
+      /@media \(prefers-color-scheme: dark\)\s*\{\s*:root:not\(\[data-theme="light"\]\)\s*\{([^}]*)\}/,
+    );
+    expect(media?.[1]).toMatch(/--ov-bg:\s*#121214/i);
+    expect(media?.[1]).toMatch(/--ov-hover:\s*#1c1c1f/i);
+    const forced = css.match(/:root\[data-theme="dark"\]\s*\{([^}]*)\}/);
+    expect(forced?.[1]).toMatch(/--ov-bg:\s*#121214/i);
+    expect(forced?.[1]).toContain("color-scheme: dark");
+    expect(css).toMatch(/:root\[data-theme="light"\]\s*\{[^}]*color-scheme: light/);
+    expect(css).toMatch(/--ov-hover:\s*#eeede9/i);
+  });
+
+  it("keeps a hover ring and drops the transition for reduced motion", () => {
+    expect(css).toMatch(/\.ov-row\s*\{/);
+    expect(css).toContain("inset 0 0 0 1px var(--ov-hair)");
+    expect(css).toMatch(/prefers-reduced-motion:\s*reduce[\s\S]*\.ov-row[\s\S]*transition:\s*none/);
+  });
+});

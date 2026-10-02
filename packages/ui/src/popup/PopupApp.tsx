@@ -7,6 +7,7 @@ import { StatusScreen } from "../components/StatusScreen";
 import { errorMessage } from "../errors";
 import { useT } from "../i18n/i18n";
 import { useUi } from "../platform";
+import { useThemeSync } from "../theme";
 import { CodesScreen } from "./CodesScreen";
 
 export function PopupApp({ pollMs = 1000 }: { pollMs?: number }) {
@@ -27,6 +28,8 @@ export function PopupApp({ pollMs = 1000 }: { pollMs?: number }) {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useThemeSync(state?.theme);
 
   let content;
   if (!state) {

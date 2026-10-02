@@ -27,6 +27,7 @@ describe("setup", () => {
       revealRequiresPassword: true,
       lastBackupAt: null,
       viewMode: "normal",
+      theme: "system",
       clipboardClearSec: 0,
       recoveryCodeConfirmed: true,
       fillOnlyLinked: true,

@@ -267,6 +267,13 @@ export const tr = {
   "security.recoveryCreated": "Yeni kurtarma kodu kaydedildi.",
   "security.lock": "Kilit",
   "security.lockHint": "Kasa ne zaman kendiliğinden kilitlensin.",
+  "theme.section": "Görünüm",
+  "theme.label": "Tema",
+  "theme.system": "Sistem",
+  "theme.light": "Açık",
+  "theme.dark": "Koyu",
+  "theme.hint":
+    "Sistem: bilgisayarın hangi moddaysa onu izler. Seçim popup ve yönetim sayfasında birlikte uygulanır.",
   "security.display": "Doldurma, görünüm ve pano",
   "security.view": "Görünüm",
   "security.viewHint": "Kodlar popup'ta nasıl görünsün.",

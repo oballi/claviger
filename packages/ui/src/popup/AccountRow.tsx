@@ -93,7 +93,7 @@ export function AccountRow({
     return (
       <li
         onClick={copyFromRow}
-        className="flex cursor-pointer flex-col gap-1 border-b border-hair pb-5 hover:bg-hair"
+        className="ov-row -mx-3 flex cursor-pointer flex-col gap-1 rounded-xl px-3 pb-5"
       >
         <div className="truncate text-[13px]">
           {name}
@@ -157,7 +157,7 @@ export function AccountRow({
   return (
     <li
       onClick={copyFromRow}
-      className="flex cursor-pointer items-center gap-3 border-b border-hair py-1 hover:bg-hair"
+      className="ov-row -mx-3 flex cursor-pointer items-center gap-3 rounded-xl px-3 py-1"
     >
       <div className="min-w-0 flex-1">
         <div className="truncate text-[13px]">{name}</div>

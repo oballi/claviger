@@ -11,6 +11,7 @@ import { lockPolicyLabel } from "../format";
 import { useT } from "../i18n/i18n";
 import { useUi } from "../platform";
 import { ClockRow } from "./ClockRow";
+import { ThemePicker } from "./ThemePicker";
 import { PageTitle, SettingsRow, SettingsSection } from "./ManageFrame";
 
 type Panel = "password" | "recovery" | "lock" | "reveal" | "delete" | null;
@@ -384,7 +385,11 @@ export function SecurityScreen({
         />
       </SettingsSection>
 
-      <SettingsSection num="03" title={t("security.secrets")}>
+      <SettingsSection num="03" title={t("theme.section")}>
+        <ThemePicker theme={state.theme} onSaved={onChanged} />
+      </SettingsSection>
+
+      <SettingsSection num="04" title={t("security.secrets")}>
         <SettingsRow
           title={t("security.reveal")}
           description={t("security.revealHint")}
@@ -426,7 +431,7 @@ export function SecurityScreen({
         </SettingsRow>
       </SettingsSection>
 
-      <SettingsSection num="04" title={t("security.danger")}>
+      <SettingsSection num="05" title={t("security.danger")}>
         <SettingsRow
           title={t("security.delete")}
           description={

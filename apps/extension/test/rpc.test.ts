@@ -113,6 +113,7 @@ describe("envelope and sender checks", () => {
     { type: "unlockWithRecovery", code: "c".repeat(129), newPassword: "long enough password" },
     { type: "setClipboardClear", seconds: 45 },
     { type: "setViewMode", mode: "x" },
+    { type: "setTheme", theme: "x" },
     { type: "fillCode", id: "a", tabId: -1 },
     { type: "fillCode", id: "a", tabId: 1.5 },
     { type: "fillCode", id: "", tabId: 1 },

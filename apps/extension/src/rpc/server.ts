@@ -111,6 +111,9 @@ async function dispatch(
     case "setViewMode":
       await service.setViewMode(req.mode);
       return null;
+    case "setTheme":
+      await service.setTheme(req.theme);
+      return null;
     case "setClipboardClear":
       await service.setClipboardClear(req.seconds);
       return null;

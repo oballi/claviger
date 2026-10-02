@@ -514,9 +514,15 @@ describe("SecurityScreen", () => {
     expect(within(display).getByLabelText("Panoyu temizle")).toHaveProperty("disabled", true);
   });
 
-  it("numbers the sections 01 to 04", async () => {
+  it("numbers the sections 01 to 05", async () => {
     await open();
-    const titles = ["Erişim", "Doldurma, görünüm ve pano", "Gizli anahtar", "Tehlikeli bölge"];
+    const titles = [
+      "Erişim",
+      "Doldurma, görünüm ve pano",
+      "Görünüm",
+      "Gizli anahtar",
+      "Tehlikeli bölge",
+    ];
     titles.forEach((title, i) => {
       expect(within(region(title)).getByText(`0${i + 1}`)).toBeTruthy();
     });

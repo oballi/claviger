@@ -272,6 +272,13 @@ export const en: Record<MessageKey, string> = {
   "security.recoveryCreated": "New recovery code saved.",
   "security.lock": "Lock",
   "security.lockHint": "When the vault should lock on its own.",
+  "theme.section": "Appearance",
+  "theme.label": "Theme",
+  "theme.system": "System",
+  "theme.light": "Light",
+  "theme.dark": "Dark",
+  "theme.hint":
+    "System follows your computer's setting. The choice applies to the popup and the manage page.",
   "security.display": "Fill, display and clipboard",
   "security.view": "Display",
   "security.viewHint": "How codes look in the popup.",

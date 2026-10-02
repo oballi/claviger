@@ -51,6 +51,7 @@ import {
   type ClipboardClearSec,
   type LockPolicy,
   type Settings,
+  type Theme,
   type ViewMode,
 } from "./settings";
 import { SNAPSHOT_ATTEMPTS_KEY, Throttle } from "./throttle";
@@ -367,6 +368,7 @@ export class VaultService {
       revealRequiresPassword: settings.revealRequiresPassword,
       lastBackupAt: settings.lastBackupAt,
       viewMode: settings.viewMode,
+      theme: settings.theme,
       clipboardClearSec: settings.clipboardClearSec,
       recoveryCodeConfirmed: settings.recoveryCodeConfirmed,
       fillOnlyLinked: settings.fillOnlyLinked,
@@ -593,6 +595,12 @@ export class VaultService {
   setViewMode(mode: ViewMode): Promise<void> {
     return this.exclusive(async () => {
       await saveSettings(this.p.local, { viewMode: mode });
+    });
+  }
+
+  setTheme(theme: Theme): Promise<void> {
+    return this.exclusive(async () => {
+      await saveSettings(this.p.local, { theme });
     });
   }
 

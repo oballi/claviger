@@ -1,8 +1,14 @@
 import type { Account, ImportFormat, ImportIssue } from "@otp-vault/core";
-import type { ClipboardClearSec, LockPolicy, SnapshotReason, ViewMode } from "../protocol/schemas";
+import type {
+  ClipboardClearSec,
+  LockPolicy,
+  SnapshotReason,
+  Theme,
+  ViewMode,
+} from "../protocol/schemas";
 
 export type StorageAreaName = "local" | "sync";
-export type { ClipboardClearSec, LockPolicy, SnapshotReason, ViewMode };
+export type { ClipboardClearSec, LockPolicy, SnapshotReason, Theme, ViewMode };
 
 export type ServiceStatus = "no-vault" | "locked" | "unlocked" | "unsupported" | "corrupt";
 
@@ -20,6 +26,8 @@ export interface ServiceState {
   revealRequiresPassword: boolean;
   lastBackupAt: number | null;
   viewMode: ViewMode;
+  /** Not a secret: readable while locked so the lock screen is themed too. */
+  theme: Theme;
   clipboardClearSec: ClipboardClearSec;
   recoveryCodeConfirmed: boolean;
   fillOnlyLinked: boolean;

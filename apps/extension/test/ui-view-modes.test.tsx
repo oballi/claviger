@@ -27,6 +27,19 @@ async function popupWith(
 }
 
 describe("view modes", () => {
+  it("rows use the inset rounded hover", async () => {
+    await popupWith("normal");
+    const row = (await screen.findByText("Acme")).closest("li")!;
+    for (const c of ["ov-row", "-mx-3", "px-3", "rounded-xl"]) expect(row.className).toContain(c);
+    expect(row.className).not.toContain("hover:bg-hair");
+  });
+
+  it("the suggested row uses it too", async () => {
+    await popupWith("normal", { tabUrl: "https://acme.com/login" });
+    const row = (await screen.findByText("Acme")).closest("li")!;
+    expect(row.className).toContain("ov-row");
+  });
+
   it("hidden mode never puts the code in the DOM but still copies it", async () => {
     const { h, container, code } = await popupWith("hidden");
     const button = await screen.findByRole("button", { name: "Acme kodunu kopyala" });

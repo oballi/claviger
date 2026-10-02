@@ -15,6 +15,9 @@ export type LockPolicy = z.infer<typeof lockPolicySchema>;
 export const viewModeSchema = z.enum(["normal", "compact", "hidden"]);
 export type ViewMode = z.infer<typeof viewModeSchema>;
 
+export const themeSchema = z.enum(["system", "light", "dark"]);
+export type Theme = z.infer<typeof themeSchema>;
+
 export const clipboardClearSchema = z.union([z.literal(0), z.literal(30), z.literal(60)]);
 export type ClipboardClearSec = z.infer<typeof clipboardClearSchema>;
 
