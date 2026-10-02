@@ -83,6 +83,21 @@ describe("manage group filter", () => {
     );
   });
 
+  it("saves without sending the group when it was deleted elsewhere", async () => {
+    const h = await seeded();
+    await screenFor(h);
+    await h.ui.rpc("deleteGroup", { id: h.work.id });
+    await userEvent.click(await screen.findByRole("button", { name: "Alpha hesabını düzenle" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.type(within(dialog).getByLabelText("Hesap"), "zz");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Kaydet" }));
+    await vi.waitFor(async () =>
+      expect(
+        (await h.ui.rpc("listAccounts", {})).accounts.find((a) => a.issuer === "Alpha")!.label,
+      ).toContain("zz"),
+    );
+  });
+
   it("moves up/down only inside the group", async () => {
     const h = await harness();
     const g1 = await h.ui.rpc("createGroup", { name: "G1" });

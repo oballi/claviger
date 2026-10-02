@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PopupApp } from "@otp-vault/ui/popup";
@@ -146,6 +146,48 @@ describe("row menu", () => {
     );
     // An identical daily copy may already exist, so "before-delete" is deduplicated against it.
     expect((await h.ui.rpc("listSnapshots", {})).some((s) => s.accountCount === 2)).toBe(true);
+  });
+
+  it("sends one delete on a double click and focuses the search field after", async () => {
+    const h = await seeded();
+    const rpc = vi.spyOn(h.ui, "rpc");
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await userEvent.click(await trigger("Beta"));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Sil…" }));
+    const confirm = screen.getByRole("button", { name: "Sil" });
+    fireEvent.click(confirm);
+    fireEvent.click(confirm);
+    await vi.waitFor(async () =>
+      expect((await h.ui.rpc("listAccounts", {})).accounts).toHaveLength(1),
+    );
+    expect(rpc.mock.calls.filter(([type]) => type === "deleteAccount")).toHaveLength(1);
+    await vi.waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole("searchbox", { name: "Hesap ara" })),
+    );
+  });
+
+  it("focuses the group header when the row moves into a collapsed group", async () => {
+    const h = await seeded();
+    const home = await h.ui.rpc("createGroup", { name: "Home" });
+    localStorage.setItem("otpv.popup.collapsed", JSON.stringify([home.id]));
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await userEvent.click(await trigger("Beta"));
+    await userEvent.click(screen.getByRole("menuitem", { name: /Gruba taşı/ }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Home" }));
+    await vi.waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: /^Home/ })),
+    );
+  });
+
+  it("marks submenu items with aria-haspopup", async () => {
+    const h = await seeded();
+    await h.ui.rpc("createGroup", { name: "Home" });
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await userEvent.click(await trigger("Beta"));
+    expect(screen.getByRole("menuitem", { name: /Gruba taşı/ }).getAttribute("aria-haspopup")).toBe(
+      "menu",
+    );
+    expect(screen.getByRole("menuitem", { name: "Sil…" }).getAttribute("aria-haspopup")).toBeNull();
   });
 
   it("Tab from the open menu lands after the trigger, not on body", async () => {

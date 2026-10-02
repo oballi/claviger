@@ -3,12 +3,14 @@ import { Icon } from "../components/Icon";
 
 export function GroupSection({
   title,
+  groupKey,
   count,
   open,
   onToggle,
   children,
 }: {
   title: string;
+  groupKey: string;
   count: number;
   open: boolean;
   onToggle: () => void;
@@ -20,6 +22,7 @@ export function GroupSection({
       <h2 className="m-0 text-[11px] font-normal">
         <button
           type="button"
+          data-group-for={groupKey}
           aria-expanded={open}
           aria-controls={open ? listId : undefined}
           onClick={onToggle}

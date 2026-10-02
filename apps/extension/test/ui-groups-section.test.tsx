@@ -193,6 +193,29 @@ describe("groups section", () => {
     );
   });
 
+  it("moves focus to the next group's rename button after deleting a group", async () => {
+    const h = await open();
+    await userEvent.click(within(h.section).getByRole("button", { name: "İş grubunu sil" }));
+    await userEvent.click(within(h.section).getByRole("button", { name: "Sil" }));
+    await vi.waitFor(() =>
+      expect(
+        within(h.section).getByRole("button", { name: "Kişisel grubunu yeniden adlandır" }),
+      ).toHaveFocus(),
+    );
+  });
+
+  it("moves focus to the section heading after deleting the last group", async () => {
+    const h = await harness();
+    await h.ui.rpc("createGroup", { name: "Tek" });
+    renderUi(<AccountsScreen state={await h.ui.rpc("getState", {})} onChanged={() => {}} />, h.ui);
+    const section = await screen.findByRole("region", { name: "Gruplar" });
+    await userEvent.click(await within(section).findByRole("button", { name: "Tek grubunu sil" }));
+    await userEvent.click(within(section).getByRole("button", { name: "Sil" }));
+    await vi.waitFor(() =>
+      expect(within(section).getByRole("heading", { name: "Gruplar" })).toHaveFocus(),
+    );
+  });
+
   it("names the group in the delete confirmation", async () => {
     const h = await open();
     await userEvent.click(within(h.section).getByRole("button", { name: "Kişisel grubunu sil" }));

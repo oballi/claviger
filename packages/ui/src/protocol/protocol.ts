@@ -85,8 +85,8 @@ export const rpcRequestSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("createGroup"), name: z.string().max(200) }),
   z.object({ type: z.literal("renameGroup"), id, name: z.string().max(200) }),
   z.object({ type: z.literal("deleteGroup"), id }),
-  // 30 = core MAX_GROUPS (not exported to popup-reachable code).
-  z.object({ type: z.literal("reorderGroups"), ids: z.array(z.string().min(1).max(64)).max(30) }),
+  // Matches the read bound; core ignores unknown ids, so the cap only bounds the message.
+  z.object({ type: z.literal("reorderGroups"), ids: z.array(z.string().min(1).max(64)).max(1000) }),
   z.object({
     type: z.literal("setAccountGroup"),
     id,

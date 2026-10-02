@@ -92,7 +92,13 @@ export function EditAccount({
     try {
       await rpc("updateAccount", {
         id: account.id,
-        patch: { issuer: issuer.trim(), label: label.trim(), domains, groupId: groupId || null },
+        patch: {
+          issuer: issuer.trim(),
+          label: label.trim(),
+          domains,
+          // Untouched group is not resent: it may have been deleted elsewhere meanwhile.
+          ...(groupId !== (account.groupId ?? "") && { groupId: groupId || null }),
+        },
       });
       onSaved(issuer.trim() || label.trim());
     } catch (e) {

@@ -8,7 +8,7 @@ import { useT } from "../i18n/i18n";
 import { useUi } from "../platform";
 import { dropId, moveId } from "./groupOrder";
 
-type Kind = "rename" | "up" | "down" | "delete";
+type Kind = "rename" | "up" | "down" | "delete" | "title";
 
 /** Design board "Yönetim — gruplar", right column. */
 export function GroupsSection({
@@ -44,7 +44,9 @@ export function GroupsSection({
     focusReq.current = null;
     if (!req) return;
     const find = (kind: Kind) =>
-      sectionRef.current?.querySelector<HTMLButtonElement>(`[data-focus="${req.id}:${kind}"]`);
+      sectionRef.current?.querySelector<HTMLElement & { disabled?: boolean }>(
+        `[data-focus="${req.id}:${kind}"]`,
+      );
     let el = find(req.kind);
     if (el?.disabled) el = find(req.kind === "up" ? "down" : "up");
     el?.focus();
@@ -87,6 +89,11 @@ export function GroupsSection({
     run(g.id, async () => {
       await rpc("deleteGroup", { id: g.id });
       setConfirming(null);
+      // The deleted row's buttons vanish, so focus moves to a neighbour or the heading.
+      const at = ids.indexOf(g.id);
+      const near = ids[at + 1] ?? ids[at - 1];
+      if (near) requestFocus(near, "rename");
+      else requestFocus("heading", "title");
       await onChanged(t("groups.deleted", { name: g.name }));
     });
 
@@ -104,7 +111,13 @@ export function GroupsSection({
 
   return (
     <section ref={sectionRef} aria-label={t("groups.title")} className="flex flex-col gap-4">
-      <h2 className="m-0 text-[15px] font-medium">{t("groups.title")}</h2>
+      <h2
+        tabIndex={-1}
+        data-focus="heading:title"
+        className="m-0 text-[15px] font-medium outline-none"
+      >
+        {t("groups.title")}
+      </h2>
       <ul className="m-0 flex list-none flex-col p-0">
         {groups.map((g, i) => (
           <li

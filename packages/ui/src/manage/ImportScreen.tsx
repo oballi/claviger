@@ -237,7 +237,12 @@ export function ImportScreen({
                       />
                     </label>
                   </td>
-                  <td className="pr-4">{item.issuer}</td>
+                  <td className="pr-4">
+                    {item.issuer}
+                    {item.groupName ? (
+                      <span className="block text-xs text-muted">{item.groupName}</span>
+                    ) : null}
+                  </td>
                   <td className="pr-4">{item.label}</td>
                   <td className="pr-4 font-mono text-xs">{typeLabel(item.type)}</td>
                   <td>

@@ -65,7 +65,12 @@ export function SnapshotsSection({ num, onChanged }: { num: string; onChanged: (
       const unreadable = r.unreadable
         ? ` ${t("snapshots.resultUnreadable", { count: r.unreadable })}`
         : "";
-      setMessage(`${t("snapshots.result", { added: r.added, skipped: r.skipped })}${unreadable}`);
+      const ungrouped = r.ungrouped
+        ? ` ${t(r.ungrouped === 1 ? "import.ungroupedOne" : "import.ungrouped", { count: r.ungrouped })}`
+        : "";
+      setMessage(
+        `${t("snapshots.result", { added: r.added, skipped: r.skipped })}${unreadable}${ungrouped}`,
+      );
       refocus.current = item.id;
       setOpen(null);
       setOldPassword("");

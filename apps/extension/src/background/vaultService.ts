@@ -884,15 +884,23 @@ export class VaultService {
       }
       const listing = await opened.listAccounts();
       await this.snapshot("before-restore");
-      // Same vault: the accounts that are still there keep their current group, so groups are not touched.
+      // Same vault: only groups that still exist are reused (none are created or resurrected);
+      // accounts that are still there are duplicates, so their current group stays untouched.
+      const live = sameVault ? new Set((await vault.listAccounts()).groups.map((g) => g.id)) : null;
       const names = new Map(listing.groups.map((g) => [g.id, g.name]));
-      const { added, duplicates, ungrouped } = sameVault
-        ? { ...(await vault.addAccounts(listing.accounts)), ungrouped: 0 }
-        : await vault.addAccountsWithGroups(
-            listing.accounts,
-            listing.accounts.map((a) => (a.groupId ? names.get(a.groupId) : undefined)),
-            listing.groups.map((g) => g.name),
-          );
+      const lostGroup = (a: { groupId?: string | null }) =>
+        !!a.groupId && !!live && !live.has(a.groupId);
+      const res = await vault.addAccountsWithGroups(
+        listing.accounts,
+        listing.accounts.map((a) =>
+          a.groupId && !lostGroup(a) ? names.get(a.groupId) : undefined,
+        ),
+        sameVault ? [] : listing.groups.map((g) => g.name),
+      );
+      const { added, duplicates } = res;
+      const dup = new Set<unknown>(duplicates);
+      const ungrouped =
+        res.ungrouped + listing.accounts.filter((a) => lostGroup(a) && !dup.has(a)).length;
       return {
         added: added.length,
         skipped: duplicates.length,

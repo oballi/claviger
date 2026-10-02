@@ -38,6 +38,23 @@ describe("popup edit view", () => {
     expect(screen.queryByRole("heading", { name: "Hesabı düzenle." })).toBeNull();
   });
 
+  it("saves without sending the group when it was deleted elsewhere", async () => {
+    const h = await harness();
+    const work = await h.ui.rpc("createGroup", { name: "Work" });
+    const { id } = await h.ui.rpc("addAccountUri", {
+      uri: "otpauth://totp/PAM:me?secret=JBSWY3DPEHPK3PXP&issuer=PAM",
+    });
+    await h.ui.rpc("setAccountGroup", { id, groupId: work.id });
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await userEvent.click(await screen.findByRole("button", { name: "PAM için işlemler" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Düzenle…" }));
+    await screen.findByRole("heading", { name: "Hesabı düzenle." });
+    await h.ui.rpc("deleteGroup", { id: work.id });
+    await userEvent.type(screen.getByLabelText("Hesap"), "zz");
+    await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+    await vi.waitFor(async () => expect((await stored(h as never)).label).toBe("mezz"));
+  });
+
   it("removes a linked site only on save", async () => {
     const h = await open();
     await userEvent.click(

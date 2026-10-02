@@ -316,4 +316,40 @@ describe("restoreSnapshot groups", () => {
     expect(listing.groups.map((x) => x.name)).toEqual(["Work"]);
     expect(listing.accounts[0]!.groupId).toBe(listing.groups[0]!.id);
   });
+
+  async function groupedSnapshot() {
+    const h = await unlockedService();
+    const { id: a } = await h.service.addAccount({ uri: A });
+    const g = await h.service.createGroup("Work");
+    await h.service.setAccountGroup(a, g.id);
+    h.p.clock.advance(1000);
+    await h.service.deleteAccount(a);
+    const snap = (await h.service.listSnapshots()).find((s) => s.reason === "before-delete")!;
+    return { ...h, snap, g };
+  }
+
+  it("keeps the group of a restored account in the same vault", async () => {
+    const { service, snap, g } = await groupedSnapshot();
+    const { token } = await service.reauth(PASSWORD);
+    expect(await service.restoreSnapshot(token, snap.id)).toMatchObject({
+      added: 1,
+      ungrouped: 0,
+    });
+    const listing = await service.listAccounts();
+    expect(listing.groups.map((x) => x.id)).toEqual([g.id]);
+    expect(listing.accounts[0]!.groupId).toBe(g.id);
+  });
+
+  it("restores ungrouped, without recreating the group, when it was deleted meanwhile", async () => {
+    const { service, snap, g } = await groupedSnapshot();
+    await service.deleteGroup(g.id);
+    const { token } = await service.reauth(PASSWORD);
+    expect(await service.restoreSnapshot(token, snap.id)).toMatchObject({
+      added: 1,
+      ungrouped: 1,
+    });
+    const listing = await service.listAccounts();
+    expect(listing.groups).toEqual([]);
+    expect(listing.accounts[0]!.groupId ?? null).toBeNull();
+  });
 });

@@ -46,9 +46,10 @@ export function AccountEditor({
   const [issuer, setIssuer] = useState(account.issuer);
   const [label, setLabel] = useState(account.label);
   const [domains, setDomains] = useState(account.domains.join(", "));
-  const [groupId, setGroupId] = useState(
+  const [initialGroupId] = useState(
     groups.some((g) => g.id === account.groupId) ? (account.groupId ?? "") : "",
   );
+  const [groupId, setGroupId] = useState(initialGroupId);
   const [error, setError] = useState<string | null>(null);
   const [revealed, setRevealed] = useState<{ uri: string; secret: string } | null>(null);
   // Starts from the cached setting but falls back to asking if the service says otherwise.
@@ -122,7 +123,8 @@ export function AccountEditor({
             issuer: issuer.trim(),
             label: label.trim(),
             domains: list,
-            groupId: groupId || null,
+            // Untouched group is not resent: it may have been deleted elsewhere meanwhile.
+            ...(groupId !== initialGroupId && { groupId: groupId || null }),
           },
         }),
       t("accounts.saved", { name: issuer.trim() || label.trim() || name }),

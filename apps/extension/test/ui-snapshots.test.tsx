@@ -54,6 +54,20 @@ describe("automatic copies section", () => {
     expect(await screen.findByText("Henüz kopya yok.")).toBeTruthy();
   });
 
+  it("reports restored accounts that came back without a group", async () => {
+    const h = await withCopy();
+    const rpc: UiPlatform["rpc"] = async (type, payload) => {
+      const r = await h.ui.rpc(type, payload);
+      return (type === "restoreSnapshot" ? { ...(r as object), ungrouped: 1 } : r) as never;
+    };
+    await backup(h, { ...h.ui, rpc });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: ROW }));
+    await user.type(screen.getByLabelText("Ana parola"), PASSWORD);
+    await user.click(screen.getByRole("button", { name: "Geri yükle" }));
+    await screen.findByText("1 hesap eklendi, 0 zaten vardı. 1 hesap grupsuz eklendi.");
+  });
+
   it("shows the unreadable count only when non-zero", async () => {
     const h = await withCopy();
     const rpc: UiPlatform["rpc"] = async (type, payload) => {

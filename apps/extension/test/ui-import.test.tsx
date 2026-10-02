@@ -86,6 +86,22 @@ describe("ImportScreen", () => {
     }
   });
 
+  it("shows the group name of a previewed account", async () => {
+    const h = await harness();
+    const rpc: typeof h.ui.rpc = async (type, payload) => {
+      const r = await h.ui.rpc(type, payload);
+      if (type !== "importPreview" || (r as { status: string }).status !== "ok") return r;
+      const ok = r as { items: object[] };
+      return { ...ok, items: ok.items.map((i) => ({ ...i, groupName: "Work" })) } as never;
+    };
+    renderUi(
+      <ImportScreen source={{ text: ACME, name: null }} onDone={vi.fn()} onCancel={vi.fn()} />,
+      { ...h.ui, rpc },
+    );
+    const row = (await screen.findByRole("checkbox", { name: /Acme/ })).closest("tr")!;
+    expect(within(row).getByText("Work")).toBeTruthy();
+  });
+
   it("marks accounts that are already in the vault", async () => {
     const h = await harness();
     await h.ui.rpc("addAccountUri", { uri: ACME });

@@ -112,7 +112,7 @@ describe("envelope and sender checks", () => {
     { type: "deleteGroup", id: "a".repeat(65) },
     { type: "setAccountGroup", id: "a".repeat(65), groupId: null },
     { type: "renameGroup", id: "a", name: "x".repeat(201) },
-    { type: "reorderGroups", ids: Array(31).fill("a") },
+    { type: "reorderGroups", ids: Array(1001).fill("a") },
     { type: "reorderGroups", ids: ["a".repeat(65)] },
     { type: "setAccountGroup", id: "a", groupId: "" },
     { type: "updateAccount", id: "a", patch: { groupId: "g".repeat(65) } },

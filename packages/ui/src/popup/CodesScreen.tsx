@@ -86,6 +86,7 @@ export function CodesScreen({
   const [usage, setUsage] = useState<StorageUsageView | null>(null);
   const { collapsed, toggle } = useCollapsed();
   const searchRef = useRef<HTMLInputElement>(null);
+  const deleting = useRef(false);
   const listRef = useRef<HTMLDivElement>(null);
   const clearToast = useCallback(() => setToast(null), []);
 
@@ -117,9 +118,14 @@ export function CodesScreen({
   // A row can move to another section (and remount), so focus returns to its menu trigger by id.
   useEffect(() => {
     if (!refocus) return;
-    listRef.current
-      ?.querySelector<HTMLElement>(`[data-menu-for="${CSS.escape(refocus)}"]`)
-      ?.focus();
+    const root = listRef.current;
+    const trigger = root?.querySelector<HTMLElement>(`[data-menu-for="${CSS.escape(refocus)}"]`);
+    if (trigger) trigger.focus();
+    else {
+      // The row went into a collapsed group, so its header is the nearest place left.
+      const key = list?.accounts.find((a) => a.id === refocus)?.groupId ?? NO_GROUP_KEY;
+      root?.querySelector<HTMLElement>(`[data-group-for="${CSS.escape(key)}"]`)?.focus();
+    }
     setRefocus(null);
   }, [list, refocus]);
 
@@ -432,14 +438,20 @@ export function CodesScreen({
       confirmDelete={
         confirmDelete === account.id
           ? {
-              onConfirm: () =>
+              onConfirm: () => {
+                if (deleting.current) return;
+                deleting.current = true;
                 void act(
                   async () => {
                     await rpc("deleteAccount", { id: account.id });
                     setConfirmDelete(null);
+                    searchRef.current?.focus();
                   },
                   t("accounts.deleted", { name: account.issuer || account.label }),
-                ),
+                ).finally(() => {
+                  deleting.current = false;
+                });
+              },
               onCancel: () => {
                 setConfirmDelete(null);
                 setRefocus(account.id);
@@ -584,6 +596,7 @@ export function CodesScreen({
                 return (
                   <GroupSection
                     key={key}
+                    groupKey={key}
                     title={s.group?.name ?? t("group.none")}
                     count={s.rows.length}
                     open={!collapsed.has(key)}

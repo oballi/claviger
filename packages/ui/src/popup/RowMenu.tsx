@@ -122,6 +122,7 @@ export function RowMenu({
               key={item.key}
               type="button"
               role="menuitem"
+              aria-haspopup={item.sub ? "menu" : undefined}
               disabled={item.disabled}
               onClick={() => {
                 if (item.key === "back") setSub(null);
