@@ -37,6 +37,16 @@ describe("popup fill", () => {
     expect(h.ui.copy).not.toHaveBeenCalled();
   });
 
+  it("does not copy when a button inside the row is clicked", async () => {
+    const h = await popupOn("https://acme.com/login");
+    open(h);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Acme kodunu sayfaya doldur" }),
+    );
+    expect(await screen.findByText("Dolduruldu")).toBeTruthy();
+    expect(h.ui.copy).not.toHaveBeenCalled();
+  });
+
   it("fills once on a double click while a fill is in flight", async () => {
     const h = await popupOn("https://acme.com/login");
     open(h);

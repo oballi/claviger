@@ -37,6 +37,19 @@ describe("view modes", () => {
     expect(h.ui.copy).toHaveBeenCalledWith(code);
   });
 
+  it("copies when the row text is clicked, in hidden mode too", async () => {
+    const hidden = await popupWith("hidden");
+    await userEvent.setup().click(await screen.findByText("Acme"));
+    expect(hidden.h.ui.copy).toHaveBeenCalledWith(hidden.code);
+  });
+
+  it("copies when the issuer text of a normal row is clicked", async () => {
+    const { h, code } = await popupWith("normal");
+    await userEvent.setup().click(await screen.findByText("a@x"));
+    expect(h.ui.copy).toHaveBeenCalledTimes(1);
+    expect(h.ui.copy).toHaveBeenCalledWith(code);
+  });
+
   it("compact mode drops the account label line", async () => {
     await popupWith("compact");
     await screen.findByText("Acme");

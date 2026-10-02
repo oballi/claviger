@@ -1,3 +1,4 @@
+import type { MouseEvent } from "react";
 import type { AccountView, ViewMode } from "../contract/views";
 import { Button } from "../components/Button";
 import { CountdownRing } from "../components/CountdownRing";
@@ -43,6 +44,16 @@ export function AccountRow({
   const hidden = mode === "hidden";
   const compact = mode === "compact";
   const code = hidden ? maskCode(account.digits) : formatCode(account.code);
+  // Convenience only: the code button stays the keyboard/screen-reader control, so the row has no role.
+  const copyFromRow = (e: MouseEvent<HTMLLIElement>) => {
+    if (
+      (e.target as Element).closest(
+        "button, a, input, select, textarea, [role=group], [role=alert]",
+      )
+    )
+      return;
+    onCopy(account);
+  };
   const urgent = account.remaining !== null && account.remaining <= 5;
   const copyButton = (
     <button
@@ -77,7 +88,10 @@ export function AccountRow({
 
   if (large) {
     return (
-      <li className="flex flex-col gap-1 border-b border-hair pb-5">
+      <li
+        onClick={copyFromRow}
+        className="flex cursor-pointer flex-col gap-1 border-b border-hair pb-5 hover:bg-hair"
+      >
         <div className="truncate text-[13px]">
           {name}
           {suggested ? <span className="text-muted"> · {t("codes.suggested")}</span> : null}
@@ -136,7 +150,10 @@ export function AccountRow({
     );
   }
   return (
-    <li className="flex items-center gap-3 border-b border-hair py-1">
+    <li
+      onClick={copyFromRow}
+      className="flex cursor-pointer items-center gap-3 border-b border-hair py-1 hover:bg-hair"
+    >
       <div className="min-w-0 flex-1">
         <div className="truncate text-[13px]">{name}</div>
         {!compact && account.issuer && account.label ? (
