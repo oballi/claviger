@@ -103,3 +103,19 @@ export interface StorageUsageView {
   quotaBytes: number | null;
   maxItemBytes: number | null;
 }
+
+/** Retention shown in copy; the background enforces the real value (core TRASH_TTL_MS). */
+export const TRASH_RETENTION_DAYS = 30;
+
+/** A deleted account as the UI may see it: never the secret. */
+export interface TrashItemView {
+  id: string;
+  issuer: string;
+  label: string;
+  deletedAt: number;
+  expiresAt: number;
+  /** Calendar days since deletion by the service clock; 0 is today. */
+  ageDays: number;
+  /** Whole days left, 0..30. */
+  daysLeft: number;
+}

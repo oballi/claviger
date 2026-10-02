@@ -456,3 +456,54 @@ describe("listSnapshots rpc", () => {
     expect(theme).toMatchObject({ ok: false, error: { code: "forbidden" } });
   });
 });
+
+describe("trash rpcs", () => {
+  it.each([
+    { type: "listTrash" },
+    { type: "restoreTrash", id: "a" },
+    { type: "purgeTrash", id: "a" },
+    { type: "emptyTrash" },
+  ])("forbids $type from an untrusted sender", async (request) => {
+    const response = await handleRpcMessage(
+      new VaultService(memoryPlatform()),
+      { channel: RPC_CHANNEL, request },
+      { id: "ext-id", url: "https://evil.example/" },
+      ctx,
+    );
+    expect(response).toMatchObject({ ok: false, error: { code: "forbidden" } });
+  });
+
+  it.each([
+    { type: "restoreTrash", id: "" },
+    { type: "restoreTrash", id: "x".repeat(65) },
+    { type: "purgeTrash", id: "" },
+  ])("rejects a malformed $type", async (request) => {
+    const response = await handleRpcMessage(
+      new VaultService(memoryPlatform()),
+      { channel: RPC_CHANNEL, request },
+      trusted,
+      ctx,
+    );
+    expect(response).toMatchObject({ ok: false });
+  });
+
+  it("round-trips delete, list and restore, sending only the error code on failure", async () => {
+    const service = new VaultService(memoryPlatform());
+    const call = clientFor(service);
+    await call("setup", {
+      password: PASSWORD,
+      createRecoveryCode: false,
+      lockPolicy: { kind: "browser-close" },
+      storageArea: "local",
+    });
+    const { id } = await call("addAccountManual", { draft: { secret: SECRET, issuer: "Rpc" } });
+    await call("deleteAccount", { id });
+    expect((await call("listTrash", {})).map((i) => i.id)).toEqual([id]);
+    await expect(call("restoreTrash", { id: "missing" })).rejects.toMatchObject({
+      code: "trash-entry-not-found",
+      message: "trash-entry-not-found",
+    });
+    expect((await call("restoreTrash", { id })).name).toBe("Rpc");
+    expect(await call("emptyTrash", {})).toEqual({ removed: 0 });
+  });
+});

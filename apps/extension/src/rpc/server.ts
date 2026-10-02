@@ -103,6 +103,15 @@ async function dispatch(
     case "deleteAccount":
       await service.deleteAccount(req.id);
       return null;
+    case "listTrash":
+      return service.listTrash();
+    case "restoreTrash":
+      return service.restoreTrash(req.id);
+    case "purgeTrash":
+      await service.purgeTrash(req.id);
+      return null;
+    case "emptyTrash":
+      return service.emptyTrash();
     case "reorder":
       await service.reorder(req.order);
       return null;

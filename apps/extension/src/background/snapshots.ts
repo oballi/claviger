@@ -1,6 +1,7 @@
 import "../zodConfig";
 import {
   HEADER_KEY,
+  isTrashKey,
   isVaultKey,
   Vault,
   type ClockPort,
@@ -204,8 +205,9 @@ export class SnapshotStore {
   }
 
   async removeAll(): Promise<void> {
+    // The bin is sealed under the deleted vault's key; nothing can open it any more.
     const keys = Object.keys(await this.local.get()).filter(
-      (k) => k.startsWith(SNAPSHOT_PREFIX) || k.startsWith(QUARANTINE_PREFIX),
+      (k) => k.startsWith(SNAPSHOT_PREFIX) || k.startsWith(QUARANTINE_PREFIX) || isTrashKey(k),
     );
     if (keys.length) await this.local.remove(keys);
   }
