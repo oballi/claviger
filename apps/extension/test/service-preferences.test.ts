@@ -22,6 +22,76 @@ describe("language", () => {
   });
 });
 
+describe("open mode and popup size", () => {
+  const withHook = (impl: (mode: string) => Promise<void>) => {
+    const calls: string[] = [];
+    const service = new VaultService(memoryPlatform(), async (mode) => {
+      calls.push(mode);
+      await impl(mode);
+    });
+    return { service, calls };
+  };
+
+  it("defaults to popup/medium and persists changes, also while locked", async () => {
+    const { service } = await unlockedService();
+    expect(await service.getState()).toMatchObject({ openMode: "popup", popupSize: "medium" });
+    await service.setOpenMode("window");
+    await service.setPopupSize("large");
+    await service.lock();
+    expect(await service.getState()).toMatchObject({ openMode: "window", popupSize: "large" });
+  });
+
+  it("applies the mode in the browser before saving it", async () => {
+    const { service, calls } = withHook(async () => {});
+    await service.setOpenMode("panel");
+    expect(calls).toEqual(["panel"]);
+    expect((await service.getState()).openMode).toBe("panel");
+  });
+
+  it("keeps the old mode when the browser refuses the new one", async () => {
+    const { service, calls } = withHook(async (mode) => {
+      if (mode === "panel") throw new Error("unsupported");
+    });
+    await expect(service.setOpenMode("panel")).rejects.toThrow("unsupported");
+    expect(calls).toEqual(["panel"]);
+    expect((await service.getState()).openMode).toBe("popup");
+  });
+
+  it("rolls the browser back when saving fails", async () => {
+    const p = memoryPlatform();
+    const calls: string[] = [];
+    const service = new VaultService(p, async (mode) => {
+      calls.push(mode);
+    });
+    const set = p.local.set.bind(p.local);
+    p.local.set = async () => {
+      throw new Error("disk full");
+    };
+    await expect(service.setOpenMode("window")).rejects.toThrow("disk full");
+    p.local.set = set;
+    expect(calls).toEqual(["window", "popup"]);
+  });
+
+  it("serialises concurrent mode changes", async () => {
+    const order: string[] = [];
+    const { service } = withHook(async (mode) => {
+      order.push(`start ${mode}`);
+      await new Promise((r) => setTimeout(r, 5));
+      order.push(`end ${mode}`);
+    });
+    await Promise.all([service.setOpenMode("window"), service.setOpenMode("panel")]);
+    expect(order).toEqual(["start window", "end window", "start panel", "end panel"]);
+  });
+
+  it("re-applies the stored mode on wake-up", async () => {
+    const { service, calls } = withHook(async () => {});
+    await service.setOpenMode("window");
+    calls.length = 0;
+    await service.reapplyOpenMode();
+    expect(calls).toEqual(["window"]);
+  });
+});
+
 describe("clipboard clearing", () => {
   it("does nothing while the setting is off", async () => {
     const { service, p } = await unlockedService();

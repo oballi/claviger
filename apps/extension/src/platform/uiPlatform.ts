@@ -1,9 +1,44 @@
-import { browser } from "wxt/browser";
+import { browser, type Browser } from "wxt/browser";
 import type { ManageRoute, UiPlatform } from "@claviger/ui";
 import { rpc } from "./browserRpc";
 
 const CLOCK_ORIGIN = "https://www.google.com/*";
 const CLOCK_URL = "https://www.google.com/generate_204";
+
+/** The launcher stores the browsing window here in window mode (session storage, never synced). */
+export const TARGET_WINDOW_KEY = "claviger-target-window";
+
+type Context = "popup" | "manage" | "scan" | "panel";
+
+/**
+ * The window whose tabs the panel or window page acts on. A side panel lives inside that window;
+ * a detached window has no tabs of its own, so it follows the window the launcher stored.
+ */
+async function targetWindowId(context: Context): Promise<number | undefined> {
+  if (context !== "panel") return undefined;
+  try {
+    const own = await browser.windows.getCurrent();
+    if (own.type === "normal") return own.id;
+    const stored = (await browser.storage.session.get(TARGET_WINDOW_KEY))[TARGET_WINDOW_KEY];
+    return typeof stored === "number" ? stored : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** A URL-less tab (new tab, restricted page) counts as no tab at all. */
+async function queryActiveTab(
+  context: Context,
+): Promise<{ windowId: number | undefined; tab: Browser.tabs.Tab | undefined }> {
+  if (context === "panel") {
+    const windowId = await targetWindowId(context);
+    if (windowId === undefined) return { windowId, tab: undefined };
+    const [tab] = await browser.tabs.query({ active: true, windowId });
+    return { windowId, tab };
+  }
+  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+  return { windowId: undefined, tab };
+}
 
 async function findManageTab(): Promise<{ tabId: number; windowId: number } | null> {
   const origin = new URL(browser.runtime.getURL("/")).origin;
@@ -21,7 +56,7 @@ async function findManageTab(): Promise<{ tabId: number; windowId: number } | nu
   return ctx ? { tabId: ctx.tabId, windowId: ctx.windowId } : null;
 }
 
-async function openOrFocusManage(hash: string): Promise<void> {
+async function openOrFocusManage(hash: string, windowId: number | undefined): Promise<void> {
   const manageUrl = browser.runtime.getURL("/manage.html");
   try {
     const found = await findManageTab();
@@ -33,12 +68,12 @@ async function openOrFocusManage(hash: string): Promise<void> {
   } catch {
     // fall back to a new tab
   }
-  await browser.tabs.create({ url: `${manageUrl}${hash}` });
+  await browser.tabs.create({ url: `${manageUrl}${hash}`, ...(windowId ? { windowId } : {}) });
 }
 
 /** The popup opens the manage page in a new tab; the manage page itself only changes its hash. */
 export function createBrowserUiPlatform(
-  context: "popup" | "manage" | "scan",
+  context: Context,
   extra: Partial<UiPlatform> = {},
 ): UiPlatform {
   return {
@@ -59,23 +94,43 @@ export function createBrowserUiPlatform(
         window.location.hash = hash;
         return;
       }
-      void openOrFocusManage(hash).then(() => window.close());
+      void targetWindowId(context)
+        .then((windowId) => openOrFocusManage(hash, windowId))
+        // Only the popup is dismissed by opening a tab; a panel or window must stay.
+        .then(() => context === "popup" && window.close());
     },
     async activeTab() {
-      if (context !== "popup") return undefined;
-      const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+      if (context !== "popup" && context !== "panel") return undefined;
+      const { tab } = await queryActiveTab(context);
       return tab?.id === undefined || !tab.url ? undefined : { id: tab.id, url: tab.url };
     },
+    onActiveTabChange:
+      context === "panel"
+        ? (listener) => {
+            // Any of these can change which tab "this site" means; the listener re-resolves.
+            const events = [
+              browser.tabs.onActivated,
+              browser.tabs.onUpdated,
+              browser.windows.onRemoved,
+            ];
+            for (const event of events) event.addListener(listener);
+            return () => {
+              for (const event of events) event.removeListener(listener);
+            };
+          }
+        : undefined,
     async captureTab() {
-      if (context !== "popup") return null;
+      if (context !== "popup" && context !== "panel") return null;
       try {
-        const [before] = await browser.tabs.query({ active: true, currentWindow: true });
+        const { windowId, tab: before } = await queryActiveTab(context);
         if (!before?.url) return null;
         // Capture first: the activeTab grant and the rate limit favour the earliest call.
-        const dataUrl = await browser.tabs.captureVisibleTab({ format: "png" });
-        const [after] = await browser.tabs.query({ active: true, currentWindow: true });
+        const dataUrl = await (windowId === undefined
+          ? browser.tabs.captureVisibleTab({ format: "png" })
+          : browser.tabs.captureVisibleTab(windowId, { format: "png" }));
+        const { tab: after } = await queryActiveTab(context);
         // A navigation in between would link the account to the wrong site.
-        if (after?.id !== before.id || after.url !== before.url) return null;
+        if (after?.id !== before.id || after?.url !== before.url) return null;
         return { dataUrl, tabUrl: before.url };
       } catch {
         return null;
@@ -86,9 +141,14 @@ export function createBrowserUiPlatform(
       return (await import("../qr/pngCapture")).imageToPngDataUrl(image);
     },
     openScan(id) {
-      void browser.tabs
-        .create({ url: `${browser.runtime.getURL("/scan.html")}#${id}` })
-        .then(() => window.close());
+      void targetWindowId(context)
+        .then((windowId) =>
+          browser.tabs.create({
+            url: `${browser.runtime.getURL("/scan.html")}#${id}`,
+            ...(windowId ? { windowId } : {}),
+          }),
+        )
+        .then(() => context === "popup" && window.close());
     },
     requestClockPermission: () => browser.permissions.request({ origins: [CLOCK_ORIGIN] }),
     async removeClockPermission() {

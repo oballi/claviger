@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import type { ServiceState } from "../contract/views";
+import type { PopupSize, ServiceState } from "../contract/views";
 import { Button } from "../components/Button";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { LockScreen } from "../components/LockScreen";
@@ -9,8 +9,18 @@ import { useLanguageSync, useT } from "../i18n/i18n";
 import { useUi } from "../platform";
 import { useThemeSync } from "../theme";
 import { CodesScreen } from "./CodesScreen";
+import { POPUP_SIZE_CLASS, usePopupSizeSync } from "./popupSize";
 
-export function PopupApp({ pollMs = 1000 }: { pollMs?: number }) {
+/** "panel" fills the side panel or window it lives in; "popup" uses a fixed size. */
+export function PopupApp({
+  pollMs = 1000,
+  layout = "popup",
+  size = "medium",
+}: {
+  pollMs?: number;
+  layout?: "popup" | "panel";
+  size?: PopupSize;
+}) {
   const { rpc, openManage } = useUi();
   const t = useT();
   const [state, setState] = useState<ServiceState | null>(null);
@@ -31,6 +41,7 @@ export function PopupApp({ pollMs = 1000 }: { pollMs?: number }) {
 
   useThemeSync(state?.theme);
   useLanguageSync(state?.language);
+  usePopupSizeSync(state?.popupSize);
 
   let content;
   if (!state) {
@@ -80,7 +91,11 @@ export function PopupApp({ pollMs = 1000 }: { pollMs?: number }) {
   }
 
   return (
-    <div className="relative flex h-[540px] w-[360px] flex-col overflow-hidden bg-bg font-sans text-text">
+    <div
+      className={`relative flex flex-col overflow-hidden bg-bg font-sans text-text ${
+        layout === "panel" ? "h-screen w-full min-w-[300px]" : POPUP_SIZE_CLASS[size]
+      }`}
+    >
       <ErrorBoundary message={t("common.crashed")} retryLabel={t("common.retry")}>
         {content}
       </ErrorBoundary>

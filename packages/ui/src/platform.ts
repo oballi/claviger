@@ -26,9 +26,14 @@ export interface UiPlatform {
   capabilities: UiCapabilities;
   copy(text: string): Promise<void>;
   openManage(route?: ManageRoute): void;
-  /** The tab the popup was opened on; undefined on the manage page or when the tab has no URL. */
+  /** The tab the popup was opened on (panel: the window it is attached to); undefined on the manage page or when the tab has no URL. */
   activeTab(): Promise<{ id: number; url: string } | undefined>;
-  /** Popup only: grabs the visible tab right after the user's click; null on restricted pages and elsewhere. */
+  /**
+   * Panel or window only: calls back when the tab to resolve may have changed. The listener must
+   * call activeTab() again and never keep the previous tab's URL. Returns an unsubscribe function.
+   */
+  onActiveTabChange?(listener: () => void): () => void;
+  /** Popup, panel and window: grabs the visible tab right after the user's click; null on restricted pages and elsewhere. */
   captureTab(): Promise<{ dataUrl: string; tabUrl: string } | null>;
   /** Opens the scan page for a stored capture in a new tab. */
   openScan(id: string): void;

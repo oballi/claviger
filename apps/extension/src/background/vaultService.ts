@@ -65,6 +65,8 @@ import {
   type BackupReminderDays,
   type ClipboardClearSec,
   type Language,
+  type OpenMode,
+  type PopupSize,
   type LockPolicy,
   type Settings,
   type Theme,
@@ -164,7 +166,11 @@ export class VaultService {
     }
   >();
 
-  constructor(protected readonly p: Platform) {
+  constructor(
+    protected readonly p: Platform,
+    // Applies an open mode in the browser; the real launcher is wired in by the background entry.
+    private readonly onOpenModeChange: (mode: OpenMode) => Promise<void> = async () => {},
+  ) {
     this.keys = new KeyCache(p);
     this.security = new SecurityStore(p.local);
     this.throttle = new Throttle(p.local, p.clock);
@@ -443,6 +449,8 @@ export class VaultService {
       viewMode: settings.viewMode,
       theme: settings.theme,
       language: settings.language,
+      openMode: settings.openMode,
+      popupSize: settings.popupSize,
       clipboardClearSec: settings.clipboardClearSec,
       recoveryCodeConfirmed: settings.recoveryCodeConfirmed,
       retryAfterMs: await this.throttle.retryAfterMs(),
@@ -717,6 +725,31 @@ export class VaultService {
   setLanguage(language: Language): Promise<void> {
     return this.exclusive(async () => {
       await saveSettings(this.p.local, { language });
+    });
+  }
+
+  /** Applies the mode in the browser first; a failed apply leaves the stored setting untouched. */
+  setOpenMode(mode: OpenMode): Promise<void> {
+    return this.exclusive(async () => {
+      const previous = (await this.settings()).openMode;
+      await this.onOpenModeChange(mode);
+      try {
+        await saveSettings(this.p.local, { openMode: mode });
+      } catch (e) {
+        await this.onOpenModeChange(previous).catch(() => {});
+        throw e;
+      }
+    });
+  }
+
+  /** For wake-ups: setPopup does not survive a browser restart, so the stored mode is applied again. */
+  async reapplyOpenMode(): Promise<void> {
+    await this.onOpenModeChange((await this.settings()).openMode);
+  }
+
+  setPopupSize(size: PopupSize): Promise<void> {
+    return this.exclusive(async () => {
+      await saveSettings(this.p.local, { popupSize: size });
     });
   }
 

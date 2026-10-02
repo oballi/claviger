@@ -22,6 +22,12 @@ export type Theme = z.infer<typeof themeSchema>;
 export const languageSchema = z.enum(LANGUAGE_VALUES);
 export type Language = z.infer<typeof languageSchema>;
 
+export const openModeSchema = z.enum(["popup", "window", "panel"]);
+export type OpenMode = z.infer<typeof openModeSchema>;
+
+export const popupSizeSchema = z.enum(["small", "medium", "large"]);
+export type PopupSize = z.infer<typeof popupSizeSchema>;
+
 export const clipboardClearSchema = z.union([z.literal(0), z.literal(30), z.literal(60)]);
 export type ClipboardClearSec = z.infer<typeof clipboardClearSchema>;
 

@@ -72,7 +72,7 @@ export function CodesScreen({
   pollMs: number;
   onLocked: () => void;
 }) {
-  const { rpc, copy, activeTab, openManage, capabilities } = useUi();
+  const { rpc, copy, activeTab, onActiveTabChange, openManage, capabilities } = useUi();
   const t = useT();
   const locale = useLocale();
   const [tab, setTab] = useState<{ id: number; url: string } | undefined | null>(null);
@@ -127,11 +127,28 @@ export function CodesScreen({
   }, [revealedId]);
 
   useEffect(() => {
-    (capabilities.activeTab ? activeTab() : Promise.resolve(undefined)).then(setTab, () =>
-      setTab(undefined),
-    );
+    if (!capabilities.activeTab) {
+      setTab(undefined);
+      return;
+    }
+    let current = true;
+    // Always re-resolved, never reused: a stale "this site" would be a false trust signal.
+    const resolve = () =>
+      activeTab().then(
+        (next) => current && setTab(next),
+        () => current && setTab(undefined),
+      );
+    void resolve();
+    const unsubscribe = onActiveTabChange?.(() => void resolve());
+    return () => {
+      current = false;
+      unsubscribe?.();
+    };
+  }, [activeTab, onActiveTabChange, capabilities.activeTab]);
+
+  useEffect(() => {
     rpc("storageUsage", {}).then(setUsage, () => setUsage(null));
-  }, [activeTab, capabilities.activeTab, rpc]);
+  }, [rpc]);
 
   useEffect(() => {
     if (error instanceof RpcError && error.code === "locked") onLocked();

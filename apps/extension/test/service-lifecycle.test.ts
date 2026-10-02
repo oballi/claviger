@@ -31,6 +31,8 @@ describe("setup", () => {
       viewMode: "normal",
       theme: "system",
       language: "system",
+      openMode: "popup",
+      popupSize: "medium",
       clipboardClearSec: 0,
       recoveryCodeConfirmed: true,
     });

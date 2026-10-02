@@ -203,6 +203,16 @@ export const manageTr = {
   "view.hidden": "Gizli",
   "view.hiddenHint":
     "Kodlar gizli kalır; göz simgesi {seconds} sn gösterir, tıklayınca kopyalanır.",
+  "security.openMode": "Açılış biçimi",
+  "security.openModeHint": "Pencere ve yan panel, kod kopyalarken kapanmaz.",
+  "openMode.popup": "Pop-up",
+  "openMode.window": "Pencere",
+  "openMode.panel": "Yan panel",
+  "security.popupSize": "Pop-up boyutu",
+  "security.popupSizeHint": "Yalnızca pop-up biçiminde geçerlidir; sonraki açılışta uygulanır.",
+  "popupSize.small": "Küçük",
+  "popupSize.medium": "Orta",
+  "popupSize.large": "Büyük",
   "security.clipboard": "Panoyu temizle",
   "security.clipboardHint":
     "Kopyalanan kod bu süre sonunda panodan silinir. Bu sürede başka bir şey kopyalarsan o da silinir.",

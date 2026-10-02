@@ -4,13 +4,24 @@ import type {
   BackupReminderDays,
   ClipboardClearSec,
   LockPolicy,
+  OpenMode,
+  PopupSize,
   SnapshotReason,
   Theme,
   ViewMode,
 } from "../protocol/schemas";
 
 export type StorageAreaName = "local" | "sync";
-export type { BackupReminderDays, ClipboardClearSec, LockPolicy, SnapshotReason, Theme, ViewMode };
+export type {
+  BackupReminderDays,
+  ClipboardClearSec,
+  LockPolicy,
+  OpenMode,
+  PopupSize,
+  SnapshotReason,
+  Theme,
+  ViewMode,
+};
 
 export type ServiceStatus = "no-vault" | "locked" | "unlocked" | "unsupported" | "corrupt";
 
@@ -35,6 +46,9 @@ export interface ServiceState {
   theme: Theme;
   /** Not a secret: readable while locked so the lock screen speaks the chosen language. */
   language: Language;
+  /** Not a secret: the popup reads it to cache its size for the next open. */
+  openMode: OpenMode;
+  popupSize: PopupSize;
   clipboardClearSec: ClipboardClearSec;
   recoveryCodeConfirmed: boolean;
   /** Set only when the unlocked vault is empty and a non-empty local copy exists. */

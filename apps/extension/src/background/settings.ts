@@ -5,12 +5,16 @@ import {
   clipboardClearSchema,
   languageSchema,
   lockPolicySchema,
+  openModeSchema,
+  popupSizeSchema,
   themeSchema,
   viewModeSchema,
   type BackupReminderDays,
   type ClipboardClearSec,
   type Language,
   type LockPolicy,
+  type OpenMode,
+  type PopupSize,
   type Theme,
   type ViewMode,
 } from "@claviger/ui/protocol";
@@ -23,10 +27,21 @@ export {
   clipboardClearSchema,
   languageSchema,
   lockPolicySchema,
+  openModeSchema,
+  popupSizeSchema,
   themeSchema,
   viewModeSchema,
 };
-export type { BackupReminderDays, ClipboardClearSec, Language, LockPolicy, Theme, ViewMode };
+export type {
+  BackupReminderDays,
+  ClipboardClearSec,
+  Language,
+  LockPolicy,
+  OpenMode,
+  PopupSize,
+  Theme,
+  ViewMode,
+};
 
 export const settingsSchema = z.object({
   // Display mirror and legacy migration input only; the sealed lock:policy record is authoritative.
@@ -41,6 +56,8 @@ export const settingsSchema = z.object({
   viewMode: viewModeSchema,
   theme: themeSchema,
   language: languageSchema,
+  openMode: openModeSchema,
+  popupSize: popupSizeSchema,
   clipboardClearSec: clipboardClearSchema,
   recoveryCodeConfirmed: z.boolean(),
 });
@@ -62,6 +79,8 @@ export const DEFAULT_SETTINGS: Settings = {
   viewMode: "normal",
   theme: "system",
   language: "system",
+  openMode: "popup",
+  popupSize: "medium",
   clipboardClearSec: 0,
   // 0.0.1 users already confirmed their code during setup.
   recoveryCodeConfirmed: true,

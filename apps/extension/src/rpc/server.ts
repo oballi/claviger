@@ -149,6 +149,12 @@ async function dispatch(
     case "setLanguage":
       await service.setLanguage(req.language);
       return null;
+    case "setOpenMode":
+      await service.setOpenMode(req.mode);
+      return null;
+    case "setPopupSize":
+      await service.setPopupSize(req.size);
+      return null;
     case "setClipboardClear":
       await service.setClipboardClear(req.seconds);
       return null;

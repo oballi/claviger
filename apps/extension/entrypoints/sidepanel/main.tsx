@@ -1,6 +1,6 @@
 import "../../src/styles.css";
 import { applyCachedTheme, LocaleProvider, readCachedLocale, UiProvider } from "@claviger/ui";
-import { PopupApp, readCachedPopupSize } from "@claviger/ui/popup";
+import { PopupApp } from "@claviger/ui/popup";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserUiPlatform } from "../../src/platform/uiPlatform";
@@ -11,9 +11,9 @@ applyCachedTheme();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <UiProvider value={createBrowserUiPlatform("popup")}>
+    <UiProvider value={createBrowserUiPlatform("panel")}>
       <LocaleProvider locale={locale}>
-        <PopupApp size={readCachedPopupSize()} />
+        <PopupApp layout="panel" />
       </LocaleProvider>
     </UiProvider>
   </StrictMode>,

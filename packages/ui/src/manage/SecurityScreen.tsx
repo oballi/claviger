@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { REVEAL_SECONDS } from "../popup/reveal";
-import type { LockPolicy, ServiceState, ViewMode } from "../contract/views";
+import type { LockPolicy, OpenMode, PopupSize, ServiceState, ViewMode } from "../contract/views";
 import { Button } from "../components/Button";
 import { NewPasswordFields, newPasswordProblem } from "../components/NewPasswordFields";
 import { Notice } from "../components/Notice";
@@ -26,6 +26,9 @@ const POLICIES: LockPolicy[] = [
   { kind: "timeout", minutes: 240 },
   { kind: "never" },
 ];
+
+const OPEN_MODES: OpenMode[] = ["popup", "window", "panel"];
+const POPUP_SIZES: PopupSize[] = ["small", "medium", "large"];
 
 const policyKey = (p: LockPolicy) => (p.kind === "timeout" ? `timeout-${p.minutes}` : p.kind);
 
@@ -319,6 +322,50 @@ export function SecurityScreen({
               {VIEW_MODES.map((m) => (
                 <option key={m} value={m}>
                   {t(`view.${m}`)}
+                </option>
+              ))}
+            </select>
+          }
+        />
+        <SettingsRow
+          title={t("security.openMode")}
+          description={t("security.openModeHint")}
+          action={
+            <select
+              aria-label={t("security.openMode")}
+              disabled={codePending}
+              className={selectClass}
+              value={state.openMode}
+              onChange={(e) =>
+                void savePreference(() => rpc("setOpenMode", { mode: e.target.value as OpenMode }))
+              }
+            >
+              {OPEN_MODES.map((m) => (
+                <option key={m} value={m}>
+                  {t(`openMode.${m}`)}
+                </option>
+              ))}
+            </select>
+          }
+        />
+        <SettingsRow
+          title={t("security.popupSize")}
+          description={t("security.popupSizeHint")}
+          action={
+            <select
+              aria-label={t("security.popupSize")}
+              disabled={codePending || state.openMode !== "popup"}
+              className={selectClass}
+              value={state.popupSize}
+              onChange={(e) =>
+                void savePreference(() =>
+                  rpc("setPopupSize", { size: e.target.value as PopupSize }),
+                )
+              }
+            >
+              {POPUP_SIZES.map((s) => (
+                <option key={s} value={s}>
+                  {t(`popupSize.${s}`)}
                 </option>
               ))}
             </select>
