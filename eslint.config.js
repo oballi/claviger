@@ -123,8 +123,6 @@ export default defineConfig(
       "apps/extension/src/ui/errors.ts",
       "apps/extension/src/ui/i18n/**/*.ts",
       "apps/extension/src/ui/platform.ts",
-      "apps/extension/src/rpc/client.ts",
-      "apps/extension/src/rpc/channel.ts",
       "apps/extension/src/platform/uiPlatform.ts",
       "apps/extension/src/platform/browserRpc.ts",
       "apps/extension/entrypoints/popup/**/*.{ts,tsx}",
@@ -161,6 +159,10 @@ export default defineConfig(
                 "**/rpc/protocol",
                 "**/rpc/server",
                 "**/zodConfig",
+                "@otp-vault/ui/protocol",
+                "@otp-vault/ui/zod-config",
+                "@otp-vault/ui/manage",
+                "@otp-vault/ui/testing",
                 "**/platform/browserPlatform",
                 "**/manage/**",
                 "**/qr/**",
@@ -169,6 +171,43 @@ export default defineConfig(
               ],
               allowTypeImports: true,
               message: "Popup bundle: these modules belong to the background or manage pages.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // Popup-safe package modules: runtime zod/core/protocol would leak into the popup bundle.
+    files: [
+      "packages/ui/src/contract/**/*.ts",
+      "packages/ui/src/rpc/**/*.ts",
+      "packages/ui/src/index.ts",
+    ],
+    rules: {
+      "@typescript-eslint/consistent-type-imports": [
+        "error",
+        { prefer: "type-imports", fixStyle: "separate-type-imports" },
+      ],
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            { name: "@otp-vault/core", allowTypeImports: true, message: "Popup-safe module." },
+            { name: "zod", allowTypeImports: true, message: "Popup-safe module." },
+          ],
+          patterns: [
+            {
+              group: [
+                "**/protocol",
+                "**/protocol/*",
+                "**/manage",
+                "**/manage/*",
+                "**/testing",
+                "**/testing/*",
+              ],
+              allowTypeImports: true,
+              message: "Popup-safe module: import protocol and manage code as types only.",
             },
           ],
         },

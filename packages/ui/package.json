@@ -4,6 +4,7 @@
   "license": "MIT",
   "private": true,
   "type": "module",
+  "//": "sideEffects keeps zodConfig (z.config jitless) from being tree-shaken; popup-size.mjs asserts it.",
   "sideEffects": [
     "**/*.css",
     "./src/protocol/zodConfig.ts"

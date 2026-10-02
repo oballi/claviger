@@ -1,3 +1,4 @@
+// Also asserts the zod jitless config survived into background.js.
 // Sums the JS the popup page loads: the entry script plus every modulepreload chunk.
 // Budget: 300 kB. Usage: node scripts/popup-size.mjs [build dir]
 import { readFileSync, statSync } from "node:fs";
@@ -20,5 +21,11 @@ for (const ref of new Set(refs)) {
 console.log(`${String(total).padStart(8)}  total (budget ${BUDGET})`);
 if (total > BUDGET) {
   console.error(`Popup JS is ${total - BUDGET} bytes over budget.`);
+  process.exit(1);
+}
+
+// zod's JIT probes eval and violates the extension CSP; a sideEffects change must not drop the config.
+if (!readFileSync(join(dir, "background.js"), "utf8").includes("jitless")) {
+  console.error("background.js lacks the zod jitless config; check sideEffects in packages/ui.");
   process.exit(1);
 }
