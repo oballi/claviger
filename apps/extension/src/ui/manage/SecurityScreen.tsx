@@ -44,7 +44,7 @@ export function SecurityScreen({
   /** Lets the host route to setup / the "found" lock screen; the vault may be adopted from the other area. */
   onDeleted?: () => void;
 }) {
-  const { rpc, isFirefox } = useUi();
+  const { rpc, reportsScreenLock, capabilities } = useUi();
   const t = useT();
   const [panel, setPanel] = useState<Panel>(null);
   const [message, setMessage] = useState("");
@@ -271,7 +271,7 @@ export function SecurityScreen({
                   {t("picker.never.warning")} {t("picker.never.hint")}
                 </p>
               ) : null}
-              {policy.kind === "browser-close-or-screen-lock" && isFirefox ? (
+              {policy.kind === "browser-close-or-screen-lock" && !reportsScreenLock ? (
                 <p className="m-0 text-[13px] text-muted">{t("picker.screenLock.firefox")}</p>
               ) : null}
               <ReauthForm
@@ -289,46 +289,54 @@ export function SecurityScreen({
       </SettingsSection>
 
       <SettingsSection num="02" title={t("security.display")}>
-        <SettingsRow
-          title={t("security.fill")}
-          description={t("security.fillHint")}
-          action={
-            <span className="flex min-h-11 min-w-11 items-center justify-center">
-              <input
-                type="checkbox"
-                role="switch"
-                aria-label={t("security.fill")}
-                disabled={codePending}
-                checked={state.fillOnlyLinked}
-                onChange={(e) =>
-                  void savePreference(() => rpc("setFillOnlyLinked", { value: e.target.checked }))
-                }
-                className="h-5 w-5 accent-[var(--ov-text)]"
-              />
-            </span>
-          }
-        />
-        <SettingsRow
-          title={t("security.memory")}
-          description={t("security.memoryHint")}
-          action={
-            <span className="flex min-h-11 min-w-11 items-center justify-center">
-              <input
-                type="checkbox"
-                role="switch"
-                aria-label={t("security.memory")}
-                disabled={codePending}
-                checked={state.siteMemory}
-                onChange={(e) =>
-                  void savePreference(() => rpc("setSiteMemory", { value: e.target.checked }))
-                }
-                className="h-5 w-5 accent-[var(--ov-text)]"
-              />
-            </span>
-          }
-        />
-        <SettingsRow title={t("security.shortcut")} description={t("security.shortcutHint")} />
-        <ClockRow state={state} disabled={codePending} onChanged={onChanged} />
+        {capabilities.autofill ? (
+          <>
+            <SettingsRow
+              title={t("security.fill")}
+              description={t("security.fillHint")}
+              action={
+                <span className="flex min-h-11 min-w-11 items-center justify-center">
+                  <input
+                    type="checkbox"
+                    role="switch"
+                    aria-label={t("security.fill")}
+                    disabled={codePending}
+                    checked={state.fillOnlyLinked}
+                    onChange={(e) =>
+                      void savePreference(() =>
+                        rpc("setFillOnlyLinked", { value: e.target.checked }),
+                      )
+                    }
+                    className="h-5 w-5 accent-[var(--ov-text)]"
+                  />
+                </span>
+              }
+            />
+            <SettingsRow
+              title={t("security.memory")}
+              description={t("security.memoryHint")}
+              action={
+                <span className="flex min-h-11 min-w-11 items-center justify-center">
+                  <input
+                    type="checkbox"
+                    role="switch"
+                    aria-label={t("security.memory")}
+                    disabled={codePending}
+                    checked={state.siteMemory}
+                    onChange={(e) =>
+                      void savePreference(() => rpc("setSiteMemory", { value: e.target.checked }))
+                    }
+                    className="h-5 w-5 accent-[var(--ov-text)]"
+                  />
+                </span>
+              }
+            />
+            <SettingsRow title={t("security.shortcut")} description={t("security.shortcutHint")} />
+          </>
+        ) : null}
+        {capabilities.clockCheck ? (
+          <ClockRow state={state} disabled={codePending} onChanged={onChanged} />
+        ) : null}
         <SettingsRow
           title={t("security.view")}
           description={`${t("security.viewHint")} ${state.viewMode === "hidden" ? t("view.hiddenHint") : ""}`.trim()}

@@ -57,7 +57,7 @@ export function LockPolicyOptions({
   onChange: (policy: LockPolicy) => void;
 }) {
   const t = useT();
-  const { isFirefox } = useUi();
+  const { reportsScreenLock } = useUi();
   const hint = "text-[13px] leading-normal text-muted";
   return (
     <fieldset className="m-0 flex flex-col border-0 border-b border-hair p-0">
@@ -76,7 +76,7 @@ export function LockPolicyOptions({
         title={t("policy.browser-close-or-screen-lock")}
       >
         <span className={hint}>
-          {isFirefox ? t("picker.screenLock.firefox") : t("picker.screenLock.hint")}
+          {reportsScreenLock ? t("picker.screenLock.hint") : t("picker.screenLock.firefox")}
         </span>
       </Option>
       <Option

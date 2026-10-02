@@ -67,7 +67,8 @@ export function AddAccount({
   onBack: () => void;
   onAdded: (name: string) => void;
 }) {
-  const { openManage, captureTab, openScan, rpc } = useUi();
+  const { openManage, captureTab, openScan, rpc, capabilities } = useUi();
+  const first = capabilities.qrScan ? 1 : 0;
   const t = useT();
   const [manual, setManual] = useState(false);
   const [scanNote, setScanNote] = useState<string | null>(null);
@@ -112,15 +113,17 @@ export function AddAccount({
         <p className="m-0 text-sm leading-normal text-muted">{t("add.body")}</p>
       </div>
       <div className="flex flex-col pt-7">
-        <Option num="01" title={t("add.qr")} hint={t("add.qrHint")} onClick={() => void scan()} />
+        {capabilities.qrScan ? (
+          <Option num="01" title={t("add.qr")} hint={t("add.qrHint")} onClick={() => void scan()} />
+        ) : null}
         <Option
-          num="02"
+          num={String(first + 1).padStart(2, "0")}
           title={t("add.manual")}
           hint={t("add.manualHint")}
           onClick={() => setManual(true)}
         />
         <Option
-          num="03"
+          num={String(first + 2).padStart(2, "0")}
           title={t("add.import")}
           hint={t("add.importHint")}
           onClick={() => openManage("backup")}

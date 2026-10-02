@@ -191,7 +191,7 @@ export function SetupWizard({
   /** Called just before the vault is created, so the host can tell this tab from one that only watched. */
   onCreating?: () => void;
 }) {
-  const { rpc } = useUi();
+  const { rpc, capabilities } = useUi();
   const t = useT();
   const [state, dispatch] = useReducer(setupReducer, initialSetup);
   const { step, password, confirm, created, recoveryCode } = state;
@@ -263,7 +263,11 @@ export function SetupWizard({
         const { token } = await rpc("reauth", { password });
         await rpc("setLockPolicy", { token, policy });
       }
-      go(3);
+      if (capabilities.storageArea) go(3);
+      else {
+        setError(null);
+        dispatch({ type: "storageDone" });
+      }
     });
 
   const applyStorage = () =>

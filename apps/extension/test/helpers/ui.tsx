@@ -6,7 +6,7 @@ import { VaultService } from "../../src/background/vaultService";
 import { createRpcClient } from "../../src/rpc/client";
 import { handleRpcMessage } from "../../src/rpc/server";
 import { LocaleProvider, type Locale } from "../../src/ui/i18n/i18n";
-import { UiProvider, type UiPlatform } from "../../src/ui/platform";
+import { UiProvider, type UiCapabilities, type UiPlatform } from "../../src/ui/platform";
 import { memoryPlatform } from "./platform";
 import { PASSWORD } from "./service";
 
@@ -23,6 +23,8 @@ export async function harness(
     tabUrl?: string;
     recoveryCode?: boolean;
     storageArea?: "local" | "sync";
+    capabilities?: Partial<UiCapabilities>;
+    reportsScreenLock?: boolean;
   } = {},
 ) {
   const p = memoryPlatform();
@@ -50,7 +52,15 @@ export async function harness(
         CTX,
       ),
     ),
-    isFirefox: false,
+    reportsScreenLock: opts.reportsScreenLock ?? true,
+    capabilities: {
+      activeTab: true,
+      qrScan: true,
+      autofill: true,
+      clockCheck: true,
+      storageArea: true,
+      ...opts.capabilities,
+    } satisfies UiCapabilities,
     copy: vi.fn(async (_text: string) => {}),
     openManage: vi.fn(),
     activeTab: vi.fn(async () => (opts.tabUrl ? { id: TAB_ID, url: opts.tabUrl } : undefined)),

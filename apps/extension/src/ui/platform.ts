@@ -5,11 +5,25 @@ export type Rpc = <T extends RpcType>(type: T, payload: RpcPayload<T>) => Promis
 
 export type ManageRoute = "setup" | "recover" | "accounts" | "security" | "backup" | "import";
 
+export interface UiCapabilities {
+  /** The platform knows which page the user is on ("This site" ordering, fill target). */
+  activeTab: boolean;
+  /** The popup can capture the visible tab and open the QR scan page. */
+  qrScan: boolean;
+  /** The platform can type a code into the page (`fillCode`). */
+  autofill: boolean;
+  /** The platform may ask for a network permission and read a server clock. */
+  clockCheck: boolean;
+  /** The vault can live in a synced storage area besides local. */
+  storageArea: boolean;
+}
+
 /** Everything the UI needs from the browser; components never touch `browser.*` directly. */
 export interface UiPlatform {
   rpc: Rpc;
-  /** Firefox does not report screen locks; the lock-policy copy changes accordingly (spec §5.4). */
-  isFirefox: boolean;
+  /** Whether the platform reports screen locks; the lock-policy copy changes accordingly. */
+  reportsScreenLock: boolean;
+  capabilities: UiCapabilities;
   copy(text: string): Promise<void>;
   openManage(route?: ManageRoute): void;
   /** The tab the popup was opened on; undefined on the manage page or when the tab has no URL. */

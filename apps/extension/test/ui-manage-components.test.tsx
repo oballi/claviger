@@ -258,7 +258,7 @@ describe("LockPolicyOptions", () => {
 
   it("explains the Firefox screen-lock behaviour", async () => {
     const { ui } = await harness();
-    renderUi(<PolicyHarness onChange={() => {}} />, { ...ui, isFirefox: true });
+    renderUi(<PolicyHarness onChange={() => {}} />, { ...ui, reportsScreenLock: false });
     expect(
       screen.getByText(
         "Firefox ekran kilidini bildirmediği için bu seçenek 5 dk boşta kalınca kilitler.",

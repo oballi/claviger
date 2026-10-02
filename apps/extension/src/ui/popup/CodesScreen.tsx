@@ -57,7 +57,7 @@ export function CodesScreen({
   pollMs: number;
   onLocked: () => void;
 }) {
-  const { rpc, copy, activeTab, openManage } = useUi();
+  const { rpc, copy, activeTab, openManage, capabilities } = useUi();
   const t = useT();
   const locale = useLocale();
   const [tab, setTab] = useState<{ id: number; url: string } | undefined | null>(null);
@@ -76,9 +76,11 @@ export function CodesScreen({
   const clearToast = useCallback(() => setToast(null), []);
 
   useEffect(() => {
-    activeTab().then(setTab, () => setTab(undefined));
+    (capabilities.activeTab ? activeTab() : Promise.resolve(undefined)).then(setTab, () =>
+      setTab(undefined),
+    );
     rpc("storageUsage", {}).then(setUsage, () => setUsage(null));
-  }, [activeTab, rpc]);
+  }, [activeTab, capabilities.activeTab, rpc]);
 
   useEffect(() => {
     if (error instanceof RpcError && error.code === "locked") onLocked();
@@ -262,7 +264,7 @@ export function CodesScreen({
       suggested={suggested.has(account.id)}
       remembered={remembered.has(account.id)}
       fill={
-        large && tab
+        large && tab && capabilities.autofill
           ? {
               prompt: fillPrompt?.id === account.id ? fillPrompt.kind : null,
               busy: filling,

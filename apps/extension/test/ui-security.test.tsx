@@ -112,7 +112,7 @@ describe("SecurityScreen", () => {
     const h = await harness();
     renderUi(<SecurityScreen state={await h.ui.rpc("getState", {})} onChanged={() => {}} />, {
       ...h.ui,
-      isFirefox: true,
+      reportsScreenLock: false,
     });
     await userEvent.selectOptions(
       screen.getByRole("combobox", { name: "Kilit tercihi" }),

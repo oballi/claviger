@@ -44,7 +44,14 @@ export function createBrowserUiPlatform(
   return {
     ...extra,
     rpc,
-    isFirefox: import.meta.env.FIREFOX,
+    reportsScreenLock: !import.meta.env.FIREFOX,
+    capabilities: {
+      activeTab: true,
+      qrScan: true,
+      autofill: true,
+      clockCheck: true,
+      storageArea: true,
+    },
     copy: (text) => navigator.clipboard.writeText(text),
     openManage(route?: ManageRoute) {
       const hash = route ? `#/${route}` : "";

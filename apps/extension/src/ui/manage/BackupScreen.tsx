@@ -91,7 +91,7 @@ export function BackupScreen({
   onChanged: () => void;
   onImport: (source: ImportSource) => void;
 }) {
-  const { rpc, download, decodeQr } = useUi();
+  const { rpc, download, decodeQr, capabilities } = useUi();
   const t = useT();
   const locale = useLocale();
   const [format, setFormat] = useState<"otpvault" | "otpauth">("otpvault");
@@ -459,63 +459,65 @@ export function BackupScreen({
         </p>
       </SettingsSection>
 
-      <SettingsSection num="03" title={t("backup.storage")}>
-        <SettingsRow
-          title={state.storageArea === "sync" ? t("storage.sync") : t("storage.local")}
-          description={usageText}
-          action={
-            moving ? null : (
-              <Button
-                data-action="move"
-                onClick={() => {
-                  setMessage("");
-                  setMoving(true);
-                }}
-              >
-                {target === "sync" ? t("backup.toSync") : t("backup.toLocal")}
-              </Button>
-            )
-          }
-        >
-          {moving ? (
-            <>
-              <p className="m-0 text-[13px] text-muted">
-                {target === "sync" ? t("storage.syncHint") : t("storage.localHint")}
-              </p>
-              {target === "local" ? (
-                <p className="m-0 text-[13px] text-warn">{t("backup.syncRemoval")}</p>
-              ) : null}
-              <ReauthForm
-                submitLabel={t("backup.move")}
-                errorKeys={{
-                  "already-set-up": "error.target-has-vault",
-                  "quota-exceeded": "error.move-quota",
-                }}
-                onConfirmed={async (token) => {
-                  await rpc("setStorageArea", { token, area: target });
-                  focusAfter.current = "move";
-                  setMoving(false);
-                  setMessage(t("backup.moved"));
-                  onChanged();
-                  await loadUsage();
-                }}
-              />
-              <div>
+      {capabilities.storageArea ? (
+        <SettingsSection num="03" title={t("backup.storage")}>
+          <SettingsRow
+            title={state.storageArea === "sync" ? t("storage.sync") : t("storage.local")}
+            description={usageText}
+            action={
+              moving ? null : (
                 <Button
+                  data-action="move"
                   onClick={() => {
-                    focusAfter.current = "move";
-                    setMoving(false);
+                    setMessage("");
+                    setMoving(true);
                   }}
                 >
-                  {t("common.cancel")}
+                  {target === "sync" ? t("backup.toSync") : t("backup.toLocal")}
                 </Button>
-              </div>
-            </>
-          ) : null}
-        </SettingsRow>
-      </SettingsSection>
+              )
+            }
+          >
+            {moving ? (
+              <>
+                <p className="m-0 text-[13px] text-muted">
+                  {target === "sync" ? t("storage.syncHint") : t("storage.localHint")}
+                </p>
+                {target === "local" ? (
+                  <p className="m-0 text-[13px] text-warn">{t("backup.syncRemoval")}</p>
+                ) : null}
+                <ReauthForm
+                  submitLabel={t("backup.move")}
+                  errorKeys={{
+                    "already-set-up": "error.target-has-vault",
+                    "quota-exceeded": "error.move-quota",
+                  }}
+                  onConfirmed={async (token) => {
+                    await rpc("setStorageArea", { token, area: target });
+                    focusAfter.current = "move";
+                    setMoving(false);
+                    setMessage(t("backup.moved"));
+                    onChanged();
+                    await loadUsage();
+                  }}
+                />
+                <div>
+                  <Button
+                    onClick={() => {
+                      focusAfter.current = "move";
+                      setMoving(false);
+                    }}
+                  >
+                    {t("common.cancel")}
+                  </Button>
+                </div>
+              </>
+            ) : null}
+          </SettingsRow>
+        </SettingsSection>
+      ) : null}
 
-      <SnapshotsSection num="04" onChanged={onChanged} />
+      <SnapshotsSection num={capabilities.storageArea ? "04" : "03"} onChanged={onChanged} />
     </div>
   );
 }
