@@ -10,10 +10,13 @@ import { ReauthForm } from "../components/ReauthForm";
 import { TextField } from "../components/TextField";
 import { errorMessage } from "../errors";
 import { typeLabel } from "../format";
+import { useAutoHide } from "../components/useAutoHide";
 import { useT } from "../i18n/i18n";
 import { useUi } from "../platform";
 
-type Mode = "main" | "delete" | "reveal";
+type Mode = "main" | "delete" | "reveal" | "qr";
+
+const AUTO_HIDE_MS = 60_000;
 
 const groupSecret = (secret: string) => secret.match(/.{1,4}/g)?.join(" ") ?? secret;
 
@@ -66,6 +69,15 @@ export function AccountEditor({
   }, [mode]);
 
   const [busy, setBusy] = useState(false);
+
+  const { secondsLeft } = useAutoHide(
+    revealed !== null && (mode === "reveal" || mode === "qr"),
+    AUTO_HIDE_MS,
+    () => {
+      setRevealed(null);
+      setMode("main");
+    },
+  );
 
   // A move/pin can disable the focused button; hand focus to the pin button so it never falls to <body>.
   useEffect(() => {
@@ -137,6 +149,16 @@ export function AccountEditor({
       token ? { token, id: account.id } : { id: account.id },
     );
     setRevealed({ uri, secret: parseOtpauthUri(uri).secret });
+  }
+
+  function startReveal(next: "reveal" | "qr") {
+    setError(null);
+    setMode(next);
+    if (!needsPassword)
+      reveal().catch((e) => {
+        if (e instanceof RpcError && e.code === "invalid-token") setNeedsPassword(true);
+        else setError(errorMessage(t, e));
+      });
   }
 
   async function copySecret(secret: string) {
@@ -224,19 +246,9 @@ export function AccountEditor({
               <Button disabled={busy || !canMove.down} onClick={() => move(1)}>
                 {t("account.moveDown")}
               </Button>
-              <Button
-                onClick={() => {
-                  setError(null);
-                  setMode("reveal");
-                  if (!needsPassword)
-                    reveal().catch((e) => {
-                      if (e instanceof RpcError && e.code === "invalid-token")
-                        setNeedsPassword(true);
-                      else setError(errorMessage(t, e));
-                    });
-                }}
-              >
-                {t("account.reveal")}
+              <Button onClick={() => startReveal("reveal")}>{t("account.reveal")}</Button>
+              <Button data-action="qr" onClick={() => startReveal("qr")}>
+                {t("account.transfer")}
               </Button>
               <Button variant="danger" data-action="delete" onClick={() => setMode("delete")}>
                 {t("account.delete")}
@@ -265,7 +277,7 @@ export function AccountEditor({
           </div>
         ) : null}
 
-        {mode === "reveal" && !revealed && needsPassword ? (
+        {(mode === "reveal" || mode === "qr") && !revealed && needsPassword ? (
           <ReauthForm
             submitLabel={t("account.revealSubmit")}
             onConfirmed={(token) => reveal(token)}
@@ -285,6 +297,30 @@ export function AccountEditor({
               {t("account.copySecret")}
             </Button>
             <p className="m-0 text-[13px] text-warn">{t("account.revealWarning")}</p>
+            <p role="timer" className="m-0 text-xs text-muted">
+              {t("account.hideIn", { seconds: secondsLeft })}
+            </p>
+          </div>
+        ) : null}
+
+        {mode === "qr" && revealed ? (
+          <div className="flex flex-col items-start gap-5">
+            <QrCode value={revealed.uri} label={t("account.qrLabel", { name })} />
+            <p className="m-0 text-[13px] text-warn">{t("account.transferWarning")}</p>
+            {account.type === "steam" ? (
+              <p className="m-0 text-[13px] text-muted">{t("account.transferSteamNote")}</p>
+            ) : null}
+            <p role="timer" className="m-0 text-xs text-muted">
+              {t("account.hideIn", { seconds: secondsLeft })}
+            </p>
+            <Button
+              onClick={() => {
+                setRevealed(null);
+                back("qr");
+              }}
+            >
+              {t("account.hide")}
+            </Button>
           </div>
         ) : null}
 

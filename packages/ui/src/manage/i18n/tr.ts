@@ -130,6 +130,13 @@ export const manageTr = {
   "account.copySecret": "Gizli anahtarı kopyala",
   "account.revealWarning":
     "Bu bilgilerle kodların başka bir cihazda da üretilebilir. Ekranı kimseyle paylaşma.",
+  "account.transfer": "Telefona taşımak için QR göster",
+  "account.transferWarning":
+    "Bunu tarayan herkes kodlarınızı üretebilir. Yalnızca kendi cihazınızla tarayın, sonra gizleyin.",
+  "account.transferSteamNote":
+    "Steam kodları yalnızca Steam desteği olan uygulamalara (ör. Aegis) taşınabilir. Burada silmeden önce orada bir kodu kontrol edin.",
+  "account.hideIn": "{seconds} sn içinde gizlenir",
+  "account.hide": "Gizle",
   "security.title": "Güvenlik.",
   "security.body":
     "Parola, kilit ve gizli anahtar davranışı. Buradaki her değişiklik ana parolanı ister.",

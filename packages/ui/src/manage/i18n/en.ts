@@ -133,6 +133,13 @@ export const manageEn: Record<ManageKey, string> = {
   "account.copySecret": "Copy secret key",
   "account.revealWarning":
     "Anyone with this can generate your codes on another device. Don't share your screen.",
+  "account.transfer": "Show as QR to move to a phone",
+  "account.transferWarning":
+    "Anyone who scans this can generate your codes. Scan it only with your own device, then hide it.",
+  "account.transferSteamNote":
+    "Steam codes can only be moved to apps with Steam support (e.g. Aegis). Check a code there before deleting it here.",
+  "account.hideIn": "Hides in {seconds} s",
+  "account.hide": "Hide",
   "security.title": "Security.",
   "security.body":
     "Password, lock and secret-key behaviour. Every change here asks for your master password.",
