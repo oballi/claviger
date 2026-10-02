@@ -6,7 +6,8 @@ function page(html: string) {
   document.body.innerHTML = html;
   // jsdom has no layout; every element counts as visible unless marked hidden.
   for (const el of document.querySelectorAll<HTMLElement>("input"))
-    el.getClientRects = () => (el.dataset.hidden ? [] : [{}]) as unknown as DOMRectList;
+    el.getClientRects = () =>
+      (el.dataset.hidden ? [] : [{ width: 10, height: 10 }]) as unknown as DOMRectList;
 }
 const $ = (sel: string) => document.querySelector(sel) as HTMLInputElement;
 
@@ -101,6 +102,87 @@ describe("fillOtp", () => {
     page(`<input id="f" autocomplete="section-x&#9;one-time-code">`);
     expect(fillOtp("123456")).toBe("filled");
     expect($("#f").value).toBe("123456");
+  });
+
+  it("never fills password PIN boxes or cc/username boxes as a split run", () => {
+    const boxes = (attr: string) =>
+      Array.from({ length: 6 }, () => `<input ${attr} maxlength="1">`).join("");
+    for (const attr of [
+      'type="password"',
+      'autocomplete="cc-csc"',
+      'autocomplete="username"',
+      'name="username"',
+    ]) {
+      page(boxes(attr));
+      expect(fillOtp("123456")).toBe("no-field");
+    }
+  });
+
+  it("fills password-typed boxes only when marked one-time-code", () => {
+    page(
+      Array.from(
+        { length: 6 },
+        () => `<input type="password" autocomplete="one-time-code" maxlength="1">`,
+      ).join(""),
+    );
+    expect(fillOtp("123456")).toBe("filled");
+  });
+
+  it("does not join boxes from unrelated containers", () => {
+    page(Array.from({ length: 6 }, () => `<div><div><input maxlength="1"></div></div>`).join(""));
+    expect(fillOtp("123456")).toBe("no-field");
+  });
+
+  it("fills only the first code-length boxes of a longer run", () => {
+    page(`<div>${Array.from({ length: 8 }, () => `<input maxlength="1">`).join("")}</div>`);
+    expect(fillOtp("123456")).toBe("filled");
+    expect(Array.from(document.querySelectorAll("input"), (i) => i.value).join("")).toBe("123456");
+  });
+
+  it("spreads the code over all boxes when the first box is focused", () => {
+    page(Array.from({ length: 6 }, () => `<input maxlength="1">`).join(""));
+    document.querySelector("input")!.focus();
+    expect(fillOtp("123456", true)).toBe("filled");
+    expect(Array.from(document.querySelectorAll("input"), (i) => i.value)).toEqual([
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+    ]);
+  });
+
+  it("matches anchored and login_code hints per attribute", () => {
+    for (const attr of ['name="code"', 'name="kod"', 'id="login_code"']) {
+      page(`<input ${attr}>`);
+      expect(fillOtp("123456")).toBe("filled");
+    }
+    page(`<input name="username" placeholder="code">`);
+    expect(fillOtp("123456")).toBe("no-field");
+  });
+
+  it("rejects explicit fill into a denied field and invalid codes", () => {
+    page(`<input id="f" name="promo">`);
+    $("#f").focus();
+    expect(fillOtp("123456", true)).toBe("no-field");
+    page(`<input autocomplete="one-time-code">`);
+    expect(fillOtp("12 34")).toBe("no-field");
+    expect(fillOtp("abcdef")).toBe("no-field");
+    expect(fillOtp("AB3CD")).toBe("filled");
+  });
+
+  it("skips zero-size fields", () => {
+    page(`<input autocomplete="one-time-code">`);
+    $("input").getClientRects = () => [{ width: 0, height: 0 }] as unknown as DOMRectList;
+    expect(fillOtp("123456")).toBe("no-field");
+  });
+
+  it("rejects runs longer than ten boxes and never dumps a code into one box", () => {
+    page(`<div>${Array.from({ length: 11 }, () => `<input maxlength="1">`).join("")}</div>`);
+    expect(fillOtp("123456")).toBe("no-field");
+    page(Array.from({ length: 3 }, () => `<input name="otp" maxlength="1">`).join(""));
+    expect(fillOtp("123456")).toBe("no-field");
   });
 
   it("fills six single-character boxes in order", () => {
