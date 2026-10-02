@@ -15,7 +15,7 @@ import { errorMessage } from "../errors";
 import { useAccountList } from "../hooks";
 import { useLocale, useT } from "../i18n/i18n";
 import { useUi } from "../platform";
-import { AccountRow } from "./AccountRow";
+import { AccountRow, type FillPrompt } from "./AccountRow";
 import { AddAccount } from "./AddAccount";
 
 function Section({
@@ -57,10 +57,12 @@ export function CodesScreen({
   pollMs: number;
   onLocked: () => void;
 }) {
-  const { rpc, copy, activeTabUrl, openManage } = useUi();
+  const { rpc, copy, activeTab, openManage } = useUi();
   const t = useT();
   const locale = useLocale();
-  const [pageUrl, setPageUrl] = useState<string | undefined | null>(null);
+  const [tab, setTab] = useState<{ id: number; url: string } | undefined | null>(null);
+  const pageUrl = tab === null ? null : tab?.url;
+  const [fillPrompt, setFillPrompt] = useState<{ id: string; kind: FillPrompt } | null>(null);
   const { list, error, reload } = useAccountList(pageUrl, pollMs);
   const [query, setQuery] = useState("");
   const [toast, setToast] = useState<string | null>(null);
@@ -72,9 +74,9 @@ export function CodesScreen({
   const clearToast = useCallback(() => setToast(null), []);
 
   useEffect(() => {
-    activeTabUrl().then(setPageUrl, () => setPageUrl(undefined));
+    activeTab().then(setTab, () => setTab(undefined));
     rpc("storageUsage", {}).then(setUsage, () => setUsage(null));
-  }, [activeTabUrl, rpc]);
+  }, [activeTab, rpc]);
 
   useEffect(() => {
     if (error instanceof RpcError && error.code === "locked") onLocked();
@@ -112,7 +114,8 @@ export function CodesScreen({
   const accounts = list?.accounts ?? [];
   const exact = new Set(list?.matches.exact ?? []);
   const suggested = new Set(list?.matches.suggested ?? []);
-  const onSite = (a: AccountView) => exact.has(a.id) || suggested.has(a.id);
+  const remembered = new Set(list?.matches.remembered ?? []);
+  const onSite = (a: AccountView) => exact.has(a.id) || suggested.has(a.id) || remembered.has(a.id);
   const q = query.trim().toLocaleLowerCase(locale);
   const filtered = q
     ? accounts.filter((a) =>
@@ -134,6 +137,62 @@ export function CodesScreen({
     setToast(t("codes.copied", { issuer: account.issuer || account.label }));
     // Clearing is best effort; a failed report must not turn a good copy into an error.
     rpc("clipboardCopied", {}).catch(() => {});
+  }
+
+  async function fill(account: AccountView, confirmedDomain?: string) {
+    setActionError(null);
+    setFillPrompt(null);
+    if (!tab) return;
+    try {
+      const { result, code } = await rpc("fillCode", {
+        id: account.id,
+        tabId: tab.id,
+        ...(confirmedDomain ? { confirmedDomain } : {}),
+      });
+      if (result === "filled") {
+        setToast(t("fill.done"));
+        // Only a confirmed fill on an unlinked site offers to link it.
+        if (confirmedDomain) setFillPrompt({ id: account.id, kind: "link" });
+        void reload();
+        return;
+      }
+      if (code) {
+        try {
+          await copy(code);
+        } catch {
+          setActionError(t("codes.copyFailed"));
+          return;
+        }
+        rpc("clipboardCopied", {}).catch(() => {});
+      }
+      setToast(t(result === "copied-instead" ? "fill.copiedNoField" : "fill.copiedRefused"));
+    } catch (e) {
+      if (e instanceof RpcError && e.code === "not-linked") {
+        setFillPrompt({
+          id: account.id,
+          kind: state.fillOnlyLinked || !list?.pageDomain ? "blocked" : "confirm",
+        });
+        return;
+      }
+      setActionError(errorMessage(t, e));
+    }
+  }
+
+  async function linkSite(account: AccountView) {
+    setActionError(null);
+    setFillPrompt(null);
+    const domain = list?.pageDomain;
+    if (!domain) return;
+    try {
+      await rpc("updateAccount", {
+        id: account.id,
+        patch: { domains: [...new Set([...account.domains, domain])] },
+      });
+      setToast(t("fill.linked"));
+      await reload();
+    } catch (e) {
+      setActionError(errorMessage(t, e));
+    }
   }
 
   async function nextHotp(account: AccountView) {
@@ -184,6 +243,19 @@ export function CodesScreen({
       account={account}
       large={large}
       suggested={suggested.has(account.id)}
+      remembered={remembered.has(account.id)}
+      fill={
+        large && tab
+          ? {
+              prompt: fillPrompt?.id === account.id ? fillPrompt.kind : null,
+              onFill: (a) => void fill(a),
+              onConfirm: (a) => void fill(a, list?.pageDomain ?? undefined),
+              onCancel: () => setFillPrompt(null),
+              onLink: (a) => void linkSite(a),
+              onOpenSecurity: () => openManage("security"),
+            }
+          : undefined
+      }
       mode={state.viewMode}
       onCopy={(a) => void copyCode(a)}
       onNextHotp={(a) => void nextHotp(a)}

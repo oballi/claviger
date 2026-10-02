@@ -11,6 +11,7 @@ import { memoryPlatform } from "./platform";
 import { PASSWORD } from "./service";
 
 const CTX = { extensionId: "ext-id", extensionOrigin: "chrome-extension://ext-id/" };
+const TAB_ID = 1;
 const TRUSTED = { id: "ext-id", url: "chrome-extension://ext-id/popup.html" };
 
 /** A UiPlatform wired to a real VaultService, so UI tests exercise real vault behaviour. */
@@ -24,6 +25,7 @@ export async function harness(
   } = {},
 ) {
   const p = memoryPlatform();
+  p.tabs.activeTab = opts.tabUrl ? { id: TAB_ID, url: opts.tabUrl } : null;
   const service = new VaultService(p);
   const status = opts.status ?? "unlocked";
   let recoveryCode: string | null = null;
@@ -41,7 +43,7 @@ export async function harness(
     isFirefox: false,
     copy: vi.fn(async (_text: string) => {}),
     openManage: vi.fn(),
-    activeTabUrl: vi.fn(async () => opts.tabUrl),
+    activeTab: vi.fn(async () => (opts.tabUrl ? { id: TAB_ID, url: opts.tabUrl } : undefined)),
     download: vi.fn(),
     print: vi.fn(),
   } satisfies UiPlatform;

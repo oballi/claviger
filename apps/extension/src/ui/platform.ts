@@ -12,7 +12,8 @@ export interface UiPlatform {
   isFirefox: boolean;
   copy(text: string): Promise<void>;
   openManage(route?: ManageRoute): void;
-  activeTabUrl(): Promise<string | undefined>;
+  /** The tab the popup was opened on; undefined on the manage page or when the tab has no URL. */
+  activeTab(): Promise<{ id: number; url: string } | undefined>;
   download(filename: string, content: string): void;
   print(): void;
 }

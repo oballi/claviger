@@ -434,16 +434,32 @@ describe("SecurityScreen", () => {
   });
   it("changes the display mode without a password", async () => {
     const { service } = await open();
-    const display = region("Görünüm ve pano");
+    const display = region("Doldurma, görünüm ve pano");
     await userEvent.selectOptions(within(display).getByLabelText("Görünüm"), "Gizli");
     expect(await screen.findByText("Kaydedildi.")).toBeTruthy();
     expect((await service.getState()).viewMode).toBe("hidden");
     expect(within(display).queryByLabelText("Ana parola")).toBeNull();
   });
 
+  it("toggles fill-only-linked and site memory without a password", async () => {
+    const { service } = await open();
+    const display = region("Doldurma, görünüm ve pano");
+    expect((await service.getState()).fillOnlyLinked).toBe(true);
+    await userEvent.click(
+      within(display).getByRole("switch", { name: "Yalnızca bağlı sitede doldur" }),
+    );
+    await vi.waitFor(async () => expect((await service.getState()).fillOnlyLinked).toBe(false));
+    await userEvent.click(
+      within(display).getByRole("switch", { name: "Kullandığım siteleri hatırla" }),
+    );
+    await vi.waitFor(async () => expect((await service.getState()).siteMemory).toBe(false));
+    expect(within(display).queryByLabelText("Ana parola")).toBeNull();
+    expect(within(display).getByText("Klavye kısayolu: Alt+Shift+O")).toBeTruthy();
+  });
+
   it("changes clipboard clearing without a password", async () => {
     const { service, onChanged } = await open();
-    const display = region("Görünüm ve pano");
+    const display = region("Doldurma, görünüm ve pano");
     await userEvent.selectOptions(within(display).getByLabelText("Panoyu temizle"), "30 sn sonra");
     expect(await screen.findByText("Kaydedildi.")).toBeTruthy();
     expect((await service.getState()).clipboardClearSec).toBe(30);
@@ -493,14 +509,14 @@ describe("SecurityScreen", () => {
     await confirmPassword(access, "Oluştur");
     await within(access).findByTestId("recovery-code");
     expect(screen.queryByText(WARNING)).toBeNull();
-    const display = region("Görünüm ve pano");
+    const display = region("Doldurma, görünüm ve pano");
     expect(within(display).getByLabelText("Görünüm")).toHaveProperty("disabled", true);
     expect(within(display).getByLabelText("Panoyu temizle")).toHaveProperty("disabled", true);
   });
 
   it("numbers the sections 01 to 04", async () => {
     await open();
-    const titles = ["Erişim", "Görünüm ve pano", "Gizli anahtar", "Tehlikeli bölge"];
+    const titles = ["Erişim", "Doldurma, görünüm ve pano", "Gizli anahtar", "Tehlikeli bölge"];
     titles.forEach((title, i) => {
       expect(within(region(title)).getByText(`0${i + 1}`)).toBeTruthy();
     });

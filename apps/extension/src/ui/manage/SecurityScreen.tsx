@@ -289,6 +289,45 @@ export function SecurityScreen({
 
       <SettingsSection num="02" title={t("security.display")}>
         <SettingsRow
+          title={t("security.fill")}
+          description={t("security.fillHint")}
+          action={
+            <span className="flex min-h-11 min-w-11 items-center justify-center">
+              <input
+                type="checkbox"
+                role="switch"
+                aria-label={t("security.fill")}
+                disabled={codePending}
+                checked={state.fillOnlyLinked}
+                onChange={(e) =>
+                  void savePreference(() => rpc("setFillOnlyLinked", { value: e.target.checked }))
+                }
+                className="h-5 w-5 accent-[var(--ov-text)]"
+              />
+            </span>
+          }
+        />
+        <SettingsRow
+          title={t("security.memory")}
+          description={t("security.memoryHint")}
+          action={
+            <span className="flex min-h-11 min-w-11 items-center justify-center">
+              <input
+                type="checkbox"
+                role="switch"
+                aria-label={t("security.memory")}
+                disabled={codePending}
+                checked={state.siteMemory}
+                onChange={(e) =>
+                  void savePreference(() => rpc("setSiteMemory", { value: e.target.checked }))
+                }
+                className="h-5 w-5 accent-[var(--ov-text)]"
+              />
+            </span>
+          }
+        />
+        <SettingsRow title={t("security.shortcut")} description={t("security.shortcutHint")} />
+        <SettingsRow
           title={t("security.view")}
           description={`${t("security.viewHint")} ${state.viewMode === "hidden" ? t("view.hiddenHint") : ""}`.trim()}
           action={

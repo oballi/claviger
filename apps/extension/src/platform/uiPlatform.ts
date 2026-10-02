@@ -47,10 +47,10 @@ export function createBrowserUiPlatform(context: "popup" | "manage"): UiPlatform
       }
       void openOrFocusManage(hash).then(() => window.close());
     },
-    async activeTabUrl() {
+    async activeTab() {
       if (context === "manage") return undefined;
       const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-      return tab?.url;
+      return tab?.id === undefined || !tab.url ? undefined : { id: tab.id, url: tab.url };
     },
     download(filename, content) {
       const url = URL.createObjectURL(new Blob([content], { type: "application/octet-stream" }));
