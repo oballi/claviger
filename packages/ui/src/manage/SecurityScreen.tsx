@@ -12,6 +12,7 @@ import { lockPolicyLabel } from "../format";
 import { useT } from "../i18n/i18n";
 import { useUi } from "../platform";
 import { ClockRow } from "./ClockRow";
+import { LanguagePicker } from "./LanguagePicker";
 import { ThemePicker } from "./ThemePicker";
 import { PageTitle, SettingsRow, SettingsSection } from "./ManageFrame";
 
@@ -352,6 +353,7 @@ export function SecurityScreen({
 
       <SettingsSection num="03" title={t("theme.section")}>
         <ThemePicker theme={state.theme} onSaved={onChanged} />
+        <LanguagePicker language={state.language} onSaved={onChanged} />
       </SettingsSection>
 
       <SettingsSection num="04" title={t("security.secrets")}>

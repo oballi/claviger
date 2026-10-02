@@ -12,6 +12,16 @@ describe("view mode", () => {
   });
 });
 
+describe("language", () => {
+  it("defaults to system and persists a change, also while locked", async () => {
+    const { service } = await unlockedService();
+    expect((await service.getState()).language).toBe("system");
+    await service.setLanguage("tr");
+    await service.lock();
+    expect((await service.getState()).language).toBe("tr");
+  });
+});
+
 describe("clipboard clearing", () => {
   it("does nothing while the setting is off", async () => {
     const { service, p } = await unlockedService();

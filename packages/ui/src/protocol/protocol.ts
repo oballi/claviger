@@ -10,7 +10,13 @@ import type {
   StorageUsageView,
   TrashItemView,
 } from "../contract/views";
-import { clipboardClearSchema, lockPolicySchema, themeSchema, viewModeSchema } from "./schemas";
+import {
+  clipboardClearSchema,
+  languageSchema,
+  lockPolicySchema,
+  themeSchema,
+  viewModeSchema,
+} from "./schemas";
 
 export { RPC_CHANNEL } from "../rpc/channel";
 
@@ -125,6 +131,7 @@ export const rpcRequestSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("setRevealRequiresPassword"), token, value: z.boolean() }),
   z.object({ type: z.literal("setViewMode"), mode: viewModeSchema }),
   z.object({ type: z.literal("setTheme"), theme: themeSchema }),
+  z.object({ type: z.literal("setLanguage"), language: languageSchema }),
   z.object({ type: z.literal("setClipboardClear"), seconds: clipboardClearSchema }),
   z.object({ type: z.literal("confirmRecoveryCode") }),
   z.object({ type: z.literal("clipboardCopied") }),
@@ -207,6 +214,7 @@ export interface RpcResults {
   setRevealRequiresPassword: null;
   setViewMode: null;
   setTheme: null;
+  setLanguage: null;
   setClipboardClear: null;
   confirmRecoveryCode: null;
   clipboardCopied: null;

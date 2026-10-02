@@ -184,6 +184,10 @@ export const manageTr = {
   "security.recoveryCreated": "Yeni kurtarma kodu kaydedildi.",
   "security.lock": "Kilit",
   "security.lockHint": "Kasa ne zaman kendiliğinden kilitlensin.",
+  "language.label": "Dil",
+  "language.system": "Sistem",
+  "language.hint":
+    "Uygulamanın dili. Tarayıcı menüsündeki ve kısayol açıklamalarındaki metinler tarayıcınızın diline bağlıdır ve buradan değişmez.",
   "theme.section": "Görünüm",
   "theme.label": "Tema",
   "theme.system": "Sistem",

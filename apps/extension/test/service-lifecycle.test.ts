@@ -28,6 +28,7 @@ describe("setup", () => {
       lastBackupAt: null,
       viewMode: "normal",
       theme: "system",
+      language: "system",
       clipboardClearSec: 0,
       recoveryCodeConfirmed: true,
     });

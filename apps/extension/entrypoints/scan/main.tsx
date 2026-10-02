@@ -1,6 +1,6 @@
 import "../../src/zodConfig";
 import "../../src/styles.css";
-import { LocaleProvider, pickLocale, UiProvider } from "@claviger/ui";
+import { LocaleProvider, readCachedLocale, UiProvider } from "@claviger/ui";
 import { manageMessages } from "@claviger/ui/manage";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
@@ -8,7 +8,7 @@ import { createBrowserUiPlatform } from "../../src/platform/uiPlatform";
 import { decodeQr } from "../../src/qr/browserDecode";
 import { ScanApp } from "../../src/scan/ScanApp";
 
-const locale = pickLocale(navigator.languages);
+const locale = readCachedLocale(navigator.languages);
 document.documentElement.lang = locale;
 const captureId = window.location.hash.slice(1);
 // The id is spent after one take; dropping it keeps a reload from showing a stale link.

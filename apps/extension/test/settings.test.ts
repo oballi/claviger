@@ -18,6 +18,7 @@ describe("settings", () => {
       lastBackupAt: null,
       viewMode: "normal",
       theme: "system",
+      language: "system",
       clipboardClearSec: 0,
       recoveryCodeConfirmed: true,
     });
@@ -80,6 +81,12 @@ describe("settings", () => {
       storageArea: "sync",
       lastBackupAt: 7,
     });
+  });
+
+  it("falls back to system for an unknown language and keeps the other settings", async () => {
+    const local = new MemoryStorage();
+    await local.set({ [SETTINGS_KEY]: { language: "de", theme: "dark" } });
+    expect(await loadSettings(local)).toMatchObject({ language: "system", theme: "dark" });
   });
 
   it("falls back to the default for an invalid clipboard value without touching other fields", async () => {

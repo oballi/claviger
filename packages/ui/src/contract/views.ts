@@ -1,3 +1,4 @@
+import type { Language } from "../i18n/locales";
 import type { Account, ImportFormat, ImportIssue } from "@claviger/core";
 import type {
   ClipboardClearSec,
@@ -28,6 +29,8 @@ export interface ServiceState {
   viewMode: ViewMode;
   /** Not a secret: readable while locked so the lock screen is themed too. */
   theme: Theme;
+  /** Not a secret: readable while locked so the lock screen speaks the chosen language. */
+  language: Language;
   clipboardClearSec: ClipboardClearSec;
   recoveryCodeConfirmed: boolean;
   /** Set only when the unlocked vault is empty and a non-empty local copy exists. */

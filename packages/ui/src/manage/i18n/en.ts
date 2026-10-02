@@ -187,6 +187,10 @@ export const manageEn: Record<ManageKey, string> = {
   "security.recoveryCreated": "New recovery code saved.",
   "security.lock": "Lock",
   "security.lockHint": "When the vault should lock on its own.",
+  "language.label": "Language",
+  "language.system": "System",
+  "language.hint":
+    "The app language. Texts in the browser menu and shortcut descriptions follow your browser language and are not changed here.",
   "theme.section": "Appearance",
   "theme.label": "Theme",
   "theme.system": "System",

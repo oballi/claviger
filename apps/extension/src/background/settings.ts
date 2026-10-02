@@ -2,10 +2,12 @@ import "../zodConfig";
 import type { StoragePort } from "@claviger/core";
 import {
   clipboardClearSchema,
+  languageSchema,
   lockPolicySchema,
   themeSchema,
   viewModeSchema,
   type ClipboardClearSec,
+  type Language,
   type LockPolicy,
   type Theme,
   type ViewMode,
@@ -14,8 +16,8 @@ import { z } from "zod";
 
 export const MAX_CLOCK_OFFSET_SEC = 12 * 3600;
 
-export { clipboardClearSchema, lockPolicySchema, themeSchema, viewModeSchema };
-export type { ClipboardClearSec, LockPolicy, Theme, ViewMode };
+export { clipboardClearSchema, languageSchema, lockPolicySchema, themeSchema, viewModeSchema };
+export type { ClipboardClearSec, Language, LockPolicy, Theme, ViewMode };
 
 export const settingsSchema = z.object({
   // Display mirror and legacy migration input only; the sealed lock:policy record is authoritative.
@@ -26,6 +28,7 @@ export const settingsSchema = z.object({
   lastBackupAt: z.number().int().nullable(),
   viewMode: viewModeSchema,
   theme: themeSchema,
+  language: languageSchema,
   clipboardClearSec: clipboardClearSchema,
   recoveryCodeConfirmed: z.boolean(),
 });
@@ -43,6 +46,7 @@ export const DEFAULT_SETTINGS: Settings = {
   lastBackupAt: null,
   viewMode: "normal",
   theme: "system",
+  language: "system",
   clipboardClearSec: 0,
   // 0.0.1 users already confirmed their code during setup.
   recoveryCodeConfirmed: true,

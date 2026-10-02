@@ -3,7 +3,7 @@ import type { ServiceState } from "../contract/views";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { LockScreen } from "../components/LockScreen";
 import { errorMessage } from "../errors";
-import { useT } from "../i18n/i18n";
+import { useLanguageSync, useT } from "../i18n/i18n";
 import { useUi, type ManageRoute } from "../platform";
 import { useThemeSync } from "../theme";
 import { AccountsScreen } from "./AccountsScreen";
@@ -57,6 +57,7 @@ export function ManageApp({ pollMs = 2000 }: { pollMs?: number }) {
   const [route, navigate] = useHashRoute();
   const [state, setState] = useState<ServiceState | null>(null);
   useThemeSync(state?.theme);
+  useLanguageSync(state?.language);
   const [error, setError] = useState<string | null>(null);
   // Setup and recovery continue after the vault opens (the one-time recovery code is still on
   // screen); polling must not swap them for the signed-in pages and lose that code.

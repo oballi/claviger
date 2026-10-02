@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, screen, waitFor } from "@testing-library/react";
+import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PopupApp } from "@claviger/ui/popup";
@@ -26,6 +26,10 @@ const prefersDark = (dark: boolean) =>
     removeListener() {},
   }));
 
+// The language picker has its own "Sistem" radio.
+const themeRadio = (name: string) =>
+  within(screen.getByRole("radiogroup", { name: "Tema" })).getByRole("radio", { name });
+
 async function security(status: "unlocked" | "locked" = "unlocked") {
   const h = await harness({ status });
   const state = await h.service.getState();
@@ -45,10 +49,10 @@ describe("theme", () => {
     const h = await security();
     const group = screen.getByRole("radiogroup", { name: "Tema" });
     expect(group).toBeTruthy();
-    expect(screen.getByRole("radio", { name: "Sistem" }).getAttribute("aria-checked")).toBe("true");
-    await userEvent.setup().click(screen.getByRole("radio", { name: "Koyu" }));
+    expect(themeRadio("Sistem").getAttribute("aria-checked")).toBe("true");
+    await userEvent.setup().click(themeRadio("Koyu"));
     expect(html.getAttribute("data-theme")).toBe("dark");
-    expect(screen.getByRole("radio", { name: "Koyu" }).getAttribute("aria-checked")).toBe("true");
+    expect(themeRadio("Koyu").getAttribute("aria-checked")).toBe("true");
     expect(localStorage.getItem("claviger-theme")).toBe("dark");
 
     cleanup();
@@ -69,9 +73,9 @@ describe("theme", () => {
   it("Sistem removes the attribute", async () => {
     const h = await security();
     const user = userEvent.setup();
-    await user.click(screen.getByRole("radio", { name: "Açık" }));
+    await user.click(themeRadio("Açık"));
     expect(html.getAttribute("data-theme")).toBe("light");
-    await user.click(screen.getByRole("radio", { name: "Sistem" }));
+    await user.click(themeRadio("Sistem"));
     expect(html.hasAttribute("data-theme")).toBe(false);
     expect((await h.service.getState()).theme).toBe("system");
   });
@@ -79,15 +83,15 @@ describe("theme", () => {
   it("moves between radios with the arrow keys (roving tabindex)", async () => {
     await security();
     const user = userEvent.setup();
-    const system = screen.getByRole("radio", { name: "Sistem" });
+    const system = themeRadio("Sistem");
     expect(system.getAttribute("tabindex")).toBe("0");
-    expect(screen.getByRole("radio", { name: "Açık" }).getAttribute("tabindex")).toBe("-1");
+    expect(themeRadio("Açık").getAttribute("tabindex")).toBe("-1");
     system.focus();
     await user.keyboard("{ArrowRight}");
-    expect(document.activeElement).toBe(screen.getByRole("radio", { name: "Açık" }));
+    expect(document.activeElement).toBe(themeRadio("Açık"));
     expect(html.getAttribute("data-theme")).toBe("light");
     await user.keyboard("{ArrowLeft}{ArrowLeft}");
-    expect(document.activeElement).toBe(screen.getByRole("radio", { name: "Koyu" }));
+    expect(document.activeElement).toBe(themeRadio("Koyu"));
     expect(html.getAttribute("data-theme")).toBe("dark");
   });
 
@@ -185,7 +189,7 @@ describe("popup theme toggle", () => {
 
   it("keeps the Settings picker: system option still exists", async () => {
     await security();
-    expect(screen.getByRole("radio", { name: "Sistem" })).toBeTruthy();
+    expect(themeRadio("Sistem")).toBeTruthy();
   });
 
   it("resolvedScheme falls back to light without matchMedia", () => {

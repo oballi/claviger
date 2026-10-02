@@ -146,6 +146,9 @@ async function dispatch(
     case "setTheme":
       await service.setTheme(req.theme);
       return null;
+    case "setLanguage":
+      await service.setLanguage(req.language);
+      return null;
     case "setClipboardClear":
       await service.setClipboardClear(req.seconds);
       return null;

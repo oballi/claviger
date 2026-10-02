@@ -63,6 +63,7 @@ import {
   MAX_CLOCK_OFFSET_SEC,
   saveSettings,
   type ClipboardClearSec,
+  type Language,
   type LockPolicy,
   type Settings,
   type Theme,
@@ -437,6 +438,7 @@ export class VaultService {
       lastBackupAt: settings.lastBackupAt,
       viewMode: settings.viewMode,
       theme: settings.theme,
+      language: settings.language,
       clipboardClearSec: settings.clipboardClearSec,
       recoveryCodeConfirmed: settings.recoveryCodeConfirmed,
       retryAfterMs: await this.throttle.retryAfterMs(),
@@ -685,6 +687,12 @@ export class VaultService {
   setTheme(theme: Theme): Promise<void> {
     return this.exclusive(async () => {
       await saveSettings(this.p.local, { theme });
+    });
+  }
+
+  setLanguage(language: Language): Promise<void> {
+    return this.exclusive(async () => {
+      await saveSettings(this.p.local, { language });
     });
   }
 

@@ -5,7 +5,7 @@ import { ErrorBoundary } from "../components/ErrorBoundary";
 import { LockScreen } from "../components/LockScreen";
 import { StatusScreen } from "../components/StatusScreen";
 import { errorMessage } from "../errors";
-import { useT } from "../i18n/i18n";
+import { useLanguageSync, useT } from "../i18n/i18n";
 import { useUi } from "../platform";
 import { useThemeSync } from "../theme";
 import { CodesScreen } from "./CodesScreen";
@@ -30,6 +30,7 @@ export function PopupApp({ pollMs = 1000 }: { pollMs?: number }) {
   }, [refresh]);
 
   useThemeSync(state?.theme);
+  useLanguageSync(state?.language);
 
   let content;
   if (!state) {
