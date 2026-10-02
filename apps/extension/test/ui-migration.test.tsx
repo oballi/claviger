@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, screen, within } from "@testing-library/react";
+import { waitFor, act, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { BackupScreen } from "@claviger/ui/manage";
@@ -110,9 +110,17 @@ describe("phone transfer", () => {
     await open(2);
     await toViewer();
     Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true });
-    act(() => {
-      document.dispatchEvent(new Event("visibilitychange"));
-    });
-    expect(screen.queryByText(/^QR 1 \//)).toBeNull();
+    try {
+      // The auto-hide listener is attached in an effect after the viewer paints, so keep
+      // signalling until it is in place.
+      await waitFor(() => {
+        act(() => {
+          document.dispatchEvent(new Event("visibilitychange"));
+        });
+        expect(screen.queryByText(/^QR 1 \//)).toBeNull();
+      });
+    } finally {
+      Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true });
+    }
   });
 });
