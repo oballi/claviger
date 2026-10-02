@@ -123,6 +123,12 @@ try {
   const fillId = (await must({ type: "listAccounts" })).accounts.find(
     (a) => a.issuer === "Fill",
   ).id;
+  if (
+    !(await must({ type: "listAccounts" })).accounts
+      .find((a) => a.id === fillId)
+      .domains.includes("127.0.0.1")
+  )
+    throw new Error("the Fill account is not linked to the fixture host");
   const codeOf = async () =>
     (await must({ type: "listAccounts" })).accounts.find((a) => a.id === fillId).code;
   const filled = async (mode) => {
