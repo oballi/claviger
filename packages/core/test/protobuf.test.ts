@@ -1,6 +1,13 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { readFields, readVarint } from "../src/encoding/protobuf";
+import { concatBytes, utf8Encode } from "../src/encoding/bytes";
+import {
+  fieldBytes,
+  fieldVarint,
+  readFields,
+  readVarint,
+  writeVarint,
+} from "../src/encoding/protobuf";
 import { isCoreError } from "../src/errors";
 import { codeOf } from "./helpers/errors";
 import { bytesField, intField, varint } from "./helpers/protobuf";
@@ -45,5 +52,30 @@ describe("protobuf reader", () => {
         return true;
       }),
     );
+  });
+});
+
+describe("protobuf writer", () => {
+  it("encodes varints like the reference", () => {
+    expect(writeVarint(300)).toEqual(Uint8Array.of(0xac, 0x02));
+    expect(writeVarint(0)).toEqual(Uint8Array.of(0));
+    expect(writeVarint(2n ** 63n)).toHaveLength(10);
+  });
+
+  it("encodes length-delimited fields", () => {
+    expect(fieldBytes(2, utf8Encode("hi"))).toEqual(Uint8Array.of(0x12, 0x02, 0x68, 0x69));
+  });
+
+  it("round-trips through the reader", () => {
+    const bytes = concatBytes(
+      fieldVarint(1, 300),
+      fieldBytes(2, utf8Encode("hi")),
+      fieldVarint(3, 0),
+    );
+    expect(readFields(bytes)).toEqual([
+      { field: 1, wire: 0, value: 300n },
+      { field: 2, wire: 2, value: utf8Encode("hi") },
+      { field: 3, wire: 0, value: 0n },
+    ]);
   });
 });

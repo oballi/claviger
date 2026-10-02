@@ -721,7 +721,7 @@ describe("BackupScreen without a storage area", () => {
     );
     expect(screen.queryByRole("region", { name: "Depolama" })).toBeNull();
     const copies = region("Otomatik kopyalar");
-    expect(within(copies).getByText("03")).toBeTruthy();
-    expect(within(copies).queryByText("04")).toBeNull();
+    expect(within(copies).getByText("04")).toBeTruthy();
+    expect(within(copies).queryByText("05")).toBeNull();
   });
 });

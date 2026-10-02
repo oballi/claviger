@@ -60,3 +60,8 @@ export { parseOtpauthText } from "./importers/otpauthText";
 
 export { EXPORT_FORMAT, exportClaviger } from "./exporters/claviger";
 export { exportOtpauthText } from "./exporters/otpauthText";
+export {
+  buildMigrationUris,
+  type MigrationOptions,
+  type MigrationSkip,
+} from "./exporters/googleMigration";

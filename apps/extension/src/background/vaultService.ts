@@ -1,5 +1,6 @@
 import {
   buildImportPreview,
+  buildMigrationUris,
   canonicalJson,
   CLOCK_OFFSET_THRESHOLD_SEC,
   computeClockOffset,
@@ -1206,6 +1207,26 @@ export class VaultService {
   }
 
   // Not a backup: lastBackupAt stays untouched, and nothing is persisted.
+  // Not a backup: lastBackupAt stays untouched, and nothing is persisted.
+  exportMigration(
+    token: string,
+    ids: string[],
+  ): Promise<{ uris: string[]; skipped: { name: string; reason: string }[] }> {
+    return this.exclusive(async () => {
+      const vault = await this.spendToken(token);
+      const { accounts } = await vault.listAccounts();
+      const byId = new Map(accounts.map((a) => [a.id, a]));
+      const selected = [...new Set(ids)].map((id) => {
+        const account = byId.get(id);
+        if (!account) throw new ServiceError("not-found", "No such account");
+        return account;
+      });
+      const batchId = new DataView(this.p.random.bytes(4).buffer).getUint32(0) & 0x7fffffff || 1;
+      const { uris, skipped } = buildMigrationUris(selected, { batchId });
+      return { uris, skipped: skipped.map(({ name, reason }) => ({ name, reason })) };
+    });
+  }
+
   async changePassword(token: string, newPassword: string): Promise<void> {
     assertPassword(newPassword);
     // Queued: a storage move swaps this.vault, and a rewrite against the old area would be lost.

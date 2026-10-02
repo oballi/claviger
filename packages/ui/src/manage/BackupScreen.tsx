@@ -19,6 +19,7 @@ import { formatDate, isoDate } from "../format";
 import { useLocale, useT } from "../i18n/i18n";
 import { useUi } from "../platform";
 import { PageTitle, SettingsRow, SettingsSection } from "./ManageFrame";
+import { PhoneTransfer } from "./PhoneTransfer";
 import { SnapshotsSection } from "./SnapshotsSection";
 
 export const MAX_IMPORT_CHARS = 5_000_000;
@@ -120,16 +121,17 @@ export function BackupScreen({
   const [usage, setUsage] = useState<StorageUsageView | null>(null);
   const [moving, setMoving] = useState(false);
   const [message, setMessage] = useState("");
+  const [transferring, setTransferring] = useState(false);
 
   const root = useRef<HTMLDivElement>(null);
   const focusAfter = useRef<string | null>(null);
 
   // Closing a panel hides its button; focus would otherwise fall to <body>.
   useEffect(() => {
-    if (moving || confirming || !focusAfter.current) return;
+    if (moving || confirming || transferring || !focusAfter.current) return;
     root.current?.querySelector<HTMLElement>(`[data-action="${focusAfter.current}"]`)?.focus();
     focusAfter.current = null;
-  }, [moving, confirming]);
+  }, [moving, confirming, transferring]);
 
   const loadUsage = useCallback(async () => {
     try {
@@ -503,8 +505,37 @@ export function BackupScreen({
         </p>
       </SettingsSection>
 
+      <SettingsSection num="03" title={t("transfer.title")}>
+        <SettingsRow
+          title="Google Authenticator"
+          description={t("transfer.hint")}
+          action={
+            transferring ? null : (
+              <Button
+                data-action="transfer"
+                onClick={() => {
+                  setMessage("");
+                  setTransferring(true);
+                }}
+              >
+                {t("transfer.choose")}
+              </Button>
+            )
+          }
+        >
+          {transferring ? (
+            <PhoneTransfer
+              onClose={() => {
+                focusAfter.current = "transfer";
+                setTransferring(false);
+              }}
+            />
+          ) : null}
+        </SettingsRow>
+      </SettingsSection>
+
       {capabilities.storageArea ? (
-        <SettingsSection num="03" title={t("backup.storage")}>
+        <SettingsSection num="04" title={t("backup.storage")}>
           <SettingsRow
             title={state.storageArea === "sync" ? t("storage.sync") : t("storage.local")}
             description={usageText}
@@ -561,7 +592,7 @@ export function BackupScreen({
         </SettingsSection>
       ) : null}
 
-      <SnapshotsSection num={capabilities.storageArea ? "04" : "03"} onChanged={onChanged} />
+      <SnapshotsSection num={capabilities.storageArea ? "05" : "04"} onChanged={onChanged} />
     </div>
   );
 }

@@ -389,4 +389,23 @@ export const manageEn: Record<ManageKey, string> = {
   "trash.purgeYes": "Remove from list",
   "trash.purged": "{name} removed from the list.",
   "trash.purgedAll": "Recently deleted list emptied.",
+  "transfer.title": "Move to a phone (Google Authenticator format)",
+  "transfer.hint":
+    "Shows QR codes that Google Authenticator and compatible apps can scan. This is not a backup.",
+  "transfer.choose": "Choose accounts\u2026",
+  "transfer.accounts": "Accounts to move",
+  "transfer.show": "Show QR codes",
+  "transfer.position": "QR {n} / {total}",
+  "transfer.qrLabel": "Transfer QR {n} / {total}",
+  "transfer.prev": "Previous",
+  "transfer.next": "Next",
+  "transfer.warning":
+    "Anyone who scans these codes gets full access to your accounts. Scan them only with your own phone.",
+  "transfer.checkNote": "Check one code on the phone before deleting accounts here.",
+  "transfer.none": "None of the selected accounts can be moved this way.",
+  "transfer.excluded": "Could not be moved",
+  "transfer.reason.digits": "7-digit codes are not supported.",
+  "transfer.reason.period": "Only 30-second codes are supported.",
+  "transfer.reason.type": "This account type is not supported.",
+  "transfer.reason.tooLong": "Too long for a single QR code.",
 };

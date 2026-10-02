@@ -382,6 +382,25 @@ export const manageTr = {
   "trash.purgeYes": "Listeden kaldır",
   "trash.purged": "{name} listeden kaldırıldı.",
   "trash.purgedAll": "Son silinenler listesi boşaltıldı.",
+  "transfer.title": "Telefona aktar (Google Authenticator biçimi)",
+  "transfer.hint":
+    "Google Authenticator ve uyumlu uygulamaların tarayabileceği QR kodlarını gösterir. Bu bir yedek değildir.",
+  "transfer.choose": "Hesapları seç\u2026",
+  "transfer.accounts": "Taşınacak hesaplar",
+  "transfer.show": "QR'ları göster",
+  "transfer.position": "QR {n} / {total}",
+  "transfer.qrLabel": "Taşıma QR'ı {n} / {total}",
+  "transfer.prev": "Önceki",
+  "transfer.next": "Sonraki",
+  "transfer.warning":
+    "Bu kodları tarayan kişi hesaplarınıza tam erişim kazanır. Yalnızca kendi telefonunuzla tarayın.",
+  "transfer.checkNote": "Buradaki hesapları silmeden önce telefonda bir kodu kontrol edin.",
+  "transfer.none": "Seçilen hesapların hiçbiri bu yolla taşınamaz.",
+  "transfer.excluded": "Taşınamayanlar",
+  "transfer.reason.digits": "7 haneli kodlar desteklenmez.",
+  "transfer.reason.period": "Yalnızca 30 saniyelik kodlar desteklenir.",
+  "transfer.reason.type": "Bu hesap türü desteklenmez.",
+  "transfer.reason.tooLong": "Tek bir QR koduna sığmıyor.",
 } as const;
 
 export type ManageKey = keyof typeof manageTr;

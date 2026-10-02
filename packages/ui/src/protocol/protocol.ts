@@ -134,6 +134,7 @@ export const rpcRequestSchema = z.discriminatedUnion("type", [
     format: z.enum(["claviger", "otpauth"]),
     exportPassword: password.optional(),
   }),
+  z.object({ type: z.literal("exportMigration"), token, ids: z.array(id).min(1).max(10_000) }),
   z.object({ type: z.literal("changePassword"), token, newPassword: password }),
   z.object({ type: z.literal("createRecoveryCode"), token }),
   z.object({ type: z.literal("setLockPolicy"), token, policy: lockPolicySchema }),
@@ -210,6 +211,7 @@ export interface RpcResults {
   confirmRecoveryCode: null;
   clipboardCopied: null;
   exportVault: { filename: string; content: string; count: number; skipped: number };
+  exportMigration: { uris: string[]; skipped: { name: string; reason: string }[] };
   changePassword: null;
   createRecoveryCode: { recoveryCode: string };
   setLockPolicy: null;

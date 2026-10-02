@@ -157,6 +157,8 @@ async function dispatch(
       return null;
     case "exportVault":
       return service.exportVault(req.token, req.format, req.exportPassword);
+    case "exportMigration":
+      return service.exportMigration(req.token, req.ids);
     case "changePassword":
       await service.changePassword(req.token, req.newPassword);
       return null;
