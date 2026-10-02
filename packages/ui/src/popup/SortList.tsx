@@ -78,12 +78,35 @@ export function SortList({
   );
   const headed = groups.length > 0;
 
-  const rowAllowed = (id: string) =>
-    dragRef.current !== null && dropPlacement(accounts, dragRef.current, id) !== null;
+  // The dragged row can vanish mid-drag (deleted elsewhere); its dragend never fires then.
+  function liveDrag(): string | null {
+    const id = dragRef.current;
+    if (id === null) return null;
+    if (accounts.some((a) => a.id === id)) return id;
+    clearDrag();
+    return null;
+  }
+
+  // Same target keeps the previous state object, so dragover (every ~50 ms) does not re-render.
+  function hover(next: Over | null) {
+    setOver((prev) => {
+      if (prev === next) return prev;
+      if (prev && next && prev.kind === next.kind) {
+        if (prev.kind === "row" && next.kind === "row" && prev.id === next.id) return prev;
+        if (prev.kind === "group" && next.kind === "group" && prev.key === next.key) return prev;
+      }
+      return next;
+    });
+  }
+
+  function accept(event: DragEvent) {
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+  }
 
   function dropOnRow(event: DragEvent, target: string) {
     event.preventDefault();
-    const dragged = dragRef.current;
+    const dragged = liveDrag();
     clearDrag();
     if (!dragged) return;
     const placement = dropPlacement(accounts, dragged, target);
@@ -93,7 +116,7 @@ export function SortList({
 
   function dropOnGroup(event: DragEvent, groupId: string | null) {
     event.preventDefault();
-    const dragged = dragRef.current;
+    const dragged = liveDrag();
     clearDrag();
     if (!dragged) return;
     const first = accounts.find(
@@ -143,9 +166,13 @@ export function SortList({
         }}
         onDragEnd={clearDrag}
         onDragOver={(e) => {
-          if (!rowAllowed(a.id)) return;
-          e.preventDefault();
-          setOver({ kind: "row", id: a.id });
+          const dragged = liveDrag();
+          if (!dragged || dropPlacement(accounts, dragged, a.id) === null) {
+            hover(null);
+            return;
+          }
+          accept(e);
+          hover({ kind: "row", id: a.id });
         }}
         onDrop={(e) => dropOnRow(e, a.id)}
         className={`flex min-h-11 items-center gap-2.5 border-b border-hair py-2 ${
@@ -202,6 +229,10 @@ export function SortList({
         className="min-h-0 flex-1 overflow-auto px-7 pb-[72px]"
         onDragEnd={clearDrag}
         onDrop={clearDrag}
+        onDragOver={(e) => {
+          // Row and header handlers run first; anything else here is not a drop target.
+          if (!(e.target as Element).closest("[data-sort-row],[data-sort-group]")) hover(null);
+        }}
       >
         {siteRows.length > 0 ? (
           <section aria-label={t("codes.thisSite")}>
@@ -220,9 +251,12 @@ export function SortList({
                 <h2
                   data-sort-group={key}
                   onDragOver={(e) => {
-                    if (!dragRef.current) return;
-                    e.preventDefault();
-                    setOver({ kind: "group", key });
+                    if (!liveDrag()) {
+                      hover(null);
+                      return;
+                    }
+                    accept(e);
+                    hover({ kind: "group", key });
                   }}
                   onDrop={(e) => dropOnGroup(e, s.group?.id ?? null)}
                   className={`m-0 flex min-h-11 items-end gap-2 pb-1 text-[11px] font-normal text-muted ${

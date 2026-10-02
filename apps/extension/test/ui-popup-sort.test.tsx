@@ -290,4 +290,45 @@ describe("popup sort mode", () => {
     ).toBe(h.work.id);
     await waitFor(() => expect(headerOf(h.home.id)).toBeNull());
   });
+
+  it("clears the highlight when the pointer moves onto a fixed row or empty space", async () => {
+    const h = await seeded();
+    await enter(h);
+    fireEvent.dragStart(rowOf(h, "W1"), { dataTransfer: dt() });
+    fireEvent.dragOver(rowOf(h, "H1"), { dataTransfer: dt() });
+    expect(rowOf(h, "H1").className).toContain("bg-hair");
+    fireEvent.dragOver(screen.getByText("Pin").closest("li")!, { dataTransfer: dt() });
+    expect(rowOf(h, "H1").className).not.toContain("bg-hair");
+    fireEvent.dragOver(headerOf(h.home.id), { dataTransfer: dt() });
+    expect(headerOf(h.home.id).className).toContain("bg-hair");
+    fireEvent.dragOver(rowOf(h, "W1"), { dataTransfer: dt() });
+    expect(headerOf(h.home.id).className).not.toContain("bg-hair");
+    fireEvent.dragEnd(rowOf(h, "W1"), { dataTransfer: dt() });
+  });
+
+  it("sets dropEffect to move on accepted dragovers", async () => {
+    const h = await seeded();
+    await enter(h);
+    const data = { ...dt(), dropEffect: "" };
+    fireEvent.dragStart(rowOf(h, "W1"), { dataTransfer: dt() });
+    fireEvent.dragOver(rowOf(h, "H1"), { dataTransfer: data });
+    expect(data.dropEffect).toBe("move");
+    fireEvent.dragEnd(rowOf(h, "W1"), { dataTransfer: dt() });
+  });
+
+  it("ignores a drop when the dragged account was deleted mid-drag", async () => {
+    const h = await seeded();
+    await enter(h);
+    fireEvent.dragStart(rowOf(h, "W3"), { dataTransfer: dt() });
+    await h.ui.rpc("deleteAccount", { id: h.ids.W3! });
+    await userEvent.click(down("W1"));
+    await waitFor(() => expect(rowOf(h, "W3")).toBeNull());
+    const before = await names(h);
+    fireEvent.dragOver(headerOf(h.home.id), { dataTransfer: dt() });
+    expect(headerOf(h.home.id).className).not.toContain("bg-hair");
+    fireEvent.drop(headerOf(h.home.id), { dataTransfer: dt() });
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(await names(h)).toEqual(before);
+  });
 });
