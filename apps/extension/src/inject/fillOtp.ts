@@ -20,16 +20,17 @@ export function fillOtp(code: string, explicit: boolean, expectedDomain: string)
     /otp|2fa|mfa|totp|one.?time|verif|authenticator|(security|auth|login|sms|access)[ _-]?code|^code$|^kod$|doğrulama/i;
   const NOT_OTP =
     /zip|postal|post.?code|promo|coupon|discount|voucher|country|area|invite|referral|captcha|search|user|e-?mail|phone|name/i;
+  const ac = (el: HTMLInputElement) => el.autocomplete.toLowerCase();
   const AC_NOT_OTP =
     /\b(username|email|name|tel|current-password|new-password|street-address|postal-code|cc-\w+)\b/;
   const visible = (el: HTMLElement) =>
     Array.from(el.getClientRects()).some((r) => r.width > 0 && r.height > 0);
   const usable = (el: HTMLInputElement) => visible(el) && !el.disabled && !el.readOnly;
-  const isOtp = (el: HTMLInputElement) => el.autocomplete.split(/\s+/).includes("one-time-code");
+  const isOtp = (el: HTMLInputElement) => ac(el).split(/\s+/).includes("one-time-code");
   // A password-typed box is only ever eligible when the page marks it one-time-code.
   const textual = (el: HTMLInputElement) =>
     ["text", "tel", "number", ""].includes(el.type) || (el.type === "password" && isOtp(el));
-  const eligible = (el: HTMLInputElement) => textual(el) && !AC_NOT_OTP.test(el.autocomplete);
+  const eligible = (el: HTMLInputElement) => textual(el) && !AC_NOT_OTP.test(ac(el));
   // Attributes are tested one by one so anchored hints like ^code$ can match.
   const attrs = (el: HTMLInputElement) => [
     el.name,
@@ -42,7 +43,7 @@ export function fillOtp(code: string, explicit: boolean, expectedDomain: string)
     eligible(el) &&
     (isOtp(el) ||
       (attrs(el).some((a) => HINT.test(a)) && !denied(el)) ||
-      (el.inputMode === "numeric" && el.maxLength >= 4 && el.maxLength <= 10));
+      (el.inputMode === "numeric" && el.maxLength >= 4 && el.maxLength <= 10 && !denied(el)));
   const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
   const write = (el: HTMLInputElement, value: string) => {
     setter.call(el, value);

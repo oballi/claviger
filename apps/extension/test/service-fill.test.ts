@@ -1,5 +1,5 @@
 import { generateCode } from "@otp-vault/core";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { handleUserTrigger } from "../src/background/triggers";
 import { saveSettings } from "../src/background/settings";
 import { MIN_FILL_REMAINING_SEC } from "../src/background/vaultService";
@@ -445,7 +445,7 @@ describe("menu", () => {
 });
 
 describe("user trigger", () => {
-  it("opens the popup synchronously, before any storage access, when locked in memory", async () => {
+  it("firefox: opens the popup synchronously, before any storage access, when locked in memory", async () => {
     const { p, service } = await setup();
     await service.lock();
     const order: string[] = [];
@@ -458,32 +458,76 @@ describe("user trigger", () => {
       order.push("openPopup");
       return true;
     };
-    const done = handleUserTrigger(service, p.tabs, () => service.fillFromCommand());
+    const done = handleUserTrigger(service, p.tabs, () => service.fillFromCommand(), true);
     // Nothing has been awaited yet: the popup request is already made.
     expect(order).toEqual(["openPopup"]);
     await done;
     expect(order[0]).toBe("openPopup");
   });
 
-  it("does not open the popup when unlocked, and badges when opening fails", async () => {
+  it("firefox: does not open the popup when unlocked, and badges when opening fails", async () => {
     const { p, service } = await setup();
-    await handleUserTrigger(service, p.tabs, async () => undefined);
+    await handleUserTrigger(service, p.tabs, async () => undefined, true);
     expect(p.tabs.popupOpened).toBe(0);
     await service.lock();
     p.tabs.popupOpens = false;
-    await handleUserTrigger(service, p.tabs, async () => undefined);
+    await handleUserTrigger(service, p.tabs, async () => undefined, true);
     await new Promise((r) => setTimeout(r, 0));
     expect(p.tabs.badges).toEqual(["?", ""]);
   });
 
-  it("swallows a rejected openPopup", async () => {
+  it("firefox: swallows a rejected openPopup", async () => {
     const { p, service } = await setup();
     await service.lock();
     p.tabs.openPopup = async () => {
       throw new Error("no gesture");
     };
     await expect(
-      handleUserTrigger(service, p.tabs, async () => undefined),
+      handleUserTrigger(service, p.tabs, async () => undefined, true),
+    ).resolves.toBeUndefined();
+  });
+
+  it("chrome: does not open the popup when the service fills, even if not unlocked in memory", async () => {
+    const { p, service } = await setup();
+    // Simulates a suspended worker: memory is empty but the cached key still loads the vault.
+    vi.spyOn(service, "isUnlockedInMemory").mockReturnValue(false);
+    await handleUserTrigger(service, p.tabs, () => service.fillFromCommand(), false);
+    expect(p.tabs.popupOpened).toBe(0);
+  });
+
+  it("chrome: opens the popup only after the service reports locked", async () => {
+    const { p, service } = await setup();
+    await service.lock();
+    const order: string[] = [];
+    p.tabs.openPopup = async () => {
+      order.push("openPopup");
+      return true;
+    };
+    const done = handleUserTrigger(
+      service,
+      p.tabs,
+      async () => {
+        order.push("run");
+        return "locked";
+      },
+      false,
+    );
+    expect(order).toEqual(["run"]);
+    await done;
+    expect(order).toEqual(["run", "openPopup"]);
+  });
+
+  it("chrome: badges when opening fails and swallows a rejection", async () => {
+    const { p, service } = await setup();
+    await service.lock();
+    p.tabs.popupOpens = false;
+    await handleUserTrigger(service, p.tabs, async () => "locked", false);
+    expect(p.tabs.badges[0]).toBe("?");
+    p.tabs.openPopup = async () => {
+      throw new Error("x");
+    };
+    await expect(
+      handleUserTrigger(service, p.tabs, async () => "locked", false),
     ).resolves.toBeUndefined();
   });
 });

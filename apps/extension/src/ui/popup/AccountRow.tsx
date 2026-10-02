@@ -10,6 +10,7 @@ export type FillPrompt = "confirm" | "blocked" | "link";
 
 export interface FillControls {
   prompt: FillPrompt | null;
+  busy: boolean;
   onFill: (account: AccountView) => void;
   onConfirm: (account: AccountView) => void;
   onCancel: () => void;
@@ -93,6 +94,7 @@ export function AccountRow({
           <div>
             <Button
               className="border-text"
+              disabled={fill.busy}
               aria-label={t("fill.aria", { issuer: name })}
               onClick={() => fill.onFill(account)}
             >

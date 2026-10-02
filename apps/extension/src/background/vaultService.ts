@@ -1370,20 +1370,22 @@ export class VaultService {
     }
   }
 
-  async fillFromCommand(): Promise<void> {
-    // Locked: the listener already asked for the popup.
-    if (!(await this.tryLoaded())) return;
+  /** "locked" tells the trigger to open the popup; Firefox already did so before awaiting. */
+  async fillFromCommand(): Promise<"locked" | "done"> {
+    if (!(await this.tryLoaded())) return "locked";
     const tab = await this.p.tabs.active();
-    if (!tab) return this.flashBadge("?");
-    await this.fillFromPage(tab, undefined, undefined, false);
+    if (!tab) await this.flashBadge("?");
+    else await this.fillFromPage(tab, undefined, undefined, false);
+    return "done";
   }
 
   async fillFromMenu(
     tab: { id: number; url: string },
     frameId: number | undefined,
     frameUrl: string | undefined,
-  ): Promise<void> {
-    if (!(await this.tryLoaded())) return;
+  ): Promise<"locked" | "done"> {
+    if (!(await this.tryLoaded())) return "locked";
     await this.fillFromPage(tab, frameId, frameUrl, true);
+    return "done";
   }
 }

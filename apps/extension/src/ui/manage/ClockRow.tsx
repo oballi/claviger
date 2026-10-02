@@ -42,7 +42,8 @@ export function ClockRow({
       return;
     }
     setBusy(true);
-    let keepEnabled = false;
+    // A failed or refused re-check must not clear a working correction.
+    let keepEnabled = state.clockCheckEnabled && state.clockOffsetSec !== 0;
     let result = "";
     try {
       await rpc("setClockCheckEnabled", { enabled: true });

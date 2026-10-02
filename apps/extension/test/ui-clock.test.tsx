@@ -88,6 +88,21 @@ describe("clock check", () => {
     expect(h.ui.removeClockPermission).toHaveBeenCalled();
   });
 
+  it("a failed re-check keeps the existing correction", async () => {
+    const h = await harness();
+    await h.ui.rpc("setClockCheckEnabled", { enabled: true });
+    await h.ui.rpc("applyClockSample", sampleAt(h, 120));
+    h.ui.fetchServerDate.mockRejectedValue(new Error("offline"));
+    await open(h);
+    await userEvent.click(screen.getByRole("button", { name: "Kontrol et" }));
+    expect(await screen.findByText(/Google'a ulaşılamadı/)).toBeTruthy();
+    expect(await h.ui.rpc("getState", {})).toMatchObject({
+      clockCheckEnabled: true,
+      clockOffsetSec: 120,
+    });
+    expect(h.ui.removeClockPermission).toHaveBeenCalled();
+  });
+
   it("refuses a sample that took too long and turns the check off", async () => {
     const h = await harness();
     h.ui.fetchServerDate.mockImplementation(async () => ({

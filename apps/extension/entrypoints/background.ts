@@ -58,14 +58,22 @@ export default defineBackground(() => {
 
   browser.commands.onCommand.addListener((command) => {
     if (command === "fill-code")
-      handleUserTrigger(service, platform.tabs, () => service.fillFromCommand()).catch(logFailure);
+      handleUserTrigger(
+        service,
+        platform.tabs,
+        () => service.fillFromCommand(),
+        import.meta.env.FIREFOX,
+      ).catch(logFailure);
   });
 
   browser.contextMenus.onClicked.addListener((info, tab) => {
     if (info.menuItemId !== MENU_ID || tab?.id === undefined || !tab.url) return;
     const target = { id: tab.id, url: tab.url };
-    handleUserTrigger(service, platform.tabs, () =>
-      service.fillFromMenu(target, info.frameId, info.frameUrl),
+    handleUserTrigger(
+      service,
+      platform.tabs,
+      () => service.fillFromMenu(target, info.frameId, info.frameUrl),
+      import.meta.env.FIREFOX,
     ).catch(logFailure);
   });
 

@@ -37,6 +37,15 @@ describe("popup fill", () => {
     expect(h.ui.copy).not.toHaveBeenCalled();
   });
 
+  it("fills once on a double click while a fill is in flight", async () => {
+    const h = await popupOn("https://acme.com/login");
+    open(h);
+    const button = await screen.findByRole("button", { name: "Acme kodunu sayfaya doldur" });
+    await userEvent.dblClick(button);
+    expect(await screen.findByText("Dolduruldu")).toBeTruthy();
+    expect(h.p.tabs.fills).toHaveLength(1);
+  });
+
   it("copies when the page has no field", async () => {
     const h = await popupOn("https://acme.com/login");
     h.p.tabs.next = "no-field";

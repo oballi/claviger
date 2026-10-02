@@ -81,6 +81,8 @@ async function digestOf(records: Record<string, unknown>): Promise<string> {
   return Array.from(new Uint8Array(hash), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+const SITE_MEMORY_KEY = "vault:sitemem";
+
 const vaultRecords = (all: Record<string, unknown>) =>
   Object.fromEntries(Object.entries(all).filter(([key]) => isVaultKey(key)));
 
@@ -109,6 +111,9 @@ export class SnapshotStore {
 
   async take(source: StoragePort, reason: SnapshotReason): Promise<Snapshot | null> {
     const records = vaultRecords(await source.get());
+    // Site memory is browsing history: never capture it, so turning it off leaves no copy behind.
+    // Copies taken before this change keep what they have until they rotate out.
+    delete records[SITE_MEMORY_KEY];
     const info = await Vault.inspect(recordsStorage(records));
     if (info.status !== "ok") return null;
     const digest = await digestOf(records);

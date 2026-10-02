@@ -36,8 +36,8 @@ describe("manifest", () => {
     expect(manifest.optional_host_permissions).toEqual(["https://www.google.com/*"]);
   });
 
-  it("keeps <all_urls> out of the normal build", () => {
-    expect(JSON.stringify(manifestFor("chrome"))).not.toContain("<all_urls>");
+  it.each(["chrome", "firefox"])("keeps <all_urls> out of the normal %s build", (browser) => {
+    expect(JSON.stringify(manifestFor(browser))).not.toContain("<all_urls>");
   });
 
   it("declares clipboard permissions per browser", () => {

@@ -62,6 +62,8 @@ export function CodesScreen({
   const locale = useLocale();
   const [tab, setTab] = useState<{ id: number; url: string } | undefined | null>(null);
   const pageUrl = tab === null ? null : tab?.url;
+  const [filling, setFilling] = useState(false);
+  const fillingRef = useRef(false);
   const [fillPrompt, setFillPrompt] = useState<{ id: string; kind: FillPrompt } | null>(null);
   const { list, error, reload } = useAccountList(pageUrl, pollMs);
   const [query, setQuery] = useState("");
@@ -140,6 +142,19 @@ export function CodesScreen({
   }
 
   async function fill(account: AccountView, confirmedDomain?: string) {
+    // The ref blocks a second click before the disabled state has rendered.
+    if (fillingRef.current) return;
+    fillingRef.current = true;
+    setFilling(true);
+    try {
+      await doFill(account, confirmedDomain);
+    } finally {
+      fillingRef.current = false;
+      setFilling(false);
+    }
+  }
+
+  async function doFill(account: AccountView, confirmedDomain?: string) {
     setActionError(null);
     setFillPrompt(null);
     if (!tab) return;
@@ -250,6 +265,7 @@ export function CodesScreen({
         large && tab
           ? {
               prompt: fillPrompt?.id === account.id ? fillPrompt.kind : null,
+              busy: filling,
               onFill: (a) => void fill(a),
               onConfirm: (a) => void fill(a, list?.pageDomain ?? undefined),
               onCancel: () => setFillPrompt(null),

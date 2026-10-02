@@ -38,6 +38,14 @@ describe("SnapshotStore", () => {
     expect((await opened.listAccounts()).accounts.map((a) => a.issuer)).toEqual(["Acme"]);
   });
 
+  it("never copies the site memory record", async () => {
+    const { source, store } = await setup();
+    await source.set({ "vault:sitemem": { v: 1, data: "x" } });
+    const snap = await store.take(source, "daily");
+    expect(Object.keys(snap!.records)).not.toContain("vault:sitemem");
+    expect(JSON.stringify(snap)).not.toContain("sitemem");
+  });
+
   it("skips a copy identical to the newest one", async () => {
     const { source, store, clock } = await setup();
     expect(await store.take(source, "daily")).not.toBeNull();

@@ -58,6 +58,22 @@ describe("fillOtp", () => {
     }
   });
 
+  it("does not treat a numeric zip or phone field as an OTP input", () => {
+    for (const name of ["zip", "phone"]) {
+      page(`<input name="${name}" inputmode="numeric" maxlength="5">`);
+      expect(fillOtp("123456", false, "localhost")).toBe("no-field");
+    }
+  });
+
+  it("matches autocomplete tokens case-insensitively", () => {
+    page(`<input id="f" autocomplete="Email">`);
+    $("#f").focus();
+    expect(fillOtp("123456", true, "localhost")).toBe("no-field");
+    page(`<input id="o" autocomplete="One-Time-Code">`);
+    expect(fillOtp("123456", false, "localhost")).toBe("filled");
+    expect($("#o").value).toBe("123456");
+  });
+
   it("fills a plain focused field only when explicit", () => {
     page(`<input id="c" type="text">`);
     $("#c").focus();

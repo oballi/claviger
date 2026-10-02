@@ -49,10 +49,15 @@ try {
     (m) => m.type() === "error" && errors.push(`popup console: ${m.text()}`),
   );
   await firstPopup.goto(`chrome-extension://${id}/popup.html`);
-  const opened = ctx.waitForEvent("page", { timeout: 10_000 });
   await firstPopup.getByRole("button", { name: "Kurulumu başlat" }).click();
-  const setupTab = await opened;
-  await setupTab.waitForURL(/manage\.html#\/setup/);
+  // onInstalled may already have opened a setup tab; accept that one or a new one.
+  const isSetup = (pg) => pg !== page && /manage\.html#\/setup/.test(pg.url());
+  const deadline = Date.now() + 10_000;
+  let setupTab;
+  while (!(setupTab = ctx.pages().find(isSetup))) {
+    if (Date.now() > deadline) throw new Error("setup tab did not open");
+    await new Promise((r) => setTimeout(r, 100));
+  }
   await setupTab.close();
 
   await page.goto(`chrome-extension://${id}/manage.html#/setup`);
