@@ -437,7 +437,7 @@ export const en: Record<MessageKey, string> = {
   "fill.done": "Filled",
   "fill.copiedNoField": "No field found; code copied",
   "fill.copiedRefused": "Can't type into this page; code copied",
-  "fill.confirm": "{issuer} is not linked to this site. Fill anyway?",
+  "fill.confirm": "{issuer} is not linked to {domain}. Fill anyway?",
   "fill.confirmYes": "Fill",
   "fill.confirmNo": "Cancel",
   "fill.blocked": "This account is not linked to this site.",

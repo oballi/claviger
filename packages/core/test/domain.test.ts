@@ -111,4 +111,23 @@ describe("matchAccounts", () => {
       });
     });
   });
+
+  describe("hostile input", () => {
+    it("stays fast on huge labels", () => {
+      const huge = [
+        { issuer: "x", label: "a".repeat(200_000), domains: [] as string[] },
+        { issuer: "x", label: "a@" + "b".repeat(200_000), domains: [] as string[] },
+        { issuer: "x", label: "a@".repeat(100_000), domains: [] as string[] },
+        { issuer: "x", label: "a.".repeat(100_000) + "@b", domains: [] as string[] },
+      ];
+      const start = performance.now();
+      matchAccounts(huge, "https://acme.example");
+      expect(performance.now() - start).toBeLessThan(50);
+    });
+
+    it("still finds an e-mail near the start of a long label", () => {
+      const a = { issuer: "x", label: "me@acme.example " + "z".repeat(10_000), domains: [] };
+      expect(matchAccounts([a], "https://acme.example").suggested).toEqual([a]);
+    });
+  });
 });

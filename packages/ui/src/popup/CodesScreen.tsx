@@ -268,6 +268,7 @@ export function CodesScreen({
           ? {
               prompt: fillPrompt?.id === account.id ? fillPrompt.kind : null,
               busy: filling,
+              domain: list?.pageDomain ?? null,
               onFill: (a) => void fill(a),
               onConfirm: (a) => void fill(a, list?.pageDomain ?? undefined),
               onCancel: () => setFillPrompt(null),

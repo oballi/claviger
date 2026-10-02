@@ -13,7 +13,7 @@ describe("focus styling", () => {
     for (const type of ["text", "password", "search", "email", "tel", "number", "url"]) {
       expect(rule?.[1]).toContain(`[type="${type}"]`);
     }
-    expect(rule?.[2]).toContain("outline: none");
+    expect(rule?.[2]).toContain("outline: 2px solid transparent");
     expect(rule?.[2]).toMatch(/box-shadow:\s*inset 0 -1px 0 var\(--ov-text\)/);
   });
 

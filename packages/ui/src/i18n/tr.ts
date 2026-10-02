@@ -430,7 +430,7 @@ export const tr = {
   "fill.done": "Dolduruldu",
   "fill.copiedNoField": "Alan bulunamadı; kod kopyalandı",
   "fill.copiedRefused": "Bu sayfaya yazılamıyor; kod kopyalandı",
-  "fill.confirm": "{issuer} bu siteye bağlı değil. Yine de doldurulsun mu?",
+  "fill.confirm": "{issuer}, {domain} sitesine bağlı değil. Yine de doldurulsun mu?",
   "fill.confirmYes": "Doldur",
   "fill.confirmNo": "Vazgeç",
   "fill.blocked": "Bu hesap bu siteye bağlı değil.",

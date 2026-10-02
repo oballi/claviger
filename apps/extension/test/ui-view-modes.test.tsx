@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { formatCode, maskCode } from "@otp-vault/ui";
@@ -41,6 +41,18 @@ describe("view modes", () => {
     const hidden = await popupWith("hidden");
     await userEvent.setup().click(await screen.findByText("Acme"));
     expect(hidden.h.ui.copy).toHaveBeenCalledWith(hidden.code);
+  });
+
+  it("does not copy while the user has text selected", async () => {
+    const { h } = await popupWith("normal");
+    const label = await screen.findByText("a@x");
+    const range = document.createRange();
+    range.selectNodeContents(label);
+    window.getSelection()?.removeAllRanges();
+    window.getSelection()?.addRange(range);
+    fireEvent.click(label);
+    window.getSelection()?.removeAllRanges();
+    expect(h.ui.copy).not.toHaveBeenCalled();
   });
 
   it("copies when the issuer text of a normal row is clicked", async () => {

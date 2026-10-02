@@ -44,11 +44,18 @@ function hostLabels(input: string): string[] {
     .filter((l) => l.length >= 3 && l !== "www");
 }
 
-const EMAIL = /[^\s@<>()]+@([a-z0-9.-]+\.[a-z0-9-]+)/gi;
+const MAX_SCAN = 512;
+const MAX_HOST = 253;
+const HOST_CHAR = /[a-z0-9.-]/;
 
+/** Bounded scan: only the first 512 chars are read, so hostile labels cannot cost more than that. */
 function mentionsDomain(text: string, domain: string): boolean {
-  for (const m of text.matchAll(EMAIL)) {
-    if (m[1] && registrableDomain(m[1]) === domain) return true;
+  const head = text.slice(0, MAX_SCAN).toLowerCase();
+  for (let at = head.indexOf("@"); at !== -1; at = head.indexOf("@", at + 1)) {
+    let end = at + 1;
+    while (end < head.length && end - at - 1 < MAX_HOST && HOST_CHAR.test(head[end]!)) end++;
+    const host = head.slice(at + 1, end);
+    if (at > 0 && host.includes(".") && registrableDomain(host) === domain) return true;
   }
   return false;
 }

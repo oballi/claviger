@@ -85,7 +85,7 @@ describe("popup fill", () => {
       await screen.findByRole("button", { name: "Acme kodunu sayfaya doldur" }),
     );
     expect(
-      await screen.findByText("Acme bu siteye bağlı değil. Yine de doldurulsun mu?"),
+      await screen.findByText("Acme, acme.org sitesine bağlı değil. Yine de doldurulsun mu?"),
     ).toBeTruthy();
     expect(h.p.tabs.fills).toHaveLength(0);
     await userEvent.click(screen.getByRole("button", { name: "Vazgeç" }));
@@ -154,7 +154,7 @@ describe("popup fill", () => {
         await screen.findByText(
           onlyLinked
             ? "Bu hesap bu siteye bağlı değil."
-            : "Zed bu siteye bağlı değil. Yine de doldurulsun mu?",
+            : "Zed, other.net sitesine bağlı değil. Yine de doldurulsun mu?",
         ),
       ).toBeTruthy();
       expect(h.p.tabs.fills).toHaveLength(before);

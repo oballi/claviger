@@ -11,6 +11,8 @@ export type FillPrompt = "confirm" | "blocked" | "link";
 export interface FillControls {
   prompt: FillPrompt | null;
   busy: boolean;
+  /** Registrable domain of the page; the same value is sent as confirmedDomain. */
+  domain: string | null;
   onFill: (account: AccountView) => void;
   onConfirm: (account: AccountView) => void;
   onCancel: () => void;
@@ -46,6 +48,7 @@ export function AccountRow({
   const code = hidden ? maskCode(account.digits) : formatCode(account.code);
   // Convenience only: the code button stays the keyboard/screen-reader control, so the row has no role.
   const copyFromRow = (e: MouseEvent<HTMLLIElement>) => {
+    if (window.getSelection()?.toString()) return;
     if (
       (e.target as Element).closest(
         "button, a, input, select, textarea, [role=group], [role=alert]",
@@ -117,7 +120,9 @@ export function AccountRow({
         ) : null}
         {fill?.prompt === "confirm" ? (
           <div role="group" className="pt-3">
-            <p className="m-0 pb-2 text-xs text-warn">{t("fill.confirm", { issuer: name })}</p>
+            <p className="m-0 pb-2 text-xs text-warn">
+              {t("fill.confirm", { issuer: name, domain: fill.domain ?? "" })}
+            </p>
             <div className="flex gap-2">
               <Button variant="primary" autoFocus onClick={() => fill.onConfirm(account)}>
                 {t("fill.confirmYes")}
