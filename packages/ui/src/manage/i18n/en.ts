@@ -286,6 +286,8 @@ export const manageEn: Record<ManageKey, string> = {
   "format.upstream-authenticator": "Authenticator extension backup",
   "format.aegis": "Aegis backup",
   "format.2fas": "2FAS backup",
+  "format.proton-authenticator": "Proton Authenticator export",
+  "format.bitwarden": "Bitwarden export",
   "format.claviger": "claviger backup",
   "manage.found": "We found your vault.",
   "manage.corrupt":

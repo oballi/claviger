@@ -1,12 +1,21 @@
 import { isClavigerExport, parseClavigerExport } from "../exporters/claviger";
 import { aegisNeedsPassword, isAegisFile, parseAegis } from "./aegis";
+import { isBitwardenFile, parseBitwarden } from "./bitwarden";
 import { parseOtpauthText } from "./otpauthText";
+import { isProtonFile, parseProton, protonNeedsPassword } from "./proton";
 import { isTwofasFile, parseTwofas, twofasNeedsPassword } from "./twofas";
 import type { ImportResult } from "./types";
 import { isUpstreamBackup, parseUpstreamBackup, upstreamNeedsPassword } from "./upstream";
 
 export type ImportFormat =
-  "otpauth" | "google-migration" | "upstream-authenticator" | "aegis" | "2fas" | "claviger";
+  | "otpauth"
+  | "google-migration"
+  | "upstream-authenticator"
+  | "aegis"
+  | "2fas"
+  | "claviger"
+  | "proton-authenticator"
+  | "bitwarden";
 
 export type ImportParseOutcome =
   | { status: "ok"; format: ImportFormat; result: ImportResult }
@@ -30,6 +39,18 @@ const JSON_FORMATS: JsonFormat[] = [
   },
   { format: "aegis", detect: isAegisFile, needsPassword: aegisNeedsPassword, parse: parseAegis },
   { format: "2fas", detect: isTwofasFile, needsPassword: twofasNeedsPassword, parse: parseTwofas },
+  {
+    format: "proton-authenticator",
+    detect: isProtonFile,
+    needsPassword: protonNeedsPassword,
+    parse: parseProton,
+  },
+  {
+    format: "bitwarden",
+    detect: isBitwardenFile,
+    needsPassword: () => false,
+    parse: (j) => parseBitwarden(j),
+  },
   {
     format: "upstream-authenticator",
     detect: isUpstreamBackup,

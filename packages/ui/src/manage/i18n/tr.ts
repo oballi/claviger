@@ -281,6 +281,8 @@ export const manageTr = {
   "format.upstream-authenticator": "Authenticator eklentisi yedeği",
   "format.aegis": "Aegis yedeği",
   "format.2fas": "2FAS yedeği",
+  "format.proton-authenticator": "Proton Authenticator dışa aktarımı",
+  "format.bitwarden": "Bitwarden dışa aktarımı",
   "format.claviger": "claviger yedeği",
   "manage.found": "Kasan bulundu.",
   "manage.corrupt":

@@ -35,7 +35,15 @@ export interface ImportSource {
   skippedImages?: string[];
 }
 
-const SOURCES = ["Google Authenticator", "Authenticator", "Aegis", "2FAS", "claviger"];
+const SOURCES = [
+  "Google Authenticator",
+  "Authenticator",
+  "Aegis",
+  "2FAS",
+  "Proton",
+  "Bitwarden",
+  "claviger",
+];
 
 function Radio({
   name,

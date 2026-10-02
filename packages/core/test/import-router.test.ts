@@ -1,3 +1,5 @@
+import { bitwardenAuthenticator } from "./helpers/bitwarden";
+import { protonPlain } from "./helpers/proton";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { normalizeAccountInput } from "../src/account/account";
@@ -117,6 +119,17 @@ describe("parseImport", () => {
       }),
       { numRuns: 200 },
     );
+  });
+});
+
+describe("Proton/Bitwarden routing", () => {
+  it("routes Proton and Bitwarden files without stealing other formats", async () => {
+    const proton = await parseImport(JSON.stringify(protonPlain()));
+    const bw = await parseImport(JSON.stringify(bitwardenAuthenticator()));
+    expect([proton, bw].map((o) => o.status === "ok" && o.format)).toEqual([
+      "proton-authenticator",
+      "bitwarden",
+    ]);
   });
 });
 
