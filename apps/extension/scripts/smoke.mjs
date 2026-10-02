@@ -182,6 +182,32 @@ try {
     await scan.close();
   }
 
+  // Groups: RPC round trip, then the popup renders sections and the row menu.
+  {
+    const work = await must({ type: "createGroup", name: "Work" });
+    const listed = await must({ type: "listAccounts" });
+    const target = listed.accounts.find((a) => a.issuer === "Fill");
+    await must({ type: "setAccountGroup", id: target.id, groupId: work.id });
+    const grouped = await must({ type: "listAccounts" });
+    if (
+      grouped.groups.length !== 1 ||
+      grouped.accounts.find((a) => a.id === target.id).groupId !== work.id
+    )
+      throw new Error("group assignment did not round-trip");
+    await popup.goto(`chrome-extension://${id}/popup.html`);
+    await popup.getByRole("button", { name: /Work/, expanded: true }).waitFor({ timeout: 10_000 });
+    const menu = popup.getByRole("button", { name: /için işlemler/ }).first();
+    if ((await menu.getAttribute("aria-haspopup")) !== "menu")
+      throw new Error("row menu is not a menu button");
+    await must({ type: "deleteGroup", id: work.id });
+    const after = await must({ type: "listAccounts" });
+    if (
+      after.groups.length !== 0 ||
+      after.accounts.find((a) => a.id === target.id).groupId !== null
+    )
+      throw new Error("deleting a group did not ungroup its accounts");
+  }
+
   await ctx.grantPermissions(["clipboard-read", "clipboard-write"], { origin });
   const reader = await ctx.newPage();
   await reader.goto(origin);
