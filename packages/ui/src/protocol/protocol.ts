@@ -150,10 +150,7 @@ export const rpcRequestSchema = z.discriminatedUnion("type", [
     type: z.literal("fillCode"),
     id,
     tabId: z.number().int().nonnegative(),
-    confirmedDomain: z.string().max(253).optional(),
   }),
-  z.object({ type: z.literal("setFillOnlyLinked"), value: z.boolean() }),
-  z.object({ type: z.literal("setSiteMemory"), value: z.boolean() }),
   // The service re-checks the prefix; this cap only bounds the message before it gets there.
   z.object({ type: z.literal("storeCapture"), dataUrl: z.string().max(32_000_000), tabUrl: url }),
   z.object({ type: z.literal("takeCapture"), id: z.string().min(1).max(64) }),
@@ -211,8 +208,6 @@ export interface RpcResults {
   applyClockSample: { offsetSec: number; applied: number };
   setClockCheckEnabled: null;
   fillCode: { result: FillOutcome; code: string | null };
-  setFillOnlyLinked: null;
-  setSiteMemory: null;
   storeCapture: { id: string };
   takeCapture: { dataUrl: string; tabUrl: string };
 }

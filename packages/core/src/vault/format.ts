@@ -5,10 +5,8 @@ export const HEADER_KEY = "vault:header";
 export const INDEX_KEY = "vault:index";
 export const ACCOUNT_PREFIX = "vault:acct:";
 export const TOMB_PREFIX = "vault:tomb:";
+// Legacy: no longer written; removed on unlock.
 export const SITEMEM_KEY = "vault:sitemem";
-export const MAX_SITE_MEMORY = 100;
-// storage.sync allows 8 KiB per item; stay well below it.
-export const MAX_SITE_MEMORY_BYTES = 6000;
 export const TOMBSTONE_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 
 /**
@@ -68,9 +66,3 @@ export const tombSchema = z.object({ deletedAt: z.number() });
 export type VaultHeader = z.infer<typeof headerSchema>;
 export type EncryptedRecord = z.infer<typeof encryptedRecordSchema>;
 export type VaultIndex = z.infer<typeof indexSchema>;
-
-// Ordered pairs, not an object, so the oldest entry can be dropped at the cap.
-export const siteMemorySchema = z.object({
-  entries: z.array(z.tuple([z.string().min(1).max(253), z.string().min(1)])).max(MAX_SITE_MEMORY),
-  updatedAt: z.number(),
-});

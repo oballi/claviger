@@ -89,7 +89,6 @@ export const SYNC_QUOTA_BYTES = 102_400;
 export const SYNC_ITEM_QUOTA_BYTES = 8_192;
 export const MIN_FILL_REMAINING_SEC = 2;
 const BADGE_CLEAR_MS = 3_000;
-const MEMORY_CLEAR_PENDING_KEY = "siteMemoryClearPending";
 
 /** storage.sync counts quota as key length plus JSON-encoded value length. */
 const PURGE_PENDING_KEY = "snapshotPurgePending";
@@ -307,7 +306,8 @@ export class VaultService {
       if (epoch !== this.lockEpoch) return null;
       this.vault = vault;
       await this.clearPurgeMarker();
-      await this.applyPendingMemoryClear(vault);
+      // Not awaited: it queues on the vault, which a concurrent credential write may hold.
+      void this.purgeLegacySiteMemory(vault);
       // Queued, not awaited: callers may already hold the queue. Repairs a crash after a keyslot write.
       this.reconciling = this.exclusive(() => this.reconcileIfActive(vault));
       return vault;
@@ -394,8 +394,6 @@ export class VaultService {
       theme: settings.theme,
       clipboardClearSec: settings.clipboardClearSec,
       recoveryCodeConfirmed: settings.recoveryCodeConfirmed,
-      fillOnlyLinked: settings.fillOnlyLinked,
-      siteMemory: settings.siteMemory,
       retryAfterMs: await this.throttle.retryAfterMs(),
     };
     const none = { hasRecoveryCode: null, accountCount: null, snapshotOffer: null };
@@ -517,7 +515,7 @@ export class VaultService {
       }
       await this.dailySnapshot();
       await this.reconcileIfActive(vault);
-      await this.applyPendingMemoryClear(vault);
+      await this.purgeLegacySiteMemory(vault);
       try {
         await vault.purgeTombstones();
       } catch {
@@ -553,7 +551,7 @@ export class VaultService {
       await this.revokeInSnapshots(result.vault);
       await this.markRecoveryCodeUnconfirmed();
       await this.activate(result.vault, settings.lockPolicy, epoch);
-      await this.applyPendingMemoryClear(result.vault);
+      await this.purgeLegacySiteMemory(result.vault);
       return { recoveryCode: result.recoveryCode };
     });
   }
@@ -1262,35 +1260,12 @@ export class VaultService {
     });
   }
 
-  setFillOnlyLinked(value: boolean): Promise<void> {
-    return this.exclusive(async () => {
-      await saveSettings(this.p.local, { fillOnlyLinked: value });
-    });
-  }
-
-  setSiteMemory(value: boolean): Promise<void> {
-    return this.exclusive(async () => {
-      await saveSettings(this.p.local, { siteMemory: value });
-      if (value) return;
-      let vault: Vault | null = null;
-      try {
-        vault = await this.ensureLoaded();
-      } catch {
-        // Unreadable vault: treated like locked.
-      }
-      // While locked the record cannot be touched; the next unlock removes it.
-      if (vault) await vault.clearSiteMemory();
-      else await this.p.local.set({ [MEMORY_CLEAR_PENDING_KEY]: true });
-    });
-  }
-
-  private async applyPendingMemoryClear(vault: Vault): Promise<void> {
+  private async purgeLegacySiteMemory(vault: Vault): Promise<void> {
     try {
-      if (!(await this.p.local.get([MEMORY_CLEAR_PENDING_KEY]))[MEMORY_CLEAR_PENDING_KEY]) return;
       await vault.clearSiteMemory();
-      await this.p.local.remove([MEMORY_CLEAR_PENDING_KEY]);
+      await this.p.local.remove(["siteMemoryClearPending"]);
     } catch {
-      // Retried on the next unlock; never fails an unlock.
+      // Housekeeping only; never fails an unlock.
     }
   }
 
@@ -1307,9 +1282,7 @@ export class VaultService {
     tabId: number;
     frameId?: number;
     frameUrl?: string;
-    confirmedDomain?: string;
     explicit?: boolean;
-    requireLinked?: boolean;
   }): Promise<{ result: FillOutcome; code: string | null }> {
     const vault = await this.requireVault();
     const epoch = this.lockEpoch;
@@ -1332,20 +1305,17 @@ export class VaultService {
 
     // Runs twice: once before HOTP advances and once right before injection, since the tab can
     // navigate during the wait. Returns null for a refusal; throws not-linked.
-    const check = async (): Promise<{ domain: string; linked: boolean } | null> => {
+    const check = async (): Promise<{ domain: string } | null> => {
       const tabUrl = await this.p.tabs.url(opts.tabId);
       const targetUrl = opts.frameId ? opts.frameUrl : tabUrl;
       if (!tabUrl || !targetUrl || !fillableUrl(tabUrl) || !fillableUrl(targetUrl)) return null;
       const domain = registrableDomain(targetUrl);
       if (!domain) return null;
       if (opts.frameId && registrableDomain(tabUrl) !== domain) return null;
-      const linked = account.domains.includes(domain);
-      // Confirmation counts only for the domain the user was shown, and never when fillOnlyLinked is on.
-      const confirmed = opts.confirmedDomain === domain;
-      if (!linked && (opts.requireLinked || settings.fillOnlyLinked || !confirmed)) {
+      if (!account.domains.includes(domain)) {
         throw new ServiceError("not-linked", "Account is not linked to this site");
       }
-      return { domain, linked };
+      return { domain };
     };
     const refused = { result: "refused" as const, code: generated.code };
 
@@ -1361,13 +1331,7 @@ export class VaultService {
       opts.explicit === true,
       target.domain,
     );
-    if (result === "filled") {
-      // Re-read: the setting may have been switched off during the wait. Linked domains need no hint.
-      if (!target.linked && (await this.settings()).siteMemory) {
-        await this.rememberBestEffort(vault, target.domain, opts.id);
-      }
-      return { result: "filled", code: null };
-    }
+    if (result === "filled") return { result: "filled", code: null };
     return { result: result === "no-field" ? "copied-instead" : "refused", code };
   }
 
@@ -1379,30 +1343,16 @@ export class VaultService {
     });
   }
 
-  /** Convenience only: a failure here (e.g. sync quota) must not turn a successful fill into an error. */
-  private async rememberBestEffort(vault: Vault, domain: string, id: string): Promise<void> {
-    try {
-      await vault.rememberSite(domain, id);
-    } catch {
-      // Ignored on purpose.
-    }
-  }
-
   async fillCode(opts: {
     id: string;
     tabId: number;
-    confirmedDomain?: string;
   }): Promise<{ result: FillOutcome; code: string | null }> {
     // Only the tab the user is looking at; a stale or forged id must not reach another tab.
     if ((await this.p.tabs.active())?.id !== opts.tabId) {
       throw new ServiceError("invalid-request", "Not the active tab");
     }
     // Top frame only: the popup has no frame URL to check, so it never targets subframes.
-    return this.fillInto({
-      id: opts.id,
-      tabId: opts.tabId,
-      confirmedDomain: opts.confirmedDomain,
-    });
+    return this.fillInto({ id: opts.id, tabId: opts.tabId });
   }
 
   async flashBadge(text: string): Promise<void> {
@@ -1450,7 +1400,6 @@ export class VaultService {
         frameId,
         frameUrl,
         explicit,
-        requireLinked: true,
       });
       if (r.result !== "filled") await this.flashBadge("!");
     } catch {

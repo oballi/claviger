@@ -307,10 +307,6 @@ export const manageTr = {
   "corrupt.submit": "Kenara al ve yeni kasa kur",
   "corrupt.syncWarning":
     "Bu kasa eşitleniyor; kenara almak diğer cihazlardaki kopyayı da kaldırabilir.",
-  "security.fill": "Yalnızca bağlı sitede doldur",
-  "security.fillHint": "Kapalıyken başka sitede doldurmadan önce sorulur.",
-  "security.memory": "Kullandığım siteleri hatırla",
-  "security.memoryHint": "Doldurduğun hesap o sitede öne çıkar. Kapatınca hafıza silinir.",
   "security.shortcut": "Klavye kısayolu: Alt+Shift+O",
   "security.shortcutHint":
     "Chrome'da chrome://extensions/shortcuts adresinden, Firefox'ta eklenti yönetimi > dişli > \"Eklenti kısayollarını yönet\" ile değiştirilir.",

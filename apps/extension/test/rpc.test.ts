@@ -131,8 +131,6 @@ describe("envelope and sender checks", () => {
     { type: "fillCode", id: "a", tabId: -1 },
     { type: "fillCode", id: "a", tabId: 1.5 },
     { type: "fillCode", id: "", tabId: 1 },
-    { type: "setFillOnlyLinked", value: "yes" },
-    { type: "setSiteMemory" },
   ])("caps input sizes %#", async (request) => {
     const response = await handleRpcMessage(
       new VaultService(memoryPlatform()),
@@ -145,6 +143,8 @@ describe("envelope and sender checks", () => {
 
   it.each([
     { type: "nope" },
+    { type: "setFillOnlyLinked", value: false },
+    { type: "setSiteMemory", value: false },
     { type: "unlock" },
     { type: "reorder", order: "x" },
     { type: "setRevealRequiresPassword", token: "t" },
@@ -273,10 +273,8 @@ describe("fill rpc", () => {
     await expect(call("fillCode", forged as never)).rejects.toMatchObject({ code: "not-linked" });
     p.tabs.activeTab = { id: 4, url: "https://bank.com/" };
     expect(await call("fillCode", { id, tabId: 4 })).toEqual({ result: "filled", code: null });
-    await call("setFillOnlyLinked", { value: false });
-    await call("setSiteMemory", { value: false });
     const state = await call("getState", {});
-    expect([state.fillOnlyLinked, state.siteMemory]).toEqual([false, false]);
+    expect("fillOnlyLinked" in state || "siteMemory" in state).toBe(false);
   });
 
   it("rejects fillCode from an untrusted sender", async () => {

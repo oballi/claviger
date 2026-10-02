@@ -21,8 +21,6 @@ describe("settings", () => {
       theme: "system",
       clipboardClearSec: 0,
       recoveryCodeConfirmed: true,
-      fillOnlyLinked: true,
-      siteMemory: true,
     });
     expect(DEFAULT_SETTINGS.lockPolicy).toEqual({ kind: "browser-close" });
   });
@@ -71,8 +69,6 @@ describe("settings", () => {
       theme: "system",
       clipboardClearSec: 0,
       recoveryCodeConfirmed: true,
-      fillOnlyLinked: true,
-      siteMemory: true,
       storageArea: "sync",
       lastBackupAt: 7,
     });
@@ -110,5 +106,19 @@ describe("ServiceError", () => {
       message: "wait",
     });
     expect(new ServiceError("locked", "x").retryAfterMs).toBeUndefined();
+  });
+
+  it("ignores legacy siteMemory and fillOnlyLinked and drops them on the next save", async () => {
+    const local = new MemoryStorage();
+    await local.set({
+      [SETTINGS_KEY]: { ...DEFAULT_SETTINGS, siteMemory: false, fillOnlyLinked: false },
+    });
+    const loaded = await loadSettings(local);
+    expect("siteMemory" in loaded).toBe(false);
+    expect("fillOnlyLinked" in loaded).toBe(false);
+    await saveSettings(local, { theme: "dark" });
+    const stored = (await local.get([SETTINGS_KEY]))[SETTINGS_KEY] as Record<string, unknown>;
+    expect("siteMemory" in stored).toBe(false);
+    expect("fillOnlyLinked" in stored).toBe(false);
   });
 });

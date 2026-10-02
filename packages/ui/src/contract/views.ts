@@ -30,8 +30,6 @@ export interface ServiceState {
   theme: Theme;
   clipboardClearSec: ClipboardClearSec;
   recoveryCodeConfirmed: boolean;
-  fillOnlyLinked: boolean;
-  siteMemory: boolean;
   /** Set only when the unlocked vault is empty and a non-empty local copy exists. */
   snapshotOffer: { id: string; createdAt: number; accountCount: number } | null;
 }

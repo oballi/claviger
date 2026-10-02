@@ -313,11 +313,6 @@ export const manageEn: Record<ManageKey, string> = {
   "corrupt.submit": "Move aside and set up a new vault",
   "corrupt.syncWarning":
     "This vault is synced; moving it aside may also remove it from your other devices.",
-  "security.fill": "Fill only on linked sites",
-  "security.fillHint": "When off, you are asked before filling on another site.",
-  "security.memory": "Remember the sites I use",
-  "security.memoryHint":
-    "The account you fill moves up on that site. Turning this off erases the memory.",
   "security.shortcut": "Keyboard shortcut: Alt+Shift+O",
   "security.shortcutHint":
     'Change it at chrome://extensions/shortcuts in Chrome, or in Firefox via Add-ons > gear > "Manage Extension Shortcuts".',

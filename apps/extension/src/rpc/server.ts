@@ -177,17 +177,7 @@ async function dispatch(
       await service.setClockCheckEnabled(req.enabled);
       return null;
     case "fillCode":
-      return service.fillCode({
-        id: req.id,
-        tabId: req.tabId,
-        confirmedDomain: req.confirmedDomain,
-      });
-    case "setFillOnlyLinked":
-      await service.setFillOnlyLinked(req.value);
-      return null;
-    case "setSiteMemory":
-      await service.setSiteMemory(req.value);
-      return null;
+      return service.fillCode({ id: req.id, tabId: req.tabId });
     case "storeCapture":
       return service.storeCapture({ dataUrl: req.dataUrl, tabUrl: req.tabUrl });
     case "takeCapture":

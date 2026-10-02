@@ -1,9 +1,8 @@
 import { generateCode } from "@claviger/core";
 import { describe, expect, it, vi } from "vitest";
 import { handleUserTrigger } from "../src/background/triggers";
-import { saveSettings } from "../src/background/settings";
 import { MIN_FILL_REMAINING_SEC } from "../src/background/vaultService";
-import { codeOf, unlockedService } from "./helpers/service";
+import { codeOf, PASSWORD, unlockedService } from "./helpers/service";
 
 const SECRET = "JBSWY3DPEHPK3PXP";
 const TAB = 1;
@@ -29,7 +28,7 @@ const totpNow = (ms: number) =>
   );
 
 describe("fillCode", () => {
-  it("fills a linked account and remembers nothing new for an already linked domain", async () => {
+  it("fills a linked account", async () => {
     const { p, service, id } = await setup();
     const r = await service.fillCode({ id, tabId: TAB });
     expect(r).toEqual({ result: "filled", code: null });
@@ -37,8 +36,6 @@ describe("fillCode", () => {
     expect(p.tabs.fills[0]).toMatchObject({ tabId: TAB, explicit: false });
     expect(p.tabs.fills[0]?.code).toBe((await totpNow(p.clock.now())).code);
     expect(p.tabs.fills[0]?.expectedDomain).toBe("bank.com");
-    const vault = (service as unknown as { vault: { getSiteMemory(): Promise<object> } }).vault;
-    expect(await vault.getSiteMemory()).toEqual({});
   });
 
   it("refuses a tab that is not the active one", async () => {
@@ -49,25 +46,12 @@ describe("fillCode", () => {
     expect(p.tabs.fills).toHaveLength(0);
   });
 
-  it("binds a confirmation to the domain the user saw", async () => {
+  it("treats a wrong-site answer from the page as refused", async () => {
     const { p, service, id } = await setup();
-    await service.setFillOnlyLinked(false);
-    p.tabs.activeTab = { id: TAB, url: "https://other.com/" };
-    expect(await codeOf(service.fillCode({ id, tabId: TAB, confirmedDomain: "bank.com" }))).toBe(
-      "not-linked",
-    );
-    expect(p.tabs.fills).toHaveLength(0);
-  });
-
-  it("treats a wrong-site answer from the page as refused and writes no memory", async () => {
-    const { p, service, id } = await setup();
-    await service.setFillOnlyLinked(false);
-    p.tabs.activeTab = { id: TAB, url: "https://other.com/" };
     p.tabs.next = "wrong-site";
-    const r = await service.fillCode({ id, tabId: TAB, confirmedDomain: "other.com" });
+    const r = await service.fillCode({ id, tabId: TAB });
     expect(r.result).toBe("refused");
     expect(r.code).toBe(p.tabs.fills[0]?.code);
-    p.tabs.next = "filled";
   });
 
   it("re-reads the tab url again after the wait, right before injecting", async () => {
@@ -98,26 +82,16 @@ describe("fillCode", () => {
     expect(view.accounts[0]?.code).toBe(c5.code);
   });
 
-  it("refuses an unlinked site while fillOnlyLinked is on", async () => {
-    const { p, service, id } = await setup();
-    p.tabs.activeTab = { id: TAB, url: "https://other.com/" };
-    expect(await codeOf(service.fillCode({ id, tabId: TAB }))).toBe("not-linked");
-    expect(await codeOf(service.fillCode({ id, tabId: TAB, confirmedDomain: "other.com" }))).toBe(
-      "not-linked",
-    );
-    expect(p.tabs.fills).toHaveLength(0);
-  });
-
-  it("asks for confirmation on an unlinked site when fillOnlyLinked is off", async () => {
-    const { p, service, id } = await setup();
-    await service.setFillOnlyLinked(false);
+  it("an unlinked account is always refused and never burns an HOTP counter", async () => {
+    const { p, service, id } = await setup({ type: "hotp" });
     p.tabs.activeTab = { id: TAB, url: "https://other.com/" };
     expect(await codeOf(service.fillCode({ id, tabId: TAB }))).toBe("not-linked");
     expect(p.tabs.fills).toHaveLength(0);
-    expect((await service.fillCode({ id, tabId: TAB, confirmedDomain: "other.com" })).result).toBe(
-      "filled",
+    const c5 = await generateCode(
+      { type: "hotp", secret: SECRET, algorithm: "SHA1", digits: 6, period: 30, counter: 5 },
+      0,
     );
-    expect(p.tabs.fills).toHaveLength(1);
+    expect((await service.listAccounts()).accounts[0]?.code).toBe(c5.code);
   });
 
   it("treats look-alike hosts as unlinked", async () => {
@@ -240,97 +214,55 @@ describe("fillCode", () => {
   });
 });
 
-describe("site memory", () => {
-  it("remembers the site after a fill when site memory is on, but never authorises a fill", async () => {
-    const { p, service, id } = await setup();
-    await service.setFillOnlyLinked(false);
-    p.tabs.activeTab = { id: TAB, url: "https://other.com/" };
-    await service.fillCode({ id, tabId: TAB, confirmedDomain: "other.com" });
-    const view = await service.listAccounts({ pageUrl: "https://other.com/x" });
-    expect(view.matches.exact).toEqual([]);
-    // The shortcut uses account domains only.
-    p.tabs.fills.length = 0;
-    await service.fillFromCommand();
-    expect(p.tabs.fills).toHaveLength(0);
-    expect(p.tabs.badge).toBe("");
-    expect(p.tabs.badges).toContain("?");
-  });
+describe("legacy site memory", () => {
+  const KEY = "vault:sitemem";
+  const stored = async (p: Awaited<ReturnType<typeof setup>>["p"]) =>
+    (await p.local.get([KEY]))[KEY];
 
-  it("does not remember after a failed fill or when the setting is off", async () => {
+  it("removes a stored record on unlock, again when it reappears, and never writes one", async () => {
     const { p, service, id } = await setup();
-    p.tabs.next = "no-field";
-    await service.fillCode({ id, tabId: TAB });
-    p.tabs.next = "filled";
-    await service.setSiteMemory(false);
-    await service.fillCode({ id, tabId: TAB });
-    await service.setSiteMemory(true);
-    p.tabs.activeTab = { id: TAB, url: "https://app.bank.com/" };
-  });
-
-  it("keeps ordering hints out of the exact list", async () => {
-    const { service, id } = await setup();
-    await service.fillCode({ id, tabId: TAB });
-    const view = await service.listAccounts({ pageUrl: BANK });
-    expect(view.matches.exact).toEqual([id]);
-  });
-
-  it("forgets all sites when site memory is turned off", async () => {
-    const { p, service, id } = await setup();
-    await service.setFillOnlyLinked(false);
-    p.tabs.activeTab = { id: TAB, url: "https://other.com/" };
-    await service.fillCode({ id, tabId: TAB, confirmedDomain: "other.com" });
-    await service.setSiteMemory(false);
-    await service.setSiteMemory(true);
-  });
-
-  it("clears memory on the next unlock when it was turned off while locked", async () => {
-    const { p, service, id } = await setup();
-    await service.setFillOnlyLinked(false);
-    p.tabs.activeTab = { id: TAB, url: "https://other.com/" };
-    await service.fillCode({ id, tabId: TAB, confirmedDomain: "other.com" });
+    await p.local.set({ [KEY]: { v: 1, data: "legacy" } });
     await service.lock();
-    await service.setSiteMemory(false);
-    await service.setSiteMemory(true);
-    await service.unlock("correct horse battery");
+    await service.unlock(PASSWORD);
+    expect(await stored(p)).toBeUndefined();
+    await service.fillCode({ id, tabId: TAB });
+    expect(await stored(p)).toBeUndefined();
+    // A record that comes back later (for example via sync) is purged on the next unlock too.
+    await p.local.set({ [KEY]: { v: 1, data: "again" } });
+    await service.lock();
+    await service.unlock(PASSWORD);
+    expect(await stored(p)).toBeUndefined();
   });
 
-  it("still reports filled when remembering fails", async () => {
-    const { p, service, id } = await setup();
-    await service.setFillOnlyLinked(false);
-    p.tabs.activeTab = { id: TAB, url: "https://other.com/" };
-    const real = p.local.set.bind(p.local);
-    const orig = p.local.set;
-    // The vault lives in local storage here: make only the site-memory write fail.
-    p.local.set = async (items: Record<string, unknown>) => {
-      if (Object.keys(items).some((k) => k.includes("sitemem"))) throw new Error("QUOTA_BYTES");
-      return real(items);
-    };
-    const r = await service.fillCode({ id, tabId: TAB, confirmedDomain: "other.com" });
-    p.local.set = orig;
-    expect(r.result).toBe("filled");
-    expect(p.tabs.fills).toHaveLength(1);
+  it("an unlock on a clean vault never calls storage.remove for the record", async () => {
+    const { p, service } = await setup();
+    await service.lock();
+    const remove = vi.spyOn(p.local, "remove");
+    await service.unlock(PASSWORD);
+    expect(remove.mock.calls.flatMap((c) => c[0] as string[])).not.toContain(KEY);
+  });
+
+  it("a failing storage read never fails an unlock", async () => {
+    const { p, service } = await setup();
+    await p.local.set({ [KEY]: "garbage" });
+    await service.lock();
+    const get = p.local.get.bind(p.local);
+    vi.spyOn(p.local, "get").mockImplementation(async (keys?: string[]) => {
+      if (keys?.length === 1 && keys[0] === KEY) throw new Error("boom");
+      return get(keys as string[]);
+    });
+    await expect(service.unlock(PASSWORD)).resolves.toBeUndefined();
+    expect((await service.getState()).status).toBe("unlocked");
   });
 });
 
 describe("settings", () => {
-  it("defaults both on and exposes them in state", async () => {
-    const { service } = await setup();
-    const s = await service.getState();
-    expect(s.fillOnlyLinked).toBe(true);
-    expect(s.siteMemory).toBe(true);
-    await service.setFillOnlyLinked(false);
-    await service.setSiteMemory(false);
-    const t = await service.getState();
-    expect([t.fillOnlyLinked, t.siteMemory]).toEqual([false, false]);
-  });
-
-  it("falls back to defaults for corrupt stored values", async () => {
+  it("getState has no fillOnlyLinked or siteMemory keys", async () => {
     const { p, service } = await setup();
-    await saveSettings(p.local, {});
-    const stored = (await p.local.get(["settings"])).settings as Record<string, unknown>;
-    await p.local.set({ settings: { ...stored, fillOnlyLinked: "x", siteMemory: 3 } });
+    await p.local.set({ settings: { fillOnlyLinked: false, siteMemory: false } });
     const s = await service.getState();
-    expect([s.fillOnlyLinked, s.siteMemory]).toEqual([true, true]);
+    expect("fillOnlyLinked" in s).toBe(false);
+    expect("siteMemory" in s).toBe(false);
   });
 });
 
@@ -368,6 +300,23 @@ describe("command", () => {
     await service.fillFromCommand();
     expect(p.tabs.badges).toEqual(["?", ""]);
     expect(p.tabs.fills).toHaveLength(0);
+  });
+
+  it("an unlinked account matching only by name is never filled: badge ? and zero fills", async () => {
+    const { p, service } = await setup({ domain: "" });
+    await service.fillFromCommand();
+    expect(p.tabs.badges).toEqual(["?", ""]);
+    expect(p.tabs.fills).toHaveLength(0);
+  });
+
+  it("fills the linked account when an unlinked one is also named like the site", async () => {
+    const { p, service } = await setup();
+    await service.addAccount({
+      uri: "otpauth://totp/Bank:other?secret=GEZDGNBVGY3TQOJQ&issuer=Bank",
+    });
+    await service.fillFromCommand();
+    expect(p.tabs.fills).toHaveLength(1);
+    expect(p.tabs.fills[0]?.code).toBe((await totpNow(p.clock.now())).code);
   });
 
   it("badges ! when the fill fails", async () => {
@@ -418,6 +367,18 @@ describe("menu", () => {
     p.tabs.badges.length = 0;
     await service.fillFromMenu({ id: TAB, url: BANK }, 7, "https://evil.io/frame");
     expect(p.tabs.fills).toHaveLength(0);
+  });
+
+  it("matches by registrable domain: a multi-label suffix is fine, a look-alike is not", async () => {
+    const { p, service } = await setup({ domain: "https://example.co.uk/" });
+    const page = "https://www.example.co.uk/";
+    p.tabs.activeTab = { id: TAB, url: page };
+    await service.fillFromMenu({ id: TAB, url: page }, 7, "https://login.example.co.uk/");
+    expect(p.tabs.fills).toHaveLength(1);
+    p.tabs.fills.length = 0;
+    await service.fillFromMenu({ id: TAB, url: "https://evil-example.co.uk/" }, 0, undefined);
+    expect(p.tabs.fills).toHaveLength(0);
+    expect(p.tabs.badges).toContain("?");
   });
 
   it("refuses a subframe without a frame url", async () => {
