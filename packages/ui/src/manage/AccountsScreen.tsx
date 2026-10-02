@@ -125,10 +125,11 @@ export function AccountsScreen({
       <div className="flex flex-wrap items-end justify-between gap-6">
         <PageTitle title={t("accounts.title")} count={accounts.length} />
         <div className="flex flex-wrap items-center gap-4">
-          <div className="flex h-11 w-[260px] items-center gap-2.5 border-b border-line">
+          <div className="ov-line flex h-11 w-[260px] items-center gap-2.5 border-b border-line">
             <Icon name="search" size={15} className="text-muted" />
             <input
               type="search"
+              data-bare=""
               aria-label={t("codes.search")}
               placeholder={t("accounts.searchPlaceholder")}
               value={query}

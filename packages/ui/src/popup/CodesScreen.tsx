@@ -319,11 +319,12 @@ export function CodesScreen({
         </div>
       ) : null}
       <div className="px-7 pt-1">
-        <div className="flex h-11 items-center gap-2.5 border-b border-hair">
+        <div className="ov-line flex h-11 items-center gap-2.5 border-b border-hair">
           <Icon name="search" size={15} className="text-muted" />
           <input
             ref={searchRef}
             type="search"
+            data-bare=""
             aria-label={t("codes.search")}
             placeholder={t("codes.searchPlaceholder")}
             value={query}

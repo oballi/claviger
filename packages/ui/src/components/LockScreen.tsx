@@ -97,10 +97,11 @@ export function LockScreen({
             <label htmlFor="unlock-password" className="text-xs text-muted">
               {t("lock.password")}
             </label>
-            <div className="flex items-center gap-2.5 border-b border-line pb-1.5">
+            <div className="ov-line flex items-center gap-2.5 border-b border-line pb-1.5">
               <input
                 id="unlock-password"
                 type="password"
+                data-bare=""
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

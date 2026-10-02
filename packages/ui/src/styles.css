@@ -66,6 +66,33 @@ body {
   outline-offset: 2px;
 }
 
+/* Text fields use the underline-only design language: 2px bottom line instead of an outline box. */
+input:is(
+    :not([type]),
+    [type="text"],
+    [type="password"],
+    [type="search"],
+    [type="email"],
+    [type="tel"],
+    [type="number"],
+    [type="url"]
+  ):focus-visible,
+textarea:focus-visible {
+  outline: none;
+  box-shadow: inset 0 -1px 0 var(--ov-text);
+  border-bottom-color: var(--ov-text);
+}
+
+/* Bare inputs sit inside a bordered .ov-line wrapper that carries the underline instead. */
+input[data-bare]:focus-visible {
+  box-shadow: none;
+}
+
+.ov-line:has(input:focus-visible) {
+  box-shadow: inset 0 -1px 0 var(--ov-text);
+  border-bottom-color: var(--ov-text);
+}
+
 @media print {
   body * {
     visibility: hidden;
