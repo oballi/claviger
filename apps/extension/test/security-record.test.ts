@@ -166,6 +166,28 @@ describe("device security record (H1)", () => {
     expect(b.local.data.has(PERSISTED)).toBe(false);
   });
 
+  it("a record sealed for another vaultId resolves to safe defaults (L4)", async () => {
+    const { p, s } = await setupOnly();
+    const vault = (
+      s as unknown as {
+        vault: { sealDeviceRecord: (k: string, v: unknown) => Promise<unknown> };
+      }
+    ).vault;
+    p.local.data.set(
+      SEAL,
+      await vault.sealDeviceRecord(SEAL, {
+        vaultId: "other",
+        lockPolicy: { kind: "never" },
+        revealRequiresPassword: false,
+      }),
+    );
+    await s.lock();
+    const fresh = new VaultService(restartBrowser(p));
+    await fresh.unlock(PASSWORD);
+    expect(p.local.data.has(PERSISTED)).toBe(false);
+    expect((await fresh.getState()).revealRequiresPassword).toBe(true);
+  });
+
   it("deleteVault removes the record; snapshots do not carry it", async () => {
     const p = await lockedVault();
     const s = new VaultService(restartBrowser(p));
@@ -215,6 +237,35 @@ describe("device security record (H1)", () => {
       await fresh.handleIdleState("locked");
       expect((await fresh.getState()).status).toBe("unlocked");
     });
+
+    it("locks when the seal is deleted and the mirror is relaxed (P2)", async () => {
+      const { p } = await setupOnly({ kind: "browser-close-or-screen-lock" });
+      p.local.data.delete(SEAL);
+      await patchSettings(p, { lockPolicy: { kind: "browser-close" } });
+      const fresh = new VaultService(p);
+      await fresh.handleIdleState("locked");
+      expect((await fresh.getState()).status).toBe("locked");
+      expect(p.session.data.has(SESSION)).toBe(false);
+    });
+
+    it("locks when the vault cannot be loaded and stays locked after repair (P3)", async () => {
+      const { p } = await setupOnly({ kind: "browser-close-or-screen-lock" });
+      const header = p.local.data.get("vault:header");
+      p.local.data.set("vault:header", { junk: 1 });
+      await patchSettings(p, { lockPolicy: { kind: "browser-close" } });
+      await new VaultService(p).handleIdleState("locked");
+      expect(p.session.data.has(SESSION)).toBe(false);
+      p.local.data.set("vault:header", header);
+      expect((await new VaultService(p).getState()).status).toBe("locked");
+    });
+
+    it("locks from the seal alone after a restart with the mirror relaxed (M2)", async () => {
+      const { p } = await setupOnly({ kind: "browser-close-or-screen-lock" });
+      await patchSettings(p, { lockPolicy: { kind: "browser-close" } });
+      const fresh = new VaultService(p);
+      await fresh.handleIdleState("locked");
+      expect((await fresh.getState()).status).toBe("locked");
+    });
   });
 
   describe("seal write failures never lock the user out", () => {
@@ -240,6 +291,19 @@ describe("device security record (H1)", () => {
         storageArea: "local",
       });
       expect((await s.getState()).status).toBe("unlocked");
+    });
+
+    it("setLockPolicy never -> browser-close resolves and drops the key when only the mirror write fails (P4)", async () => {
+      const { p, s } = await setupOnly({ kind: "never" });
+      expect(p.local.data.has(PERSISTED)).toBe(true);
+      const original = p.local.set.bind(p.local);
+      p.local.set = async (items: Record<string, unknown>) => {
+        if ("settings" in items) throw new Error("QUOTA_BYTES quota exceeded");
+        return original(items);
+      };
+      await s.setLockPolicy((await s.reauth(PASSWORD)).token, { kind: "browser-close" });
+      expect(p.local.data.has(PERSISTED)).toBe(false);
+      expect((await new VaultService(restartBrowser(p)).getState()).status).toBe("locked");
     });
 
     it("setLockPolicy and setRevealRequiresPassword are strict: nothing changes on failure", async () => {

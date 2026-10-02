@@ -707,13 +707,22 @@ export class VaultService {
       try {
         vault = await this.ensureLoaded();
       } catch {
-        vault = null;
+        // Fail closed: a key that cannot be judged must not outlive a screen lock.
+        const candidate = await this.keys.loadCandidate().catch(() => ({}));
+        if (candidate) await this.lock();
+        return;
       }
     }
-    const sealed = vault ? ((await this.security.read(vault)) ?? SAFE_SECURITY).lockPolicy : null;
+    // No seal to read (missing, unreadable, tampered) means the policy is unknown: lock.
+    const sealed = vault ? await this.security.read(vault) : null;
     // The plaintext mirror may only tighten (trigger a lock), never relax.
     const mirror = (await this.settings()).lockPolicy;
-    if (sealed?.kind === SCREEN_LOCK || mirror.kind === SCREEN_LOCK) await this.lock();
+    if (
+      (vault && !sealed) ||
+      sealed?.lockPolicy.kind === SCREEN_LOCK ||
+      mirror.kind === SCREEN_LOCK
+    )
+      await this.lock();
   }
 
   async listAccounts(opts: { pageUrl?: string } = {}): Promise<AccountListView> {
@@ -1134,8 +1143,13 @@ export class VaultService {
       const cur = (await this.security.read(vault)) ?? SAFE_SECURITY;
       // Seal first and strictly: if it throws, nothing else has changed.
       await this.security.write(vault, { ...cur, lockPolicy: policy });
-      await saveSettings(this.p.local, { lockPolicy: policy });
       await this.keys.store(vault.exportKey(), policy);
+      try {
+        await saveSettings(this.p.local, { lockPolicy: policy });
+      } catch (e) {
+        // The mirror is advisory (it may only tighten); the seal and key state are already correct.
+        console.error("lockPolicy mirror write failed", e instanceof Error ? e.name : "error");
+      }
       if (await this.relockIfOvertaken(epoch)) return;
       await this.scheduleAutolock(policy);
     });
