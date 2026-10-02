@@ -352,4 +352,17 @@ describe("restoreSnapshot groups", () => {
     expect(listing.groups).toEqual([]);
     expect(listing.accounts[0]!.groupId ?? null).toBeNull();
   });
+
+  it("puts the account back into its group after the group was renamed", async () => {
+    const { service, snap, g } = await groupedSnapshot();
+    await service.renameGroup(g.id, "Renamed");
+    const { token } = await service.reauth(PASSWORD);
+    expect(await service.restoreSnapshot(token, snap.id)).toMatchObject({
+      added: 1,
+      ungrouped: 0,
+    });
+    const listing = await service.listAccounts();
+    expect(listing.groups).toEqual([{ id: g.id, name: "Renamed" }]);
+    expect(listing.accounts[0]!.groupId).toBe(g.id);
+  });
 });

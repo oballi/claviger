@@ -884,17 +884,18 @@ export class VaultService {
       }
       const listing = await opened.listAccounts();
       await this.snapshot("before-restore");
-      // Same vault: only groups that still exist are reused (none are created or resurrected);
+      // Same vault: groups are matched by id against the live index and passed by their current
+      // name, so a renamed group is reused and a deleted one is never created or resurrected;
       // accounts that are still there are duplicates, so their current group stays untouched.
-      const live = sameVault ? new Set((await vault.listAccounts()).groups.map((g) => g.id)) : null;
-      const names = new Map(listing.groups.map((g) => [g.id, g.name]));
+      const live = sameVault
+        ? new Map((await vault.listAccounts()).groups.map((g) => [g.id, g.name]))
+        : null;
+      const names = live ?? new Map(listing.groups.map((g) => [g.id, g.name]));
       const lostGroup = (a: { groupId?: string | null }) =>
         !!a.groupId && !!live && !live.has(a.groupId);
       const res = await vault.addAccountsWithGroups(
         listing.accounts,
-        listing.accounts.map((a) =>
-          a.groupId && !lostGroup(a) ? names.get(a.groupId) : undefined,
-        ),
+        listing.accounts.map((a) => (a.groupId ? names.get(a.groupId) : undefined)),
         sameVault ? [] : listing.groups.map((g) => g.name),
       );
       const { added, duplicates } = res;
