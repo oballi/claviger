@@ -165,6 +165,14 @@ export function ImportScreen({
     ] as const;
     body = (
       <>
+        {source.skippedImages?.length ? (
+          <p role="status" className="m-0 text-sm text-warn">
+            {t("backup.qrSkipped", {
+              count: source.skippedImages.length,
+              names: source.skippedImages.join(", "),
+            })}
+          </p>
+        ) : null}
         <dl className="m-0 grid grid-cols-3 border-y border-hair">
           {counts.map(([count, label], i) => (
             <div

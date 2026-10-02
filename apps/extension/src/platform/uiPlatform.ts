@@ -37,8 +37,12 @@ async function openOrFocusManage(hash: string): Promise<void> {
 }
 
 /** The popup opens the manage page in a new tab; the manage page itself only changes its hash. */
-export function createBrowserUiPlatform(context: "popup" | "manage"): UiPlatform {
+export function createBrowserUiPlatform(
+  context: "popup" | "manage",
+  extra: Partial<UiPlatform> = {},
+): UiPlatform {
   return {
+    ...extra,
     rpc,
     isFirefox: import.meta.env.FIREFOX,
     copy: (text) => navigator.clipboard.writeText(text),
@@ -73,11 +77,6 @@ export function createBrowserUiPlatform(context: "popup" | "manage"): UiPlatform
       const serverDate = response.headers.get("date");
       if (!serverDate) throw new Error("The response has no Date header");
       return { serverDate, startMs, endMs };
-    },
-    async decodeQr(image) {
-      // Lazy: the wasm decoder must stay out of the popup bundle.
-      const { decodeQrBlob, decodeQrImageData } = await import("../qr/decode");
-      return image instanceof Blob ? decodeQrBlob(image) : decodeQrImageData(image);
     },
     download(filename, content) {
       const url = URL.createObjectURL(new Blob([content], { type: "application/octet-stream" }));

@@ -3,6 +3,7 @@ import "../../src/ui/styles.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserUiPlatform } from "../../src/platform/uiPlatform";
+import { decodeQr } from "../../src/qr/browserDecode";
 import { LocaleProvider, pickLocale } from "../../src/ui/i18n/i18n";
 import { ManageApp } from "../../src/ui/manage/ManageApp";
 import { UiProvider } from "../../src/ui/platform";
@@ -12,7 +13,7 @@ document.documentElement.lang = locale;
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <UiProvider value={createBrowserUiPlatform("manage")}>
+    <UiProvider value={createBrowserUiPlatform("manage", { decodeQr })}>
       <LocaleProvider locale={locale}>
         <ManageApp />
       </LocaleProvider>

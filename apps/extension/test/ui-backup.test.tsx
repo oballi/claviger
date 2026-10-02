@@ -8,6 +8,7 @@ import { ImportScreen } from "../src/ui/manage/ImportScreen";
 import { harness, renderUi, type Harness } from "./helpers/ui";
 import { PASSWORD } from "./helpers/service";
 import { migrationUri } from "./helpers/qr";
+import { QrImageTooLargeError } from "../src/qr/limits";
 
 const ACME = "otpauth://totp/Acme:bob?secret=JBSWY3DPEHPK3PXP&issuer=Acme";
 
@@ -233,9 +234,43 @@ describe("BackupScreen QR images", () => {
     expect(onImport).not.toHaveBeenCalled();
   });
 
+  it("warns about images without a 2FA QR but still imports the rest", async () => {
+    const hh = await harness();
+    hh.ui.decodeQr.mockImplementation(async (image) =>
+      (image as File).name === "good.png" ? [BANK] : [],
+    );
+    const state = await hh.ui.rpc("getState", {});
+    function Wrapper() {
+      const [source, setSource] = useState<ImportSource | null>(null);
+      return source ? (
+        <ImportScreen source={source} onDone={vi.fn()} onCancel={vi.fn()} />
+      ) : (
+        <BackupScreen state={state} onChanged={vi.fn()} onImport={setSource} />
+      );
+    }
+    renderUi(<Wrapper />, hh.ui);
+    await userEvent.upload(screen.getByLabelText("Dosya seç"), [
+      new File(["x"], "good.png", { type: "image/png" }),
+      new File(["x"], "blank.png", { type: "image/png" }),
+    ]);
+    expect(await screen.findByText("1 görselde 2FA QR'ı bulunamadı: blank.png")).toBeTruthy();
+    expect(screen.getByRole("checkbox", { name: "Bank (ali) hesabını seç" })).toBeTruthy();
+  });
+
+  it("rejects more than 20 files", async () => {
+    const { onImport, ui } = await open();
+    await userEvent.upload(
+      screen.getByLabelText("Dosya seç"),
+      Array.from({ length: 21 }, (_, i) => new File(["x"], `${i}.png`, { type: "image/png" })),
+    );
+    expect(await screen.findByText("En fazla 20 dosya seçilebilir.")).toBeTruthy();
+    expect(onImport).not.toHaveBeenCalled();
+    expect(ui.decodeQr).not.toHaveBeenCalled();
+  });
+
   it("reports images that are too large", async () => {
     const { ui } = await open();
-    ui.decodeQr.mockRejectedValue(new Error("qr-image-too-large"));
+    ui.decodeQr.mockRejectedValue(new QrImageTooLargeError());
     await userEvent.upload(
       screen.getByLabelText("Dosya seç"),
       new File(["x"], "huge.png", { type: "image/png" }),

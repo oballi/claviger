@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import type { ServiceState, StorageUsageView } from "../../background/vaultService";
-import { QR_IMAGE_TOO_LARGE } from "../../qr/limits";
+import { QrImageTooLargeError } from "../../qr/limits";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { NewPasswordFields, newPasswordProblem } from "../components/NewPasswordFields";
@@ -21,6 +21,7 @@ import { SnapshotsSection } from "./SnapshotsSection";
 
 export const MAX_IMPORT_CHARS = 5_000_000;
 const MAX_IMAGE_BYTES = 20_000_000;
+const MAX_IMPORT_FILES = 20;
 const OTP_TEXT = /^otpauth(-migration)?:/i;
 
 function isImage(file: File): boolean {
@@ -30,6 +31,8 @@ function isImage(file: File): boolean {
 export interface ImportSource {
   text: string;
   name: string | null;
+  /** Image files that held no 2FA QR; shown as a warning on the preview. */
+  skippedImages?: string[];
 }
 
 const SOURCES = ["Google Authenticator", "Authenticator", "Aegis", "2FAS", "otp-vault"];
@@ -152,15 +155,20 @@ export function BackupScreen({
     resetPasswords();
   }
 
-  function readText(text: string, name: string | null) {
+  function readText(text: string, name: string | null, skippedImages: string[] = []) {
     setImportError(null);
     if (text.length > MAX_IMPORT_CHARS) setImportError(t("import.tooLarge"));
-    else onImport({ text, name });
+    else onImport({ text, name, ...(skippedImages.length > 0 ? { skippedImages } : {}) });
   }
 
   async function readFiles(files: File[]) {
     if (files.length === 0) return;
     setImportError(null);
+    if (files.length > MAX_IMPORT_FILES) {
+      setImportError(t("import.tooManyFiles"));
+      return;
+    }
+    const skipped: string[] = [];
     const parts: string[] = [];
     let qrFound = false;
     let sawImage = false;
@@ -173,17 +181,18 @@ export function BackupScreen({
         }
         let texts: string[];
         try {
+          if (!decodeQr) throw new Error("QR decoding is not available here");
           texts = await decodeQr(file);
         } catch (e) {
           setImportError(
-            e instanceof Error && e.message === QR_IMAGE_TOO_LARGE
-              ? t("import.imageTooLarge")
-              : t("import.unreadable"),
+            e instanceof QrImageTooLargeError ? t("import.imageTooLarge") : t("import.unreadable"),
           );
           return;
         }
         if (texts.length > 0) qrFound = true;
-        parts.push(...texts.filter((text) => OTP_TEXT.test(text)));
+        const usable = texts.filter((text) => OTP_TEXT.test(text));
+        if (usable.length === 0) skipped.push(file.name);
+        parts.push(...usable);
         continue;
       }
       if (file.size > MAX_IMPORT_CHARS) {
@@ -204,6 +213,7 @@ export function BackupScreen({
     readText(
       parts.join("\n"),
       files.length === 1 ? (files[0]?.name ?? null) : files.map((f) => f.name).join(", "),
+      skipped,
     );
   }
 

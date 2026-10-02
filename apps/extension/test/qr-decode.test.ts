@@ -3,7 +3,13 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { configureQrModule, decodeQrImageData } from "../src/qr/decode";
-import { assertQrImageSize, MAX_QR_PIXELS, QR_IMAGE_TOO_LARGE } from "../src/qr/limits";
+import {
+  assertQrImageSize,
+  MAX_QR_PIXELS,
+  QrImageTooLargeError,
+  QrImageUnreadableError,
+  reducedQrSize,
+} from "../src/qr/limits";
 import { qrPixels, sideBySide } from "./helpers/qr";
 
 const URI_A = "otpauth://totp/Acme:bob?secret=JBSWY3DPEHPK3PXP&issuer=Acme";
@@ -56,6 +62,15 @@ describe("assertQrImageSize", () => {
   it("rejects images over 40 megapixels", () => {
     expect(() => assertQrImageSize(8000, 5000)).not.toThrow();
     expect(MAX_QR_PIXELS).toBe(40_000_000);
-    expect(() => assertQrImageSize(8001, 5000)).toThrow(QR_IMAGE_TOO_LARGE);
+    expect(() => assertQrImageSize(8001, 5000)).toThrow(QrImageTooLargeError);
+    expect(() => assertQrImageSize(0, 10)).toThrow(QrImageUnreadableError);
+  });
+});
+
+describe("reducedQrSize", () => {
+  it("keeps small images and scales large ones to a 3000 px longest side", () => {
+    expect(reducedQrSize(3000, 2000)).toBeNull();
+    expect(reducedQrSize(6000, 3000)).toEqual({ width: 3000, height: 1500 });
+    expect(reducedQrSize(1000, 9000)).toEqual({ width: 333, height: 3000 });
   });
 });

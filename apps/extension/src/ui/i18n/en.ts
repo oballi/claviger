@@ -358,6 +358,8 @@ export const en: Record<MessageKey, string> = {
   "import.qrNone": "No QR code was found in this image.",
   "import.qrNotOtp": "Found a QR code, but it isn't a 2FA code.",
   "import.imageTooLarge": "The image is too large.",
+  "backup.qrSkipped": "No 2FA QR found in {count} image(s): {names}",
+  "import.tooManyFiles": "You can select up to 20 files at a time.",
   "import.unreadable": "The file could not be read.",
   "import.breadcrumb": "Location",
   "import.crumb": "import",

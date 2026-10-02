@@ -352,6 +352,8 @@ export const tr = {
   "import.qrNone": "Bu görselde QR kod bulunamadı.",
   "import.qrNotOtp": "QR bulundu ama 2FA kodu değil.",
   "import.imageTooLarge": "Görsel çok büyük.",
+  "backup.qrSkipped": "{count} görselde 2FA QR'ı bulunamadı: {names}",
+  "import.tooManyFiles": "En fazla 20 dosya seçilebilir.",
   "import.unreadable": "Dosya okunamadı.",
   "import.breadcrumb": "Konum",
   "import.crumb": "içe aktar",
