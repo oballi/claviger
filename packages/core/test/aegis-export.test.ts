@@ -60,6 +60,11 @@ function independentDecrypt(file: EncryptedFile, password: string) {
 }
 
 describe("exportAegis", () => {
+  it("never reuses a nonce between the slot and the database", async () => {
+    const json = JSON.parse(await exportAegis([acc()], [], { password: "pw" }, deps));
+    expect(json.header.slots[0].key_params.nonce).not.toBe(json.header.params.nonce);
+  });
+
   it("plain output reads back through parseAegis", async () => {
     const input = [
       acc(),

@@ -411,6 +411,14 @@ describe("groups in backups", () => {
     expect(preview).toMatchObject({ status: "ok", format: "aegis" });
   }, 30_000);
 
+  it("refuses the vault password for the encrypted Aegis export", async () => {
+    const { service } = await unlockedService();
+    const token = (await service.reauth(PASSWORD)).token;
+    const err = await service.exportVault(token, "aegis", PASSWORD).catch((e: unknown) => e);
+    expect((err as { code: string }).code).toBe("invalid-request");
+    expect((err as Error).message).not.toContain(PASSWORD);
+  });
+
   it("requires a password for the encrypted Aegis export", async () => {
     const { service } = await unlockedService();
     const token = (await service.reauth(PASSWORD)).token;

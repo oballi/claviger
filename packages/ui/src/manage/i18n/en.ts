@@ -140,6 +140,7 @@ export const manageEn: Record<ManageKey, string> = {
   "dupes.mergedOne": "1 copy removed. Details added to the kept account are not reverted.",
   "dupes.undone": "{count} accounts restored.",
   "dupes.undoneOne": "1 account restored.",
+  "dupes.undonePartial": "{count} / {total} accounts restored. The rest were deleted or expired.",
   "dupes.none": "No duplicates found.",
   "account.domains": "Sites",
   "account.domainsHint": 'Separate with commas. Codes show under "This site" on these sites.',
@@ -256,6 +257,7 @@ export const manageEn: Record<ManageKey, string> = {
   "backup.aegisPlainHint": "Readable by Aegis and others. Your keys are NOT protected.",
   "backup.download": "Download backup",
   "backup.downloadConfirm": "Download",
+  "backup.samePassword": "Use a password different from your vault password for this export.",
   "backup.done": "Backup downloaded. Accounts: {count}.",
   "backup.skipped":
     "Unreadable entries left out of the backup: {skipped}. See the maintenance notice on the Accounts page.",

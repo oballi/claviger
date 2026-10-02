@@ -942,6 +942,7 @@ export class VaultService {
         removed.push(copy.id);
       }
       const undoId = this.p.random.uuid();
+      this.pruneMergeUndos();
       this.mergeUndos.set(undoId, {
         ids: removed,
         expiresAt: this.p.clock.now() + MERGE_UNDO_MS,
@@ -950,12 +951,16 @@ export class VaultService {
     });
   }
 
+  private pruneMergeUndos(): void {
+    const now = this.p.clock.now();
+    for (const [key, offer] of this.mergeUndos)
+      if (offer.expiresAt < now) this.mergeUndos.delete(key);
+  }
+
   undoMerge(undoId: string): Promise<{ restored: number }> {
     return this.exclusive(async () => {
       const vault = await this.requireVault();
-      const now = this.p.clock.now();
-      for (const [key, offer] of this.mergeUndos)
-        if (offer.expiresAt < now) this.mergeUndos.delete(key);
+      this.pruneMergeUndos();
       const offer = this.mergeUndos.get(undoId);
       if (!offer) throw new ServiceError("not-found", "This merge can no longer be undone");
       this.mergeUndos.delete(undoId);
@@ -1185,6 +1190,9 @@ export class VaultService {
     if (format === "claviger" || format === "aegis") assertPassword(exportPassword ?? "");
     return this.exclusive(async () => {
       const vault = await this.spendToken(token);
+      // An export under the vault password would hand its key material to a file that leaves the vault.
+      if (format === "aegis" && (await vault.verifyPassword(exportPassword ?? "")))
+        throw new ServiceError("invalid-request", "Use a different password for this export");
       const { accounts, unreadable, groups, pinned } = await vault.listAccounts();
       // The user's calendar day: a UTC date would name an evening export after tomorrow (or yesterday).
       const now = new Date(this.p.clock.now());

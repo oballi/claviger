@@ -128,6 +128,20 @@ describe("mergeAccounts", () => {
   });
 });
 
+describe("mergeAccounts offers", () => {
+  it("prunes expired undo entries on the next merge", async () => {
+    const { service, p } = await unlockedService();
+    const offers = () => (service as unknown as { mergeUndos: Map<string, unknown> }).mergeUndos;
+    const a = await add(service, { secret: SECRET, issuer: "GitHub", label: "me" });
+    const b = await plant(service, a.id);
+    await service.mergeAccounts(a.id, [b.id]);
+    p.clock.advance(61_000);
+    const c = await plant(service, a.id);
+    await service.mergeAccounts(a.id, [c.id]);
+    expect(offers().size).toBe(1);
+  });
+});
+
 describe("undoMerge", () => {
   it("restores every removed copy next to the keeper", async () => {
     const { service } = await unlockedService();
@@ -139,6 +153,16 @@ describe("undoMerge", () => {
     expect((await service.listAccounts()).accounts).toHaveLength(3);
     expect(await service.listTrash()).toEqual([]);
     expect(await codeOf(service.undoMerge(undoId))).toBe("not-found");
+  });
+
+  it("reports fewer restored copies when one was purged meanwhile", async () => {
+    const { service } = await unlockedService();
+    const a = await add(service, { secret: SECRET, issuer: "GitHub", label: "me" });
+    const b = await plant(service, a.id);
+    const c = await plant(service, a.id);
+    const { undoId } = await service.mergeAccounts(a.id, [b.id, c.id]);
+    await service.purgeTrash((await service.listTrash())[0]!.id);
+    expect(await service.undoMerge(undoId)).toEqual({ restored: 1 });
   });
 
   it("expires after 60 seconds and is cleared by lock", async () => {

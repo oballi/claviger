@@ -401,6 +401,22 @@ describe("BackupScreen Aegis export", () => {
     ).toMatchObject({ status: "ok", format: "aegis" });
   }, 30_000);
 
+  it("tells the user to pick a password different from the vault password", async () => {
+    const { ui } = await open();
+    const exporting = region("Dışa aktar");
+    await userEvent.click(within(exporting).getByRole("radio", { name: "Aegis (şifreli)" }));
+    await userEvent.type(within(exporting).getByLabelText("Yedek parolası"), PASSWORD);
+    await userEvent.type(within(exporting).getByLabelText("Yedek parolasını tekrar gir"), PASSWORD);
+    await userEvent.click(within(exporting).getByRole("button", { name: "Yedeği indir" }));
+    await confirmPassword(exporting, "İndir");
+    expect(
+      await within(exporting).findByText(
+        "Bu dışa aktarma için kasa parolasından farklı bir parola kullan.",
+      ),
+    ).toBeTruthy();
+    expect(ui.download).not.toHaveBeenCalled();
+  }, 30_000);
+
   it("needs the acknowledgement for the plain Aegis export", async () => {
     const { ui } = await open();
     const exporting = region("Dışa aktar");

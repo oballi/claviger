@@ -137,6 +137,8 @@ export const manageTr = {
   "dupes.mergedOne": "1 kopya kaldırıldı. Tutulan hesaba eklenen bilgiler geri alınmaz.",
   "dupes.undone": "{count} hesap geri yüklendi.",
   "dupes.undoneOne": "1 hesap geri yüklendi.",
+  "dupes.undonePartial":
+    "{count} / {total} hesap geri yüklendi. Kalanlar silinmiş ya da süresi dolmuş.",
   "dupes.none": "Yinelenen hesap yok.",
   "account.domains": "Siteler",
   "account.domainsHint": 'Virgülle ayır. Kodu bu sitelerde "Bu site" altında görürsün.',
@@ -251,6 +253,7 @@ export const manageTr = {
   "backup.aegisPlainHint": "Aegis ve diğer uygulamalar okuyabilir. Anahtarlarınız KORUNMAZ.",
   "backup.download": "Yedeği indir",
   "backup.downloadConfirm": "İndir",
+  "backup.samePassword": "Bu dışa aktarma için kasa parolasından farklı bir parola kullan.",
   "backup.done": "Yedek indirildi: {count} hesap.",
   "backup.skipped":
     "Okunamayan {skipped} kayıt yedeğe girmedi. Hesaplar sayfasındaki bakım uyarısına bak.",

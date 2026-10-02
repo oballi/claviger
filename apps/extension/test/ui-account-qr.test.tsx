@@ -69,6 +69,15 @@ describe("show account as QR", () => {
     expect(screen.getByText(/Steam kodları yalnızca Steam desteği olan/)).toBeTruthy();
   });
 
+  it("asks for the password again after Hide when the setting requires it", async () => {
+    const h = await seeded();
+    await showQr(h);
+    await userEvent.click(screen.getByRole("button", { name: "Gizle" }));
+    await userEvent.click(screen.getByRole("button", { name: "Telefona taşımak için QR göster" }));
+    expect(screen.queryByRole("img", QR)).toBeNull();
+    expect(screen.getByLabelText("Ana parola")).toBeTruthy();
+  });
+
   it("hides after 60 s and asks the service again next time (no cache)", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const h = await seeded();

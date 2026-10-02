@@ -61,7 +61,7 @@ export function AccountsScreen({
   const [trashVersion, setTrashVersion] = useState(0);
   const [dupes, setDupes] = useState<DuplicateGroupView[]>([]);
   const [reviewing, setReviewing] = useState(false);
-  const [mergeUndo, setMergeUndo] = useState<string | null>(null);
+  const [mergeUndo, setMergeUndo] = useState<{ id: string; total: number } | null>(null);
 
   const [filter, setFilter] = useState<GroupFilter>("all");
   const [creating, setCreating] = useState(false);
@@ -112,11 +112,15 @@ export function AccountsScreen({
 
   async function undoMerge() {
     if (!mergeUndo) return;
-    const undoId = mergeUndo;
+    const { id: undoId, total } = mergeUndo;
     setMergeUndo(null);
     try {
       const { restored } = await rpc("undoMerge", { undoId });
-      await changed(t(restored === 1 ? "dupes.undoneOne" : "dupes.undone", { count: restored }));
+      await changed(
+        restored < total
+          ? t("dupes.undonePartial", { count: restored, total })
+          : t(restored === 1 ? "dupes.undoneOne" : "dupes.undone", { count: restored }),
+      );
     } catch (e) {
       setReorderError(errorMessage(t, e));
     }
@@ -597,7 +601,7 @@ export function AccountsScreen({
               t(removed.length === 1 ? "dupes.mergedOne" : "dupes.merged", {
                 count: removed.length,
               }),
-            ).then(() => setMergeUndo(undoId));
+            ).then(() => setMergeUndo({ id: undoId, total: removed.length }));
           }}
           onEdit={(id) => {
             setReviewing(false);

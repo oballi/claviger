@@ -434,6 +434,7 @@ export function BackupScreen({
             <div className="flex max-w-md flex-col gap-3">
               <ReauthForm
                 submitLabel={t("backup.downloadConfirm")}
+                errorKeys={{ "invalid-request": "backup.samePassword" }}
                 onConfirmed={async (token, password) => {
                   const file = await rpc(
                     "exportVault",

@@ -63,6 +63,19 @@ describe("manage: duplicates", () => {
     expect(await h.ui.rpc("listTrash", {})).toHaveLength(0);
   });
 
+  it("says how many copies came back when some were purged meanwhile", async () => {
+    const h = await withExactCopy();
+    await plant(h.service, h.a);
+    await open(h);
+    await userEvent.click(await screen.findByRole("button", { name: "İncele" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Birleştir" }));
+    await screen.findByText(/2 kopya kaldırıldı/);
+    await h.ui.rpc("purgeTrash", { id: (await h.ui.rpc("listTrash", {}))[0]!.id });
+    await userEvent.click(screen.getByRole("button", { name: "Geri al" }));
+    expect(await screen.findByText(/1 \/ 2 hesap geri yüklendi/)).toBeTruthy();
+  });
+
   it("merges into the keeper the user picked", async () => {
     const h = await withExactCopy();
     await open(h);
