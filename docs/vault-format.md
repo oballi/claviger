@@ -108,7 +108,7 @@ Restoring creates a new account with a fresh id (the old id keeps its tombstone,
 
 The lock policy and the "ask for the password to reveal a secret" setting are sealed under the data key in `storage.local` under the key `lock:policy`. The key is never written to `sync`, and because it has no `vault:` prefix it is not part of snapshots, exports or storage moves.
 
-The value is a record like any other (`{ "v": 1, "iv": "...", "ct": "...", "updatedAt": <ms> }`) with AAD `otp-vault/v1/lock:policy`. The plaintext is `{ "vaultId": "<id>", "lockPolicy": <policy>, "revealRequiresPassword": <boolean> }`. A record that is missing, does not open or names another vault is replaced by the safe default (lock when the browser closes, ask for the password to reveal). A future data-key rotation must re-seal this record.
+The value is a record like any other (`{ "v": 1, "iv": "...", "ct": "...", "updatedAt": <ms> }`) with AAD `otp-vault/v1/lock:policy`. The plaintext is `{ "vaultId": "<id>", "lockPolicy": <policy>, "revealRequiresPassword": <boolean> }`. If the record is missing, does not open or names another vault, the plaintext lock policy is used unless it is `never`, in which case the safe default (lock when the browser closes) applies; revealing always asks for the password. A future data-key rotation must re-seal this record.
 
 A plaintext copy of the policy is kept in the settings as a mirror. It may only tighten behaviour (trigger a lock), never relax the sealed value.
 

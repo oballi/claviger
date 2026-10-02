@@ -41,8 +41,9 @@ const UPSTREAM_ARGON = {
   memorySize: 19456,
   hashLength: 32,
 } as const;
-// Each distinct key costs one Argon2id (up to 256 MiB, ~3 s). 4 keys stay bearable only because the
-// caller must supply the correct password for every derivation to run to completion.
+// Each distinct key costs a fixed 19 MiB Argon2id plus an argon2Verify at file-chosen cost (up to
+// 256 MiB). Keys are tried in turn and the first wrong one throws, so without the right password at
+// most one maximum-cost verify runs.
 const MAX_V3_KEYS = 4;
 const PHC = /^\$argon2id\$v=19\$m=(\d+),t=(\d+),p=(\d+)\$/;
 
