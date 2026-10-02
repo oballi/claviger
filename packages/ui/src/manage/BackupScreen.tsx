@@ -9,9 +9,10 @@ import {
 } from "react";
 import { encodeBinaryImport } from "@claviger/core";
 import type { ServiceState, StorageUsageView } from "../contract/views";
-import { QrImageTooLargeError } from "../contract/qrLimits";
+import { MAX_IMAGE_BYTES, QrImageTooLargeError } from "../contract/qrLimits";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
+import { useImagePaste } from "../components/useImagePaste";
 import { NewPasswordFields, newPasswordProblem } from "../components/NewPasswordFields";
 import { ReauthForm } from "../components/ReauthForm";
 import { formatDate, isoDate } from "../format";
@@ -23,7 +24,6 @@ import { SnapshotsSection } from "./SnapshotsSection";
 export const MAX_IMPORT_CHARS = 5_000_000;
 // Base64 inflates by 4/3; keeps the transport text under MAX_IMPORT_CHARS.
 const MAX_BINARY_BYTES = 3_700_000;
-const MAX_IMAGE_BYTES = 20_000_000;
 const MAX_IMPORT_FILES = 20;
 const OTP_TEXT = /^otpauth(-migration)?:/i;
 
@@ -116,6 +116,7 @@ export function BackupScreen({
   const [exportResult, setExportResult] = useState<{ count: number; skipped: number } | null>(null);
   const [pasted, setPasted] = useState("");
   const [importError, setImportError] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
   const [usage, setUsage] = useState<StorageUsageView | null>(null);
   const [moving, setMoving] = useState(false);
   const [message, setMessage] = useState("");
@@ -250,8 +251,14 @@ export function BackupScreen({
 
   function onDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
-    void readFiles(Array.from(event.dataTransfer.files));
+    setDragging(false);
+    const files = Array.from(event.dataTransfer.files);
+    // Dragging an image from a web page yields a URL, not a file; we have no network access to fetch it.
+    if (files.length === 0) setImportError(t("backup.dropNoFile"));
+    else void readFiles(files);
   }
+
+  useImagePaste((files) => void readFiles(files));
 
   const status =
     state.lastBackupAt === null ? (
@@ -420,9 +427,13 @@ export function BackupScreen({
 
       <SettingsSection num="02" title={t("backup.import")}>
         <div
-          onDragOver={(e) => e.preventDefault()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
           onDrop={onDrop}
-          className="mt-5 flex flex-wrap items-center justify-center gap-4 border border-dashed border-line px-6 py-10 text-sm text-muted"
+          className={`mt-5 flex flex-wrap items-center justify-center gap-4 border border-dashed px-6 py-10 text-sm text-muted ${dragging ? "border-text bg-hair" : "border-line"}`}
         >
           <span>{t("backup.drop")}</span>
           <span>{t("backup.or")}</span>
@@ -442,6 +453,7 @@ export function BackupScreen({
               }}
             />
           </label>
+          <span className="basis-full text-center text-xs">{t("backup.pasteImageHint")}</span>
         </div>
         <div className="flex flex-wrap items-center gap-2 py-5">
           <span className="text-xs text-muted">{t("backup.sources")}</span>

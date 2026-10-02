@@ -38,6 +38,7 @@ import type {
   TrashItemView,
 } from "@claviger/ui/views";
 import { TRASH_RETENTION_DAYS } from "@claviger/ui/views";
+import { MAX_CAPTURE_CHARS } from "@claviger/ui/qr-limits";
 import type { Platform, StorageAreaName } from "../platform/ports";
 import { ServiceError } from "./errors";
 import {
@@ -81,7 +82,6 @@ export const MIN_PASSWORD_LENGTH = 8;
 export const TOKEN_TTL_MS = 60_000;
 export const PREVIEW_TTL_MS = 10 * 60_000;
 export const CAPTURE_TTL_MS = 60_000;
-export const CAPTURE_MAX_CHARS = 32_000_000;
 const CAPTURE_PREFIX = "data:image/png;base64,";
 /** A slower round trip makes the midpoint too uncertain. */
 export const MAX_CLOCK_SAMPLE_MS = 10_000;
@@ -627,7 +627,7 @@ export class VaultService {
     await this.requireVault();
     if (epoch !== this.lockEpoch)
       throw new ServiceError("locked", "The vault was locked meanwhile");
-    if (!input.dataUrl.startsWith(CAPTURE_PREFIX) || input.dataUrl.length > CAPTURE_MAX_CHARS) {
+    if (!input.dataUrl.startsWith(CAPTURE_PREFIX) || input.dataUrl.length > MAX_CAPTURE_CHARS) {
       throw new ServiceError("invalid-request", "Unsupported capture");
     }
     this.dropCapture();

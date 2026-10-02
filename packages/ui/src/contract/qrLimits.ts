@@ -2,6 +2,11 @@ export const MAX_QR_PIXELS = 40_000_000;
 /** Decoding runs on a downscaled bitmap when the longest side is larger. */
 export const MAX_QR_SIDE = 3000;
 
+/** Largest image file the importers and the paste path read. */
+export const MAX_IMAGE_BYTES = 20_000_000;
+/** Longest PNG data URL the service stores as a capture. */
+export const MAX_CAPTURE_CHARS = 32_000_000;
+
 export class QrImageTooLargeError extends Error {
   constructor() {
     super("The image is too large");

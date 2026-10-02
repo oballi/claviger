@@ -225,6 +225,8 @@ export const manageEn: Record<ManageKey, string> = {
   "backup.import": "Import",
   "backup.drop": "Drop a backup file here",
   "backup.or": "or",
+  "backup.pasteImageHint": "You can also paste a QR image with Ctrl+V.",
+  "backup.dropNoFile": "Drop an image file, not a link.",
   "backup.chooseFile": "Choose file",
   "backup.sources": "Supported sources",
   "backup.paste": "Paste text",

@@ -196,6 +196,8 @@ export const en: Record<PopupKey, string> = {
   "error.snapshot-password-required": "This copy belongs to another vault; enter its password.",
   "add.qrRestricted":
     "This page can't be scanned; import a screenshot of the QR code as a file instead.",
+  "add.pasteHint": "Or paste a QR image here (Ctrl+V).",
+  "add.imageTooLarge": "The image is too large.",
   "trash.deleted": "{name} deleted",
   "trash.undo": "Undo",
   "trash.restored": "{name} restored",

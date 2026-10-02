@@ -193,6 +193,8 @@ export const tr = {
   "error.snapshot-password-required": "Bu kopya başka bir kasaya ait; parolasını gir.",
   "add.qrRestricted":
     "Bu sayfada tarama yapılamaz; QR'ın ekran görüntüsünü dosya olarak içe aktar.",
+  "add.pasteHint": "Veya bir QR görselini buraya yapıştırın (Ctrl+V).",
+  "add.imageTooLarge": "Görsel çok büyük.",
   "trash.deleted": "{name} silindi",
   "trash.undo": "Geri al",
   "trash.restored": "{name} geri yüklendi",

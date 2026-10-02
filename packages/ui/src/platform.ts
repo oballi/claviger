@@ -38,6 +38,8 @@ export interface UiPlatform {
   fetchServerDate(): Promise<{ serverDate: string; startMs: number; endMs: number }>;
   /** Only the manage page provides it; rejects with QrImageTooLargeError for oversized images. */
   decodeQr?(image: Blob | ImageData): Promise<string[]>;
+  /** Popup only: turns a pasted image into a PNG data URL for storeCapture; rejects with QrImageTooLargeError. */
+  imageToCapture?(image: Blob): Promise<string>;
   download(filename: string, content: string): void;
   print(): void;
 }

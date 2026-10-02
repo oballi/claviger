@@ -308,6 +308,49 @@ describe("BackupScreen QR images", () => {
   });
 });
 
+describe("BackupScreen pasted and dropped images", () => {
+  const png = (name = "qr.png", size?: number) => {
+    const file = new File(["x"], name, { type: "image/png" });
+    if (size) Object.defineProperty(file, "size", { value: size });
+    return file;
+  };
+  const paste = (files: File[], target: Element = document.body) =>
+    fireEvent.paste(target, { clipboardData: { files, types: ["Files"] } });
+
+  it("decodes an image pasted anywhere on the page", async () => {
+    const hh = await harness();
+    hh.ui.decodeQr.mockResolvedValue([ACME]);
+    const { onImport } = await open(hh);
+    paste([png()]);
+    await vi.waitFor(() => expect(onImport).toHaveBeenCalledWith({ text: ACME, name: "qr.png" }));
+    expect(hh.ui.decodeQr).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves pastes into the text box alone", async () => {
+    const { ui, onImport } = await open();
+    await userEvent.click(screen.getByText("Metin yapıştır"));
+    paste([png()], screen.getByLabelText("Yedek metni veya otpauth:// bağlantıları"));
+    expect(ui.decodeQr).not.toHaveBeenCalled();
+    expect(onImport).not.toHaveBeenCalled();
+  });
+
+  it("reports pasted images over the size limit", async () => {
+    const { ui } = await open();
+    paste([png("big.png", 20_000_001)]);
+    expect(await screen.findByText("Görsel çok büyük.")).toBeTruthy();
+    expect(ui.decodeQr).not.toHaveBeenCalled();
+  });
+
+  it("warns when a link is dropped instead of a file", async () => {
+    const { onImport } = await open();
+    fireEvent.drop(screen.getByText("Yedek dosyasını buraya bırak").parentElement!, {
+      dataTransfer: { files: [] },
+    });
+    expect(await screen.findByText("Bağlantı değil, bir görsel dosyası bırakın.")).toBeTruthy();
+    expect(onImport).not.toHaveBeenCalled();
+  });
+});
+
 describe("BackupScreen storage", () => {
   it("moves the vault to browser sync after the password and shows the quota", async () => {
     const { ui, onChanged } = await open();

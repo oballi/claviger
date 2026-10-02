@@ -81,6 +81,10 @@ export function createBrowserUiPlatform(
         return null;
       }
     },
+    async imageToCapture(image) {
+      // Dynamic import keeps canvas code out of the popup's main bundle.
+      return (await import("../qr/pngCapture")).imageToPngDataUrl(image);
+    },
     openScan(id) {
       void browser.tabs
         .create({ url: `${browser.runtime.getURL("/scan.html")}#${id}` })

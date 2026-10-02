@@ -1,5 +1,6 @@
 import "./zodConfig";
 import { z } from "zod";
+import { MAX_CAPTURE_CHARS } from "../contract/qrLimits";
 import type {
   AccountListView,
   ImportPreviewView,
@@ -149,7 +150,11 @@ export const rpcRequestSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("setClockCheckEnabled"), enabled: z.boolean() }),
   // The service re-checks the prefix; this cap only bounds the message before it gets there.
-  z.object({ type: z.literal("storeCapture"), dataUrl: z.string().max(32_000_000), tabUrl: url }),
+  z.object({
+    type: z.literal("storeCapture"),
+    dataUrl: z.string().max(MAX_CAPTURE_CHARS),
+    tabUrl: url,
+  }),
   z.object({ type: z.literal("takeCapture"), id: z.string().min(1).max(64) }),
 ]);
 

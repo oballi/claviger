@@ -222,6 +222,8 @@ export const manageTr = {
   "backup.drop": "Yedek dosyasını buraya bırak",
   "backup.or": "veya",
   "backup.chooseFile": "Dosya seç",
+  "backup.pasteImageHint": "Bir QR görselini Ctrl+V ile de yapıştırabilirsiniz.",
+  "backup.dropNoFile": "Bağlantı değil, bir görsel dosyası bırakın.",
   "backup.sources": "Desteklenen kaynaklar",
   "backup.paste": "Metin yapıştır",
   "backup.pasteLabel": "Yedek metni veya otpauth:// bağlantıları",
