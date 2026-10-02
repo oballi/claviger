@@ -368,6 +368,60 @@ describe("BackupScreen storage", () => {
   });
 });
 
+describe("BackupScreen Aegis export", () => {
+  it("groups the formats and offers both Aegis variants", async () => {
+    await open();
+    const exporting = region("Dışa aktar");
+    expect(within(exporting).getByText("Şifreli")).toBeTruthy();
+    expect(within(exporting).getByText("Düz (şifresiz)")).toBeTruthy();
+    expect(within(exporting).getByRole("radio", { name: "Aegis (şifreli)" })).toBeTruthy();
+    expect(within(exporting).getByRole("radio", { name: "Aegis (düz JSON)" })).toBeTruthy();
+  });
+
+  it("forces a custom password for the encrypted Aegis export", async () => {
+    const { ui } = await open();
+    const exporting = region("Dışa aktar");
+    await userEvent.click(within(exporting).getByRole("radio", { name: "Aegis (şifreli)" }));
+    expect(within(exporting).getByText(/^claviger-.*\.aegis\.json$/)).toBeTruthy();
+    expect(within(exporting).queryByRole("radio", { name: "Kasa parolasını kullan" })).toBeNull();
+    const download = within(exporting).getByRole("button", { name: "Yedeği indir" });
+    expect(download).toHaveProperty("disabled", true);
+    await userEvent.type(within(exporting).getByLabelText("Yedek parolası"), "aegis long pass");
+    await userEvent.type(
+      within(exporting).getByLabelText("Yedek parolasını tekrar gir"),
+      "aegis long pass",
+    );
+    await userEvent.click(download);
+    await confirmPassword(exporting, "İndir");
+    await screen.findByText("Yedek indirildi: 1 hesap.");
+    const [filename, content] = ui.download.mock.calls[0]!;
+    expect(filename).toMatch(/\.aegis\.json$/);
+    expect(
+      await ui.rpc("importPreview", { text: content, password: "aegis long pass" }),
+    ).toMatchObject({ status: "ok", format: "aegis" });
+  }, 30_000);
+
+  it("needs the acknowledgement for the plain Aegis export", async () => {
+    const { ui } = await open();
+    const exporting = region("Dışa aktar");
+    await userEvent.click(within(exporting).getByRole("radio", { name: "Aegis (düz JSON)" }));
+    const download = within(exporting).getByRole("button", { name: "Yedeği indir" });
+    expect(download).toHaveProperty("disabled", true);
+    expect(within(exporting).queryByLabelText("Yedek parolası")).toBeNull();
+    await userEvent.click(
+      within(exporting).getByRole("checkbox", {
+        name: "Gizli anahtarların açıkta olacağını anlıyorum",
+      }),
+    );
+    await userEvent.click(download);
+    await confirmPassword(exporting, "İndir");
+    await screen.findByText("Yedek indirildi: 1 hesap.");
+    const [filename, content] = ui.download.mock.calls[0]!;
+    expect(filename).toMatch(/\.aegis\.json$/);
+    expect(JSON.parse(content).header.slots).toBeNull();
+  });
+});
+
 describe("BackupScreen hardening", () => {
   it("spends a fresh reauth token for every export", async () => {
     const h = await harness();

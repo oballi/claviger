@@ -131,7 +131,7 @@ export const rpcRequestSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("exportVault"),
     token,
-    format: z.enum(["claviger", "otpauth"]),
+    format: z.enum(["claviger", "otpauth", "aegis", "aegis-plain"]),
     exportPassword: password.optional(),
   }),
   z.object({ type: z.literal("exportMigration"), token, ids: z.array(id).min(1).max(10_000) }),

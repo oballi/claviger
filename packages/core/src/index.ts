@@ -60,6 +60,7 @@ export { parseOtpauthText } from "./importers/otpauthText";
 
 export { EXPORT_FORMAT, exportClaviger } from "./exporters/claviger";
 export { exportOtpauthText } from "./exporters/otpauthText";
+export { exportAegis } from "./exporters/aegis";
 export {
   buildMigrationUris,
   type MigrationOptions,

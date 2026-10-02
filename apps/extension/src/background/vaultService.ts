@@ -10,6 +10,7 @@ import {
   pickKeeper,
   exportOtpauthText,
   exportClaviger,
+  exportAegis,
   generateCode,
   HEADER_KEY,
   isVaultKey,
@@ -1178,20 +1179,21 @@ export class VaultService {
 
   async exportVault(
     token: string,
-    format: "claviger" | "otpauth",
+    format: "claviger" | "otpauth" | "aegis" | "aegis-plain",
     exportPassword?: string,
   ): Promise<{ filename: string; content: string; count: number; skipped: number }> {
-    if (format === "claviger") assertPassword(exportPassword ?? "");
+    if (format === "claviger" || format === "aegis") assertPassword(exportPassword ?? "");
     return this.exclusive(async () => {
       const vault = await this.spendToken(token);
-      const { accounts, unreadable, groups } = await vault.listAccounts();
+      const { accounts, unreadable, groups, pinned } = await vault.listAccounts();
       // The user's calendar day: a UTC date would name an evening export after tomorrow (or yesterday).
       const now = new Date(this.p.clock.now());
       const pad = (n: number) => String(n).padStart(2, "0");
       const date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-      const result =
-        format === "claviger"
-          ? {
+      const result = await (async () => {
+        switch (format) {
+          case "claviger":
+            return {
               filename: `claviger-${date}.claviger`,
               content: await exportClaviger(
                 accounts,
@@ -1199,8 +1201,25 @@ export class VaultService {
                 { random: this.p.random, clock: this.p.clock, kdf: this.p.kdf },
                 groups,
               ),
-            }
-          : { filename: `claviger-${date}.txt`, content: exportOtpauthText(accounts) };
+            };
+          case "aegis":
+          case "aegis-plain":
+            return {
+              filename: `claviger-${date}.aegis.json`,
+              content: await exportAegis(
+                accounts,
+                groups,
+                {
+                  pinned: new Set(pinned),
+                  ...(format === "aegis" ? { password: exportPassword } : {}),
+                },
+                { random: this.p.random },
+              ),
+            };
+          default:
+            return { filename: `claviger-${date}.txt`, content: exportOtpauthText(accounts) };
+        }
+      })();
       await saveSettings(this.p.local, { lastBackupAt: this.p.clock.now() });
       return { ...result, count: accounts.length, skipped: unreadable.length };
     });

@@ -95,6 +95,16 @@ function Radio({
   );
 }
 
+type ExportFormat = "claviger" | "otpauth" | "aegis" | "aegis-plain";
+
+function GroupLabel({ children }: { children: ReactNode }) {
+  return (
+    <p className="m-0 mb-2 mt-5 font-mono text-[11px] uppercase tracking-wider text-muted first:mt-0">
+      {children}
+    </p>
+  );
+}
+
 /** Design board "Yönetim — yedekleme", plus the storage-area move (spec §7). */
 export function BackupScreen({
   state,
@@ -108,7 +118,7 @@ export function BackupScreen({
   const { rpc, download, decodeQr, capabilities } = useUi();
   const t = useT();
   const locale = useLocale();
-  const [format, setFormat] = useState<"claviger" | "otpauth">("claviger");
+  const [format, setFormat] = useState<ExportFormat>("claviger");
   const [custom, setCustom] = useState(false);
   const [exportPassword, setExportPassword] = useState("");
   const [exportConfirm, setExportConfirm] = useState("");
@@ -145,9 +155,18 @@ export function BackupScreen({
     void loadUsage();
   }, [loadUsage]);
 
-  const customProblem = custom ? newPasswordProblem(t, exportPassword, exportConfirm) : null;
-  const ready = format === "claviger" ? !customProblem : plainAck;
-  const filename = `claviger-${isoDate(Date.now())}.${format === "claviger" ? "claviger" : "txt"}`;
+  const encrypted = format === "claviger" || format === "aegis";
+  // Aegis uses scrypt N=2^15, weaker than the vault's Argon2id, so it never reuses the vault password.
+  const useCustom = format === "aegis" || custom;
+  const customProblem = useCustom ? newPasswordProblem(t, exportPassword, exportConfirm) : null;
+  const ready = encrypted ? !customProblem : plainAck;
+  const extension = {
+    claviger: "claviger",
+    otpauth: "txt",
+    aegis: "aegis.json",
+    "aegis-plain": "aegis.json",
+  }[format];
+  const filename = `claviger-${isoDate(Date.now())}.${extension}`;
   const target = state.storageArea === "local" ? "sync" : "local";
 
   // Losing readiness (e.g. unticking the acknowledgement) must not strand the open panel.
@@ -164,7 +183,7 @@ export function BackupScreen({
     setExportConfirm("");
   }
 
-  function chooseFormat(next: "claviger" | "otpauth") {
+  function chooseFormat(next: ExportFormat) {
     setFormat(next);
     setConfirming(false);
     setPlainAck(false);
@@ -292,6 +311,7 @@ export function BackupScreen({
       <SettingsSection num="01" title={t("backup.export")}>
         <fieldset className="m-0 flex flex-col border-0 p-0">
           <legend className="sr-only">{t("backup.format")}</legend>
+          <GroupLabel>{t("backup.groupEncrypted")}</GroupLabel>
           <Radio
             name="export-format"
             checked={format === "claviger"}
@@ -300,6 +320,14 @@ export function BackupScreen({
             hint={t("backup.encryptedHint")}
             badge={t("common.recommended")}
           />
+          <Radio
+            name="export-format"
+            checked={format === "aegis"}
+            onSelect={() => chooseFormat("aegis")}
+            title={t("backup.aegis")}
+            hint={t("backup.aegisHint")}
+          />
+          <GroupLabel>{t("backup.groupPlain")}</GroupLabel>
           <Radio
             name="export-format"
             checked={format === "otpauth"}
@@ -312,35 +340,49 @@ export function BackupScreen({
               </>
             }
           />
+          <Radio
+            name="export-format"
+            checked={format === "aegis-plain"}
+            onSelect={() => chooseFormat("aegis-plain")}
+            title={t("backup.aegisPlain")}
+            hint={
+              <>
+                <span className="text-warn">{t("backup.plainWarning")}</span>{" "}
+                {t("backup.aegisPlainHint")}
+              </>
+            }
+          />
         </fieldset>
 
         <div className="flex max-w-md flex-col gap-5 border-t border-hair py-5">
-          {format === "claviger" ? (
+          {encrypted ? (
             <>
-              <fieldset className="m-0 flex flex-col gap-1 border-0 p-0">
-                <legend className="sr-only">{t("backup.passwordChoice")}</legend>
-                <label className="flex min-h-11 items-center gap-2.5 text-sm">
-                  <input
-                    type="radio"
-                    name="export-password"
-                    checked={!custom}
-                    onChange={() => setCustom(false)}
-                    className="h-4 w-4 accent-[var(--ov-text)]"
-                  />
-                  {t("backup.useVault")}
-                </label>
-                <label className="flex min-h-11 items-center gap-2.5 text-sm">
-                  <input
-                    type="radio"
-                    name="export-password"
-                    checked={custom}
-                    onChange={() => setCustom(true)}
-                    className="h-4 w-4 accent-[var(--ov-text)]"
-                  />
-                  {t("backup.useCustom")}
-                </label>
-              </fieldset>
-              {custom ? (
+              {format === "claviger" ? (
+                <fieldset className="m-0 flex flex-col gap-1 border-0 p-0">
+                  <legend className="sr-only">{t("backup.passwordChoice")}</legend>
+                  <label className="flex min-h-11 items-center gap-2.5 text-sm">
+                    <input
+                      type="radio"
+                      name="export-password"
+                      checked={!custom}
+                      onChange={() => setCustom(false)}
+                      className="h-4 w-4 accent-[var(--ov-text)]"
+                    />
+                    {t("backup.useVault")}
+                  </label>
+                  <label className="flex min-h-11 items-center gap-2.5 text-sm">
+                    <input
+                      type="radio"
+                      name="export-password"
+                      checked={custom}
+                      onChange={() => setCustom(true)}
+                      className="h-4 w-4 accent-[var(--ov-text)]"
+                    />
+                    {t("backup.useCustom")}
+                  </label>
+                </fieldset>
+              ) : null}
+              {useCustom ? (
                 <NewPasswordFields
                   password={exportPassword}
                   confirm={exportConfirm}
@@ -393,8 +435,8 @@ export function BackupScreen({
                 onConfirmed={async (token, password) => {
                   const file = await rpc(
                     "exportVault",
-                    format === "claviger"
-                      ? { token, format, exportPassword: custom ? exportPassword : password }
+                    encrypted
+                      ? { token, format, exportPassword: useCustom ? exportPassword : password }
                       : { token, format },
                   );
                   download(file.filename, file.content);

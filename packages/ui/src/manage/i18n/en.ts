@@ -247,6 +247,13 @@ export const manageEn: Record<ManageKey, string> = {
   "backup.customPassword": "Backup password",
   "backup.customConfirm": "Repeat the backup password",
   "backup.plainAck": "I understand the secret keys will be exposed",
+  "backup.groupEncrypted": "Encrypted",
+  "backup.groupPlain": "Plain (unencrypted)",
+  "backup.aegis": "Aegis (encrypted)",
+  "backup.aegisHint":
+    "An encrypted Aegis vault. Open it in Aegis with the password you choose here.",
+  "backup.aegisPlain": "Aegis (plain JSON)",
+  "backup.aegisPlainHint": "Readable by Aegis and others. Your keys are NOT protected.",
   "backup.download": "Download backup",
   "backup.downloadConfirm": "Download",
   "backup.done": "Backup downloaded. Accounts: {count}.",
