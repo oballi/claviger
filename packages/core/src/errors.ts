@@ -19,7 +19,9 @@ export type CoreErrorCode =
   | "invalid-group-name"
   | "duplicate-group"
   | "group-limit"
-  | "group-not-found";
+  | "group-not-found"
+  | "trash-entry-not-found"
+  | "trash-corrupt";
 
 export class CoreError extends Error {
   readonly code: CoreErrorCode;

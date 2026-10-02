@@ -31,6 +31,14 @@ export {
   type VaultListing,
 } from "./vault/vault";
 export { HEADER_KEY, isVaultKey, TOMBSTONE_TTL_MS, type VaultGroup } from "./vault/format";
+export {
+  isTrashKey,
+  MAX_TRASH_BYTES,
+  MAX_TRASH_ENTRIES,
+  TRASH_PREFIX,
+  TRASH_TTL_MS,
+  type TrashItem,
+} from "./vault/trash";
 export { parseRecoveryCode } from "./vault/recovery";
 export { moveVaultData } from "./vault/migrate";
 

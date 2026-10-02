@@ -27,6 +27,7 @@ import {
   tombKey,
   tombSchema,
   TOMBSTONE_TTL_MS,
+  type EncryptedRecord,
   type VaultGroup,
   type VaultHeader,
   type VaultIndex,
@@ -49,6 +50,7 @@ import {
   withoutGroup,
 } from "./groups";
 import { decryptRecord, encryptRecord, recordAad } from "./records";
+import { TrashStore, trashItemOf, type TrashItem } from "./trash";
 import { generateRecoveryCode, parseRecoveryCode } from "./recovery";
 
 export interface CreateVaultOptions {
@@ -682,17 +684,101 @@ export class Vault {
         this.nextUpdatedAt(index.updatedAt),
         record.success ? record.data.updatedAt + 1 : 0,
       );
+      const trashed = await this.moveToTrash(id, record.success ? record.data : null);
       // Tombstone + index first, then delete the record. If interrupted in between, the tombstone hides the record.
-      await this.writeIndex(
-        {
-          ...index,
-          order: index.order.filter((x) => x !== id),
-          pinned: index.pinned.filter((x) => x !== id),
-          updatedAt: deletedAt,
-        },
-        { [tombKey(id)]: { deletedAt } },
-      );
+      try {
+        await this.writeIndex(
+          {
+            ...index,
+            order: index.order.filter((x) => x !== id),
+            pinned: index.pinned.filter((x) => x !== id),
+            updatedAt: deletedAt,
+          },
+          { [tombKey(id)]: { deletedAt } },
+        );
+      } catch (e) {
+        // Nothing was deleted, so a bin entry would show a live account as deleted.
+        if (trashed) await this.trashStore()?.drop(id);
+        throw e;
+      }
       await this.deps.storage.remove([key]);
+    });
+  }
+
+  private trashStore(): TrashStore | null {
+    const { trash, random, clock } = this.deps;
+    return trash ? new TrashStore(trash, this.dek, random, clock) : null;
+  }
+
+  /** Never throws: a full or failing bin must not block the delete. */
+  private async moveToTrash(id: string, record: EncryptedRecord | null): Promise<boolean> {
+    const store = this.trashStore();
+    if (!store || !record) return false;
+    try {
+      const account = await decryptRecord(this.dek, accountKey(id), record, accountSchema);
+      if (!account || account.id !== id) return false;
+      const tomb = tombSchema.safeParse((await this.deps.storage.get([tombKey(id)]))[tombKey(id)]);
+      if (tomb.success && account.updatedAt <= tomb.data.deletedAt) return false;
+      return await store.put(account);
+    } catch {
+      return false;
+    }
+  }
+
+  private async liveIds(): Promise<Set<string>> {
+    return new Set((await this.listAccounts()).accounts.map((a) => a.id));
+  }
+
+  async listTrash(): Promise<TrashItem[]> {
+    const store = this.trashStore();
+    return store ? (await store.list(await this.liveIds())).map(trashItemOf) : [];
+  }
+
+  /** Restores under a fresh id: the old id keeps its tombstone, so no offline copy can resurrect with it. */
+  restoreFromTrash(id: string): Promise<Account> {
+    return this.exclusive(async () => {
+      const store = this.trashStore();
+      if (!store) throw new CoreError("trash-entry-not-found", "Not in recently deleted");
+      const entry = await store.open(id);
+      const index = await this.readIndex({ strict: true });
+      const { accounts } = await this.listAccounts();
+      const fingerprint = accountFingerprint(entry.account);
+      if (accounts.some((a) => accountFingerprint(a) === fingerprint))
+        throw new CoreError("duplicate-account", "This account already exists");
+      const keepGroup =
+        entry.account.groupId !== undefined &&
+        (index.groups ?? []).some((g) => g.id === entry.account.groupId);
+      const updatedAt = this.nextUpdatedAt(index.updatedAt);
+      const restored: Account = {
+        ...(keepGroup ? entry.account : withoutGroup(entry.account)),
+        id: this.deps.random.uuid(),
+        updatedAt,
+      };
+      const key = accountKey(restored.id);
+      await this.writeIndex(
+        { ...index, order: [...index.order, restored.id], updatedAt },
+        { [key]: await encryptRecord(this.dek, key, restored, updatedAt, this.deps.random) },
+      );
+      // The account is back; a failed cleanup must not turn that into an error.
+      await store.drop(id);
+      return restored;
+    });
+  }
+
+  purgeTrashEntry(id: string): Promise<void> {
+    return this.exclusive(async () => {
+      await this.trashStore()?.drop(id);
+    });
+  }
+
+  emptyTrash(): Promise<number> {
+    return this.exclusive(async () => (await this.trashStore()?.clear()) ?? 0);
+  }
+
+  purgeExpiredTrash(): Promise<number> {
+    return this.exclusive(async () => {
+      const store = this.trashStore();
+      return store ? store.purgeExpired(await this.liveIds()) : 0;
     });
   }
 
