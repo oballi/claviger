@@ -418,3 +418,39 @@ describe("amendments: ordering, live ids, quota-only eviction", () => {
     expect((await vault.listTrash()).map((i) => i.id)).toEqual([a.id]);
   });
 });
+
+describe("fix round 1", () => {
+  it("purgeExpiredTrash does not throw when the vault holds a newer-version record", async () => {
+    const { vault, deps, trash } = await setup();
+    trash.data.set("trash:junk", { nonsense: true });
+    deps.storage.data.set("vault:acct:future", { v: 2, iv: "x", ct: "y", updatedAt: 1 });
+    expect(await vault.purgeExpiredTrash()).toBe(1);
+  });
+
+  it("an entry with deletedAt beyond now + TTL is neither listed nor restorable", async () => {
+    const { vault, clock } = await setup();
+    const a = await add(vault, "A");
+    await vault.deleteAccount(a.id);
+    clock.advance(-(TRASH_TTL_MS + 1));
+    expect(await vault.listTrash()).toEqual([]);
+    expect(await asyncCodeOf(vault.restoreFromTrash(a.id))).toBe("trash-entry-not-found");
+  });
+
+  it("never evicts a newer-version blob, but counts its bytes toward the cap", async () => {
+    const { vault, trash, clock } = await setup();
+    const a = await add(vault, "A", secretFor(1));
+    await vault.deleteAccount(a.id);
+    clock.advance(1000);
+    const future = { v: 2, iv: "x", ct: "y".repeat(MAX_TRASH_BYTES), updatedAt: 1 };
+    trash.data.set("trash:future", future);
+    const b = await add(vault, "B", secretFor(2));
+    await vault.deleteAccount(b.id);
+    expect(trashKeys(trash).sort()).toEqual(["trash:future", `trash:${b.id}`].sort());
+    // Quota path must skip it as well.
+    clock.advance(1000);
+    const c = await add(vault, "C", secretFor(3));
+    trash.failNextSet = new Error("QUOTA_BYTES quota exceeded");
+    await vault.deleteAccount(c.id);
+    expect(trash.data.has("trash:future")).toBe(true);
+  });
+});

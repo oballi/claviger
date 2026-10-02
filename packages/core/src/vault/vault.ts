@@ -778,7 +778,8 @@ export class Vault {
   purgeExpiredTrash(): Promise<number> {
     return this.exclusive(async () => {
       const store = this.trashStore();
-      return store ? store.purgeExpired(await this.liveIds()) : 0;
+      // Runs on unlock: a newer-version record must not make cleanup throw.
+      return store ? store.purgeExpired(await this.liveIds().catch(() => new Set<string>())) : 0;
     });
   }
 

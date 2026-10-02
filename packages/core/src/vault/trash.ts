@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { accountSchema, type Account } from "../account/account";
-import { CoreError } from "../errors";
+import { CoreError, isQuotaError } from "../errors";
 import type { ClockPort, RandomPort, StoragePort } from "../ports";
 import { encryptedRecordSchema, isNewerVersion } from "./format";
 import { decryptRecord, encryptRecord } from "./records";
@@ -40,13 +40,13 @@ interface Slot {
   bytes: number;
   /** Authenticated deletedAt; -Infinity for anything this key cannot open. */
   at: number;
+  /** Written by a newer client: counted, never evicted. */
+  keep: boolean;
 }
 
-// Same notion of "storage is full" as the extension's error mapping; write-rate limits are transient.
-const isQuotaError = (e: unknown): boolean =>
-  e instanceof Error &&
-  /QUOTA_BYTES|quota\s*exceeded/i.test(e.message) &&
-  !/MAX_WRITE_OPERATIONS/i.test(e.message);
+// Timestamps beyond now + TTL (clock ran ahead, or forged) count as expired too.
+const isExpired = (now: number, deletedAt: number): boolean =>
+  Math.abs(now - deletedAt) >= TRASH_TTL_MS;
 
 /** Callers hold the vault lock; nothing here locks. */
 export class TrashStore {
@@ -67,6 +67,7 @@ export class TrashStore {
       out.push({
         key,
         bytes: key.length + JSON.stringify(value).length,
+        keep: isNewerVersion(value, "v"),
         at: entry ? entry.deletedAt : Number.NEGATIVE_INFINITY,
       });
     }
@@ -89,7 +90,7 @@ export class TrashStore {
         await this.port.set({ [key]: sealed });
       } catch (e) {
         if (!isQuotaError(e)) return false;
-        const oldest = (await this.slots()).find((s) => s.key !== key);
+        const oldest = (await this.slots()).find((s) => s.key !== key && !s.keep);
         if (!oldest) return false;
         await this.port.remove([oldest.key]);
         await this.port.set({ [key]: sealed });
@@ -112,7 +113,7 @@ export class TrashStore {
     const doomed: string[] = [];
     for (const slot of slots) {
       if (count <= MAX_TRASH_ENTRIES && bytes <= MAX_TRASH_BYTES) break;
-      if (slot.key === keep) continue;
+      if (slot.key === keep || slot.keep) continue;
       doomed.push(slot.key);
       count--;
       bytes -= slot.bytes;
@@ -143,8 +144,7 @@ export class TrashStore {
     for (const [key, value] of Object.entries(await this.port.get())) {
       if (!isTrashKey(key)) continue;
       const entry = await this.read(key, value);
-      if (entry && !live.has(entry.account.id) && now - entry.deletedAt < TRASH_TTL_MS)
-        out.push(entry);
+      if (entry && !live.has(entry.account.id) && !isExpired(now, entry.deletedAt)) out.push(entry);
     }
     return out.sort(
       (a, b) => b.deletedAt - a.deletedAt || a.account.id.localeCompare(b.account.id),
@@ -159,7 +159,7 @@ export class TrashStore {
       throw new CoreError("unsupported-format", "This entry was saved by a newer version");
     const entry = await this.read(key, raw);
     if (!entry) throw new CoreError("trash-corrupt", "This entry cannot be read");
-    if (this.clock.now() - entry.deletedAt >= TRASH_TTL_MS) {
+    if (isExpired(this.clock.now(), entry.deletedAt)) {
       await this.drop(id);
       throw new CoreError("trash-entry-not-found", "Not in recently deleted");
     }
@@ -179,9 +179,8 @@ export class TrashStore {
         continue;
       }
       const entry = await this.read(key, value);
-      // Timestamps beyond now + TTL (clock ran ahead, or forged) count as expired.
       const expired = entry
-        ? live.has(entry.account.id) || Math.abs(now - entry.deletedAt) >= TRASH_TTL_MS
+        ? live.has(entry.account.id) || isExpired(now, entry.deletedAt)
         : record.data.updatedAt > now + TRASH_TTL_MS || now - record.data.updatedAt >= TRASH_TTL_MS;
       if (expired) doomed.push(key);
     }

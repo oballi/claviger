@@ -1,4 +1,4 @@
-import { isCoreError } from "@otp-vault/core";
+import { isCoreError, isQuotaError } from "@otp-vault/core";
 import { ServiceError } from "../background/errors";
 import type { VaultService } from "../background/vaultService";
 import {
@@ -199,13 +199,7 @@ function toErrorBody(e: unknown): RpcErrorBody {
   if (isCoreError(e)) return { code: e.code, message: e.code };
   // A full browser quota (e.g. storage.sync QUOTA_BYTES) needs a clear, actionable error (spec 7).
   // Write rate limits also mention quota but are transient, not "storage is full".
-  if (
-    e instanceof Error &&
-    /QUOTA_BYTES|quota exceeded/i.test(e.message) &&
-    !/MAX_WRITE_OPERATIONS/i.test(e.message)
-  ) {
-    return { code: "quota-exceeded", message: "Browser storage is full" };
-  }
+  if (isQuotaError(e)) return { code: "quota-exceeded", message: "Browser storage is full" };
   // Unexpected errors may carry secrets, so their detail never leaves the background.
   return { code: "internal", message: "Unexpected error" };
 }
