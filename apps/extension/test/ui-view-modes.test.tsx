@@ -95,6 +95,29 @@ describe("view modes", () => {
     expect(h.ui.copy).toHaveBeenCalledWith(code);
   });
 
+  it("the label sits on its own full-width line under the code row", async () => {
+    await popupWith("normal");
+    const label = await screen.findByText("a@x");
+    const row = label.closest("li")!;
+    for (const c of ["w-full", "basis-full", "truncate"]) expect(label.className).toContain(c);
+    expect(label.parentElement).toBe(row);
+    const top = row.querySelector("[data-code-button]")!.parentElement!;
+    expect(top).not.toContain(label);
+    expect(top.parentElement).toBe(row);
+    expect(row.getAttribute("title")).toBe("Acme: a@x");
+  });
+
+  it("an account without issuer shows its label on line 1 and no second line", async () => {
+    const { container } = await popupWith("normal", {
+      extra: "otpauth://totp/solo@x?secret=GEZDGNBVGY3TQOJQ",
+    });
+    const solo = (await screen.findByText("solo@x")).closest("li")!;
+    expect(solo.querySelector("[data-row-label]")).toBeNull();
+    expect(solo.querySelector("[data-row-name]")!.textContent).toBe("solo@x");
+    expect(solo.getAttribute("title")).toBeNull();
+    expect(container.querySelectorAll("[data-row-label]")).toHaveLength(1);
+  });
+
   it("compact mode drops the account label line", async () => {
     await popupWith("compact");
     await screen.findByText("Acme");

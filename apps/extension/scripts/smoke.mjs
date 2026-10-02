@@ -262,6 +262,11 @@ try {
       await page.goto(`chrome-extension://${id}/manage.html#/accounts`);
       await page.reload();
       await page.getByRole("table").waitFor();
+      await page.waitForFunction(() =>
+        [...document.querySelectorAll("section[aria-label] li button span.truncate")].some(
+          (x) => x.textContent === "Kişisel hesaplar",
+        ),
+      );
       return page.evaluate(() => {
         const wrap = document.querySelector("table").parentElement;
         const w = wrap.getBoundingClientRect();

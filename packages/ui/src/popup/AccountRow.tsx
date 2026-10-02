@@ -118,25 +118,30 @@ export function AccountRow({
       </li>
     );
   }
+  const showLabel = !compact && Boolean(account.issuer && account.label);
   return (
     <li
       onClick={copyFromRow}
-      className="ov-row -mx-3 flex cursor-pointer flex-wrap items-center gap-3 rounded-xl px-3 pt-2 pb-1"
+      title={account.issuer && account.label ? `${account.issuer}: ${account.label}` : undefined}
+      className="ov-row -mx-3 flex cursor-pointer flex-wrap items-center gap-x-3 rounded-xl px-3 pt-2 pb-1"
     >
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-[13px]">
+      <div className="flex w-full items-center gap-3">
+        <div data-row-name="" className="min-w-0 flex-1 truncate text-[13px]">
           {name}
           {pinnedMark && account.pinned ? (
             <span className="text-muted"> · {t("codes.pinnedMark")}</span>
           ) : null}
         </div>
-        {!compact && account.issuer && account.label ? (
-          <div className="truncate text-xs text-muted">{account.label}</div>
-        ) : null}
+        {copyButton}
+        {tail}
+        {menuButton}
       </div>
-      {copyButton}
-      {tail}
-      {menuButton}
+      {showLabel ? (
+        // Pulled into the code button's empty min-h-11 padding so the row keeps its old height.
+        <div data-row-label="" className="-mt-3.5 w-full basis-full truncate text-xs text-muted">
+          {account.label}
+        </div>
+      ) : null}
       {deleteConfirm}
     </li>
   );
