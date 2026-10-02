@@ -19,10 +19,7 @@ import {
   INDEX_KEY,
   indexSchema,
   isNewerVersion,
-  MAX_SITE_MEMORY,
-  MAX_SITE_MEMORY_BYTES,
   SITEMEM_KEY,
-  siteMemorySchema,
   TOMB_PREFIX,
   tombKey,
   tombSchema,
@@ -951,58 +948,13 @@ export class Vault {
     return account !== null && account.updatedAt <= deletedAt;
   }
 
-  private async readSiteMemory(): Promise<{ entries: [string, string][]; newer: boolean }> {
-    const raw = (await this.deps.storage.get([SITEMEM_KEY]))[SITEMEM_KEY];
-    if (raw === undefined) return { entries: [], newer: false };
-    if (isNewerVersion(raw, "v")) return { entries: [], newer: true };
-    const record = encryptedRecordSchema.safeParse(raw);
-    if (!record.success) return { entries: [], newer: false };
-    const value = await decryptRecord(this.dek, SITEMEM_KEY, record.data, siteMemorySchema);
-    return { entries: value?.entries ?? [], newer: false };
-  }
-
-  /** Convenience data only: never authorises anything, and damage yields an empty result. */
-  async getSiteMemory(liveIds?: Set<string>): Promise<Record<string, string>> {
-    const live = liveIds ?? new Set((await this.listAccounts()).accounts.map((a) => a.id));
-    const { entries } = await this.readSiteMemory();
-    return Object.fromEntries(entries.filter(([, id]) => live.has(id)));
-  }
-
-  rememberSite(domain: string, accountId: string): Promise<void> {
-    // Invalid input must never reach the record: one bad entry would make the whole record unreadable.
-    if (domain.length < 1 || domain.length > 253 || accountId.length < 1) return Promise.resolve();
+  // Legacy (<=0.0.x) record: removed without decrypting; reads first so a clean vault costs no sync write.
+  clearSiteMemory(): Promise<void> {
     return this.exclusive(async () => {
-      const { entries: stored, newer } = await this.readSiteMemory();
-      // Covers only the envelope `v`; inner-schema changes in a future v1 record would be overwritten (fine for ordering hints).
-      if (newer) return;
-      const live = new Set((await this.listAccounts()).accounts.map((a) => a.id));
-      if (!live.has(accountId)) return;
-      let entries = stored.filter(([d, id]) => d !== domain && live.has(id));
-      entries.push([domain, accountId]);
-      entries = entries.slice(-MAX_SITE_MEMORY);
-      const now = this.deps.clock.now();
-      for (;;) {
-        const sealed = await encryptRecord(
-          this.dek,
-          SITEMEM_KEY,
-          { entries, updatedAt: now },
-          now,
-          this.deps.random,
-        );
-        if (
-          entries.length <= 1 ||
-          SITEMEM_KEY.length + JSON.stringify(sealed).length <= MAX_SITE_MEMORY_BYTES
-        ) {
-          await this.deps.storage.set({ [SITEMEM_KEY]: sealed });
-          return;
-        }
-        entries = entries.slice(1);
+      if ((await this.deps.storage.get([SITEMEM_KEY]))[SITEMEM_KEY] !== undefined) {
+        await this.deps.storage.remove([SITEMEM_KEY]);
       }
     });
-  }
-
-  clearSiteMemory(): Promise<void> {
-    return this.exclusive(() => this.deps.storage.remove([SITEMEM_KEY]));
   }
 
   purgeTombstones(maxAgeMs = TOMBSTONE_TTL_MS): Promise<number> {

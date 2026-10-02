@@ -30,8 +30,6 @@ describe("setup", () => {
       theme: "system",
       clipboardClearSec: 0,
       recoveryCodeConfirmed: true,
-      fillOnlyLinked: true,
-      siteMemory: true,
     });
   });
 

@@ -441,19 +441,11 @@ describe("SecurityScreen", () => {
     expect(within(display).queryByLabelText("Ana parola")).toBeNull();
   });
 
-  it("toggles fill-only-linked and site memory without a password", async () => {
-    const { service } = await open();
+  it("has no fill-only-linked or site-memory switch, only the shortcut row", async () => {
+    await open();
     const display = region("Doldurma, görünüm ve pano");
-    expect((await service.getState()).fillOnlyLinked).toBe(true);
-    await userEvent.click(
-      within(display).getByRole("switch", { name: "Yalnızca bağlı sitede doldur" }),
-    );
-    await vi.waitFor(async () => expect((await service.getState()).fillOnlyLinked).toBe(false));
-    await userEvent.click(
-      within(display).getByRole("switch", { name: "Kullandığım siteleri hatırla" }),
-    );
-    await vi.waitFor(async () => expect((await service.getState()).siteMemory).toBe(false));
-    expect(within(display).queryByLabelText("Ana parola")).toBeNull();
+    expect(within(display).queryByText("Yalnızca bağlı sitede doldur")).toBeNull();
+    expect(within(display).queryByText("Kullandığım siteleri hatırla")).toBeNull();
     expect(within(display).getByText("Klavye kısayolu: Alt+Shift+O")).toBeTruthy();
   });
 

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { formatCode, maskCode } from "@claviger/ui";
@@ -11,10 +11,15 @@ const A = "otpauth://totp/Acme:a@x?secret=JBSWY3DPEHPK3PXP&issuer=Acme";
 
 async function popupWith(
   mode: "normal" | "compact" | "hidden",
-  opts: { tabUrl?: string; wrap?: (ui: UiPlatform) => UiPlatform; extra?: string } = {},
+  opts: {
+    tabUrl?: string;
+    linked?: boolean;
+    wrap?: (ui: UiPlatform) => UiPlatform;
+    extra?: string;
+  } = {},
 ) {
   const h = await harness({ tabUrl: opts.tabUrl });
-  await h.service.addAccount({ uri: A });
+  await h.service.addAccount({ uri: A }, opts.linked ? { sourceUrl: "https://acme.com" } : {});
   if (opts.extra) await h.service.addAccount({ uri: opts.extra });
   await h.service.setViewMode(mode);
   const state = await h.service.getState();
@@ -34,10 +39,25 @@ describe("view modes", () => {
     expect(row.className).not.toContain("hover:bg-hair");
   });
 
-  it("the suggested row uses it too", async () => {
-    await popupWith("normal", { tabUrl: "https://acme.com/login" });
-    const row = (await screen.findByText("Acme")).closest("li")!;
+  it("the site row uses it too", async () => {
+    await popupWith("normal", { tabUrl: "https://acme.com/login", linked: true });
+    const site = (await screen.findByText("Bu site")).closest("section")!;
+    const row = within(site).getByText("Acme").closest("li")!;
     expect(row.className).toContain("ov-row");
+  });
+
+  it("every row has top padding so the label stays off the hover edge", async () => {
+    await popupWith("normal", { tabUrl: "https://acme.com/login", linked: true });
+    const site = (await screen.findByText("Bu site")).closest("section")!;
+    const large = within(site).getByText("Acme").closest("li")!;
+    for (const c of ["ov-row", "-mx-3", "px-3", "pt-3", "pb-5"])
+      expect(large.className).toContain(c);
+  });
+
+  it("small rows have top padding too", async () => {
+    const { container } = await popupWith("normal");
+    await screen.findByText("Acme");
+    expect(container.querySelector("li")!.className).toContain("pt-2");
   });
 
   it("hidden mode never puts the code in the DOM but still copies it", async () => {
@@ -75,6 +95,30 @@ describe("view modes", () => {
     expect(h.ui.copy).toHaveBeenCalledWith(code);
   });
 
+  it("the label sits on its own full-width line under the code row", async () => {
+    await popupWith("normal");
+    const label = await screen.findByText("a@x");
+    const row = label.closest("li")!;
+    for (const c of ["w-full", "basis-full", "truncate", "pointer-events-none"])
+      expect(label.className).toContain(c);
+    expect(label.parentElement).toBe(row);
+    const top = row.querySelector("[data-code-button]")!.parentElement!;
+    expect(top).not.toContain(label);
+    expect(top.parentElement).toBe(row);
+    expect(row.getAttribute("title")).toBe("Acme: a@x");
+  });
+
+  it("an account without issuer shows its label on line 1 and no second line", async () => {
+    const { container } = await popupWith("normal", {
+      extra: "otpauth://totp/solo@x?secret=GEZDGNBVGY3TQOJQ",
+    });
+    const solo = (await screen.findByText("solo@x")).closest("li")!;
+    expect(solo.querySelector("[data-row-label]")).toBeNull();
+    expect(solo.querySelector("[data-row-name]")!.textContent).toBe("solo@x");
+    expect(solo.getAttribute("title")).toBe("solo@x");
+    expect(container.querySelectorAll("[data-row-label]")).toHaveLength(1);
+  });
+
   it("compact mode drops the account label line", async () => {
     await popupWith("compact");
     await screen.findByText("Acme");
@@ -98,7 +142,10 @@ describe("view modes", () => {
   });
 
   it("hides the code in the large this-site row too", async () => {
-    const { h, container, code } = await popupWith("hidden", { tabUrl: "https://acme.com/login" });
+    const { h, container, code } = await popupWith("hidden", {
+      tabUrl: "https://acme.com/login",
+      linked: true,
+    });
     const button = await screen.findByRole("button", { name: "Acme kodunu kopyala" });
     expect(screen.getByText("Bu site")).toBeTruthy();
     expect(container.innerHTML).not.toContain(code);

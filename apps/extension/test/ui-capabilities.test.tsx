@@ -34,8 +34,7 @@ describe("a platform without page, clock or sync abilities", () => {
     };
     const control = await seed();
     const view = renderUi(<PopupApp pollMs={0} />, control.ui);
-    await screen.findByRole("button", { name: "Acme kodunu sayfaya doldur" });
-    expect(screen.getByText("Bu site")).toBeTruthy();
+    await screen.findByText("Bu site");
     view.unmount();
 
     const h = await seed(NONE);

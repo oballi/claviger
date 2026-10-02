@@ -123,6 +123,12 @@ try {
   const fillId = (await must({ type: "listAccounts" })).accounts.find(
     (a) => a.issuer === "Fill",
   ).id;
+  if (
+    !(await must({ type: "listAccounts" })).accounts
+      .find((a) => a.id === fillId)
+      .domains.includes("127.0.0.1")
+  )
+    throw new Error("the Fill account is not linked to the fixture host");
   const codeOf = async () =>
     (await must({ type: "listAccounts" })).accounts.find((a) => a.id === fillId).code;
   const filled = async (mode) => {
@@ -256,6 +262,11 @@ try {
       await page.goto(`chrome-extension://${id}/manage.html#/accounts`);
       await page.reload();
       await page.getByRole("table").waitFor();
+      await page.waitForFunction(() =>
+        [...document.querySelectorAll("section[aria-label] li button span.truncate")].some(
+          (x) => x.textContent === "Kişisel hesaplar",
+        ),
+      );
       return page.evaluate(() => {
         const wrap = document.querySelector("table").parentElement;
         const w = wrap.getBoundingClientRect();

@@ -7,27 +7,10 @@ import { formatCode, maskCode } from "../format";
 import { useT } from "../i18n/i18n";
 import { RowMenu, type MenuItem } from "./RowMenu";
 
-export type FillPrompt = "confirm" | "blocked" | "link";
-
-export interface FillControls {
-  prompt: FillPrompt | null;
-  busy: boolean;
-  /** Registrable domain of the page; the same value is sent as confirmedDomain. */
-  domain: string | null;
-  onFill: (account: AccountView) => void;
-  onConfirm: (account: AccountView) => void;
-  onCancel: () => void;
-  onLink: (account: AccountView) => void;
-  onOpenSecurity: () => void;
-}
-
 export function AccountRow({
   account,
   large = false,
-  suggested = false,
-  remembered = false,
   pinnedMark = false,
-  fill,
   menu,
   confirmDelete,
   mode,
@@ -37,12 +20,8 @@ export function AccountRow({
   account: AccountView;
   /** "This site" rows use the large code layout from the design. */
   large?: boolean;
-  suggested?: boolean;
-  remembered?: boolean;
   /** Shown in the grouped layout, where pinned rows are not in their own section. */
   pinnedMark?: boolean;
-  /** Present only on "This site" rows of a popup that knows its tab. */
-  fill?: FillControls;
   menu?: MenuItem[];
   /** Inline delete confirmation shown under the row. */
   confirmDelete?: { onConfirm: () => void; onCancel: () => void };
@@ -59,9 +38,7 @@ export function AccountRow({
   const copyFromRow = (e: MouseEvent<HTMLLIElement>) => {
     if (window.getSelection()?.toString()) return;
     if (
-      (e.target as Element).closest(
-        "button, a, input, select, textarea, [role=group], [role=alert], [role=menu]",
-      )
+      (e.target as Element).closest("button, a, input, select, textarea, [role=alert], [role=menu]")
     )
       return;
     onCopy(account);
@@ -127,15 +104,9 @@ export function AccountRow({
     return (
       <li
         onClick={copyFromRow}
-        className="ov-row -mx-3 flex cursor-pointer flex-col gap-1 rounded-xl px-3 pb-5"
+        className="ov-row -mx-3 flex cursor-pointer flex-col gap-1 rounded-xl px-3 pt-3 pb-5"
       >
-        <div className="truncate text-[13px]">
-          {name}
-          {suggested ? <span className="text-muted"> · {t("codes.suggested")}</span> : null}
-          {remembered && !suggested ? (
-            <span className="text-muted"> · {t("codes.remembered")}</span>
-          ) : null}
-        </div>
+        <div className="truncate text-[13px]">{name}</div>
         <div className="flex items-end justify-between gap-4">
           {copyButton}
           <div className="flex items-center gap-1 pb-3">
@@ -144,73 +115,39 @@ export function AccountRow({
           </div>
         </div>
         {deleteConfirm}
-        {fill ? (
-          <div>
-            <Button
-              className="border-text"
-              disabled={fill.busy}
-              aria-label={t("fill.aria", { issuer: name })}
-              onClick={() => fill.onFill(account)}
-            >
-              {t("fill.button")}
-            </Button>
-          </div>
-        ) : null}
-        {fill?.prompt === "confirm" ? (
-          <div role="group" className="pt-3">
-            <p className="m-0 pb-2 text-xs text-warn">
-              {t("fill.confirm", { issuer: name, domain: fill.domain ?? "" })}
-            </p>
-            <div className="flex gap-2">
-              <Button variant="primary" autoFocus onClick={() => fill.onConfirm(account)}>
-                {t("fill.confirmYes")}
-              </Button>
-              <Button onClick={fill.onCancel}>{t("fill.confirmNo")}</Button>
-            </div>
-          </div>
-        ) : null}
-        {fill?.prompt === "blocked" ? (
-          <div className="pt-3">
-            <p role="alert" className="m-0 text-xs text-warn">
-              {t("fill.blocked")}
-            </p>
-            <Button variant="link" onClick={fill.onOpenSecurity} className="text-xs">
-              {t("fill.linkBlocked")}
-            </Button>
-          </div>
-        ) : null}
-        {fill?.prompt === "link" ? (
-          <div className="flex items-center gap-4 pt-1">
-            <Button variant="link" onClick={() => fill.onLink(account)} className="text-xs">
-              {t("fill.link")}
-            </Button>
-            <Button variant="link" onClick={fill.onCancel} className="text-xs text-muted">
-              {t("common.close")}
-            </Button>
-          </div>
-        ) : null}
       </li>
     );
   }
+  const showLabel = !compact && Boolean(account.issuer && account.label);
   return (
     <li
       onClick={copyFromRow}
-      className="ov-row -mx-3 flex cursor-pointer flex-wrap items-center gap-3 rounded-xl px-3 py-1"
+      title={
+        account.issuer && account.label ? `${account.issuer}: ${account.label}` : name || undefined
+      }
+      className="ov-row -mx-3 flex cursor-pointer flex-wrap items-center gap-x-3 rounded-xl px-3 pt-2 pb-1"
     >
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-[13px]">
+      <div className="flex w-full items-center gap-3">
+        <div data-row-name="" className="min-w-0 flex-1 truncate text-[13px]">
           {name}
           {pinnedMark && account.pinned ? (
             <span className="text-muted"> · {t("codes.pinnedMark")}</span>
           ) : null}
         </div>
-        {!compact && account.issuer && account.label ? (
-          <div className="truncate text-xs text-muted">{account.label}</div>
-        ) : null}
+        {copyButton}
+        {tail}
+        {menuButton}
       </div>
-      {copyButton}
-      {tail}
-      {menuButton}
+      {showLabel ? (
+        // Pulled into the code button's empty min-h-11 padding so the row keeps its old height;
+        // pointer-events-none keeps it from covering the bottom of the code and menu buttons.
+        <div
+          data-row-label=""
+          className="pointer-events-none -mt-3.5 w-full basis-full truncate text-xs text-muted"
+        >
+          {account.label}
+        </div>
+      ) : null}
       {deleteConfirm}
     </li>
   );

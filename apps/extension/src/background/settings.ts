@@ -26,8 +26,6 @@ export const settingsSchema = z.object({
   theme: themeSchema,
   clipboardClearSec: clipboardClearSchema,
   recoveryCodeConfirmed: z.boolean(),
-  fillOnlyLinked: z.boolean(),
-  siteMemory: z.boolean(),
 });
 
 export type Settings = z.infer<typeof settingsSchema>;
@@ -47,8 +45,6 @@ export const DEFAULT_SETTINGS: Settings = {
   clipboardClearSec: 0,
   // 0.0.1 users already confirmed their code during setup.
   recoveryCodeConfirmed: true,
-  fillOnlyLinked: true,
-  siteMemory: true,
 };
 
 export async function loadSettings(local: StoragePort): Promise<Settings> {

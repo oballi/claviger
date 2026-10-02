@@ -460,8 +460,10 @@ describe("reconcile and gating (round 2)", () => {
     };
     const recovery = restarted.unlockWithRecovery(recoveryCode!, "another password 1");
     await new Promise((r) => setTimeout(r, 20));
-    await restarted.listAccounts(); // loads the old header from the cached key
+    const listing = restarted.listAccounts(); // loads the old header from the cached key
+    await new Promise((r) => setTimeout(r, 20));
     release();
+    await listing;
     await recovery;
     await restarted.getState();
     expect(await oldCannotOpen(p, PASSWORD)).toEqual([]);

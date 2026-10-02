@@ -30,8 +30,6 @@ export interface ServiceState {
   theme: Theme;
   clipboardClearSec: ClipboardClearSec;
   recoveryCodeConfirmed: boolean;
-  fillOnlyLinked: boolean;
-  siteMemory: boolean;
   /** Set only when the unlocked vault is empty and a non-empty local copy exists. */
   snapshotOffer: { id: string; createdAt: number; accountCount: number } | null;
 }
@@ -69,8 +67,8 @@ export interface AccountListView {
   groups: GroupView[];
   unreadable: string[];
   indexDamaged: boolean;
-  /** `remembered` only orders the popup; it never authorises a fill. */
-  matches: { exact: string[]; suggested: string[]; remembered: string[] };
+  /** Accounts linked to the page's registrable domain. */
+  matches: { exact: string[] };
   pageDomain: string | null;
 }
 
