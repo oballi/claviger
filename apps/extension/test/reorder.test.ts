@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { reorderByDrop } from "@otp-vault/ui";
+import { neighbourOf, reorderByDrop, swapOrder } from "@otp-vault/ui";
 
 const rows = [
   { id: "p1", pinned: true },
@@ -22,5 +22,24 @@ describe("reorderByDrop", () => {
   it("ignores a drop on itself or an unknown id", () => {
     expect(reorderByDrop(rows, "a", "a")).toBeNull();
     expect(reorderByDrop(rows, "zz", "a")).toBeNull();
+  });
+});
+
+describe("neighbourOf / swapOrder", () => {
+  const list = [
+    { id: "a", pinned: true },
+    { id: "b", pinned: false },
+    { id: "c", pinned: false },
+    { id: "d", pinned: true },
+  ];
+  it("finds the neighbour among rows with the same pinned state", () => {
+    expect(neighbourOf(list, "b", 1)?.id).toBe("c");
+    expect(neighbourOf(list, "a", 1)?.id).toBe("d");
+    expect(neighbourOf(list, "b", -1)).toBeUndefined();
+    expect(neighbourOf(list, "zzz", 1)).toBeUndefined();
+  });
+  it("swaps two ids in a full order", () => {
+    expect(swapOrder(["a", "x", "b", "y"], "a", "b")).toEqual(["b", "x", "a", "y"]);
+    expect(swapOrder(["a", "b"], "a", "zz")).toEqual(["a", "b"]);
   });
 });

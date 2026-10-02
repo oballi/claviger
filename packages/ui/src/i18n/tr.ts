@@ -90,6 +90,13 @@ export const tr = {
   "codes.lock": "Kilitle",
   "codes.manage": "Yönetim sayfası",
   "codes.pinnedMark": "sabit",
+  "menu.actions": "{issuer} için işlemler",
+  "menu.linkSite": "Bu siteye bağla",
+  "menu.edit": "Düzenle…",
+  "menu.moveToGroup": "Gruba taşı",
+  "menu.delete": "Sil…",
+  "codes.deleteConfirm":
+    "Bu hesap silinsin mi? Bu sitenin kodunu artık üretemezsin. Silmeden önce otomatik bir kopya alınır.",
   "group.none": "Grupsuz",
   "codes.thisSite": "Bu site",
   "codes.pinned": "Sabitlenenler",

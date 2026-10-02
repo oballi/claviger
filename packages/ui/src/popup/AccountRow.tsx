@@ -5,6 +5,7 @@ import { CountdownRing } from "../components/CountdownRing";
 import { Icon } from "../components/Icon";
 import { formatCode, maskCode } from "../format";
 import { useT } from "../i18n/i18n";
+import { RowMenu, type MenuItem } from "./RowMenu";
 
 export type FillPrompt = "confirm" | "blocked" | "link";
 
@@ -27,6 +28,8 @@ export function AccountRow({
   remembered = false,
   pinnedMark = false,
   fill,
+  menu,
+  confirmDelete,
   mode,
   onCopy,
   onNextHotp,
@@ -40,6 +43,9 @@ export function AccountRow({
   pinnedMark?: boolean;
   /** Present only on "This site" rows of a popup that knows its tab. */
   fill?: FillControls;
+  menu?: MenuItem[];
+  /** Inline delete confirmation shown under the row. */
+  confirmDelete?: { onConfirm: () => void; onCancel: () => void };
   mode: ViewMode;
   onCopy: (account: AccountView) => void;
   onNextHotp: (account: AccountView) => void;
@@ -54,12 +60,28 @@ export function AccountRow({
     if (window.getSelection()?.toString()) return;
     if (
       (e.target as Element).closest(
-        "button, a, input, select, textarea, [role=group], [role=alert]",
+        "button, a, input, select, textarea, [role=group], [role=alert], [role=menu]",
       )
     )
       return;
     onCopy(account);
   };
+  const menuButton = menu ? (
+    <RowMenu label={t("menu.actions", { issuer: name })} items={menu} />
+  ) : null;
+  const deleteConfirm = confirmDelete ? (
+    <div className="basis-full pb-3">
+      <p role="alert" className="m-0 pb-3 text-[13px] leading-normal text-warn">
+        {t("codes.deleteConfirm")}
+      </p>
+      <div className="flex gap-2">
+        <Button variant="danger" autoFocus onClick={confirmDelete.onConfirm}>
+          {t("account.deleteYes")}
+        </Button>
+        <Button onClick={confirmDelete.onCancel}>{t("common.cancel")}</Button>
+      </div>
+    </div>
+  ) : null;
   const urgent = account.remaining !== null && account.remaining <= 5;
   const copyButton = (
     <button
@@ -107,8 +129,12 @@ export function AccountRow({
         </div>
         <div className="flex items-end justify-between gap-4">
           {copyButton}
-          <div className="pb-3">{tail}</div>
+          <div className="flex items-center gap-1 pb-3">
+            {tail}
+            {menuButton}
+          </div>
         </div>
+        {deleteConfirm}
         {fill ? (
           <div>
             <Button
@@ -160,7 +186,7 @@ export function AccountRow({
   return (
     <li
       onClick={copyFromRow}
-      className="ov-row -mx-3 flex cursor-pointer items-center gap-3 rounded-xl px-3 py-1"
+      className="ov-row -mx-3 flex cursor-pointer flex-wrap items-center gap-3 rounded-xl px-3 py-1"
     >
       <div className="min-w-0 flex-1">
         <div className="truncate text-[13px]">
@@ -175,6 +201,8 @@ export function AccountRow({
       </div>
       {copyButton}
       {tail}
+      {menuButton}
+      {deleteConfirm}
     </li>
   );
 }

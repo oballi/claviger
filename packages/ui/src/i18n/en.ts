@@ -92,6 +92,13 @@ export const en: Record<MessageKey, string> = {
   "codes.lock": "Lock",
   "codes.manage": "Manage page",
   "codes.pinnedMark": "pinned",
+  "menu.actions": "Actions for {issuer}",
+  "menu.linkSite": "Link to this site",
+  "menu.edit": "Edit…",
+  "menu.moveToGroup": "Move to group",
+  "menu.delete": "Delete…",
+  "codes.deleteConfirm":
+    "Delete this account? You won't be able to generate its codes any more. A backup copy is taken first.",
   "group.none": "Ungrouped",
   "codes.thisSite": "This site",
   "codes.pinned": "Pinned",

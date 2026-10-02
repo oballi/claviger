@@ -90,7 +90,9 @@ describe("view modes", () => {
   it("reports a successful copy to the background for clipboard clearing", async () => {
     const { h } = await popupWith("normal");
     await h.service.setClipboardClear(30);
-    await userEvent.setup().click(await screen.findByRole("button", { name: /Acme/ }));
+    await userEvent
+      .setup()
+      .click(await screen.findByRole("button", { name: /^Acme kodunu kopyala/ }));
     await screen.findByText(/kopyalandı/i);
     await vi.waitFor(() => expect(h.p.alarms.scheduled.has("clipboard-clear")).toBe(true));
   });
@@ -123,7 +125,9 @@ describe("view modes", () => {
         }) as UiPlatform["rpc"],
       }),
     });
-    await userEvent.setup().click(await screen.findByRole("button", { name: /Acme/ }));
+    await userEvent
+      .setup()
+      .click(await screen.findByRole("button", { name: /^Acme kodunu kopyala/ }));
     expect(await screen.findByText(/kopyalandı/i)).toBeTruthy();
     expect(screen.queryByRole("alert")).toBeNull();
   });
@@ -132,7 +136,9 @@ describe("view modes", () => {
     const { h } = await popupWith("normal");
     await h.service.setClipboardClear(30);
     h.ui.copy.mockRejectedValueOnce(new Error("denied"));
-    await userEvent.setup().click(await screen.findByRole("button", { name: /Acme/ }));
+    await userEvent
+      .setup()
+      .click(await screen.findByRole("button", { name: /^Acme kodunu kopyala/ }));
     expect(await screen.findByText("Kopyalanamadı.")).toBeTruthy();
     expect(h.p.alarms.scheduled.has("clipboard-clear")).toBe(false);
   });

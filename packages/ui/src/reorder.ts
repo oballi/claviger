@@ -15,3 +15,24 @@ export function reorderByDrop(
   order.splice(from < to ? index + 1 : index, 0, dragged);
   return order;
 }
+
+/** The row `delta` places away among the rows that share `id`'s pinned state (pinned and other rows never swap). */
+export function neighbourOf<T extends { id: string; pinned: boolean }>(
+  rows: readonly T[],
+  id: string,
+  delta: -1 | 1,
+): T | undefined {
+  const me = rows.find((r) => r.id === id);
+  if (!me) return undefined;
+  const same = rows.filter((r) => r.pinned === me.pinned);
+  return same[same.findIndex((r) => r.id === id) + delta];
+}
+
+export function swapOrder(order: readonly string[], a: string, b: string): string[] {
+  const next = [...order];
+  const i = next.indexOf(a);
+  const j = next.indexOf(b);
+  if (i < 0 || j < 0) return next;
+  [next[i], next[j]] = [next[j]!, next[i]!];
+  return next;
+}

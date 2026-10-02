@@ -16,10 +16,12 @@ import { useAccountList } from "../hooks";
 import { useLocale, useT } from "../i18n/i18n";
 import { useUi } from "../platform";
 import { AccountRow, type FillPrompt } from "./AccountRow";
+import type { MenuItem } from "./RowMenu";
 import { AddAccount } from "./AddAccount";
 import { GroupSection } from "./GroupSection";
 import { useCollapsed } from "./useCollapsed";
 import { NO_GROUP_KEY, sectionsOf } from "../groups";
+import { neighbourOf, swapOrder } from "../reorder";
 
 function Section({
   title,
@@ -72,6 +74,7 @@ export function CodesScreen({
   const [query, setQuery] = useState("");
   const [toast, setToast] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [usage, setUsage] = useState<StorageUsageView | null>(null);
   const { collapsed, toggle } = useCollapsed();
@@ -260,6 +263,95 @@ export function CodesScreen({
     buttons[next]?.focus();
   }
 
+  async function act(action: () => Promise<unknown>, message?: string) {
+    setActionError(null);
+    try {
+      await action();
+      if (message) setToast(message);
+      await reload();
+    } catch (e) {
+      setActionError(errorMessage(t, e));
+    }
+  }
+
+  function menuFor(account: AccountView, movable: boolean): MenuItem[] {
+    const name = account.issuer || account.label;
+    const groups = list?.groups ?? [];
+    const peers = accounts.filter(
+      (a) => !onSite(a) && (a.groupId ?? null) === (account.groupId ?? null),
+    );
+    const up = movable ? neighbourOf(peers, account.id, -1) : undefined;
+    const down = movable ? neighbourOf(peers, account.id, 1) : undefined;
+    const swap = (other: AccountView) =>
+      act(
+        () =>
+          rpc("reorder", {
+            order: swapOrder(
+              accounts.map((a) => a.id),
+              account.id,
+              other.id,
+            ),
+          }),
+        t("accounts.moved", { name }),
+      );
+    const items: MenuItem[] = [];
+    if (domain && !account.domains.includes(domain))
+      items.push({
+        key: "link",
+        label: t("menu.linkSite"),
+        hint: domain,
+        onSelect: () => void linkSite(account),
+      });
+    items.push({
+      key: "pin",
+      label: account.pinned ? t("account.unpin") : t("account.pin"),
+      onSelect: () =>
+        void act(
+          () => rpc("setPinned", { id: account.id, pinned: !account.pinned }),
+          t(account.pinned ? "accounts.unpinned" : "accounts.pinned", { name }),
+        ),
+    });
+    if (movable) {
+      items.push({
+        key: "up",
+        label: t("account.moveUp"),
+        disabled: !up,
+        onSelect: () => up && void swap(up),
+      });
+      items.push({
+        key: "down",
+        label: t("account.moveDown"),
+        disabled: !down,
+        onSelect: () => down && void swap(down),
+      });
+    }
+    // Task 5 adds the "Edit…" item here.
+    if (groups.length > 0)
+      items.push({
+        key: "group",
+        label: t("menu.moveToGroup"),
+        divider: true,
+        sub: [...groups, { id: "", name: t("group.none") }].map((g) => ({
+          key: `g:${g.id}`,
+          label: g.name,
+          disabled: (account.groupId ?? "") === g.id,
+          onSelect: () =>
+            void act(
+              () => rpc("setAccountGroup", { id: account.id, groupId: g.id || null }),
+              t("accounts.moved", { name }),
+            ),
+        })),
+      });
+    items.push({
+      key: "delete",
+      label: t("menu.delete"),
+      danger: true,
+      divider: true,
+      onSelect: () => setConfirmDelete(account.id),
+    });
+    return items;
+  }
+
   const row = (account: AccountView, large = false) => (
     <AccountRow
       key={account.id}
@@ -279,6 +371,22 @@ export function CodesScreen({
               onCancel: () => setFillPrompt(null),
               onLink: (a) => void linkSite(a),
               onOpenSecurity: () => openManage("security"),
+            }
+          : undefined
+      }
+      menu={menuFor(account, !filtered && !large)}
+      confirmDelete={
+        confirmDelete === account.id
+          ? {
+              onConfirm: () =>
+                void act(
+                  async () => {
+                    await rpc("deleteAccount", { id: account.id });
+                    setConfirmDelete(null);
+                  },
+                  t("accounts.deleted", { name: account.issuer || account.label }),
+                ),
+              onCancel: () => setConfirmDelete(null),
             }
           : undefined
       }
