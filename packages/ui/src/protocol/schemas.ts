@@ -29,5 +29,6 @@ export const SNAPSHOT_REASONS = [
   "before-restore",
   "before-rebuild",
   "before-recovery",
+  "before-merge",
 ] as const;
 export type SnapshotReason = (typeof SNAPSHOT_REASONS)[number];

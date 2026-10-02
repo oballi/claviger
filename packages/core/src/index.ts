@@ -20,6 +20,14 @@ export {
   type AccountDraft,
   type AccountInput,
 } from "./account/account";
+export {
+  eligibleKeepers,
+  findDuplicateGroups,
+  isExactDuplicate,
+  pickKeeper,
+  type DuplicateGroup,
+  type DuplicateKind,
+} from "./account/duplicates";
 export { parseOtpauthUri, toOtpauthUri } from "./uri/otpauth";
 
 export { DEFAULT_ARGON2, type Argon2Params } from "./crypto/kdf";

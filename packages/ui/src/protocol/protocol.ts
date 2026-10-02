@@ -2,6 +2,7 @@ import "./zodConfig";
 import { z } from "zod";
 import { MAX_CAPTURE_CHARS } from "../contract/qrLimits";
 import type {
+  DuplicateGroupView,
   AccountListView,
   ImportPreviewView,
   ServiceState,
@@ -88,6 +89,13 @@ export const rpcRequestSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("deleteAccount"), id }),
   z.object({ type: z.literal("listTrash") }),
   z.object({ type: z.literal("restoreTrash"), id }),
+  z.object({ type: z.literal("listDuplicates") }),
+  z.object({
+    type: z.literal("mergeAccounts"),
+    keepId: id,
+    removeIds: z.array(id).min(1).max(50),
+  }),
+  z.object({ type: z.literal("undoMerge"), undoId: id }),
   z.object({ type: z.literal("purgeTrash"), id }),
   z.object({ type: z.literal("emptyTrash") }),
   // Core does the real name validation; these caps only bound the message.
@@ -178,6 +186,9 @@ export interface RpcResults {
   deleteAccount: null;
   listTrash: TrashItemView[];
   restoreTrash: { id: string; name: string };
+  listDuplicates: { groups: DuplicateGroupView[] };
+  mergeAccounts: { removed: string[]; undoId: string };
+  undoMerge: { restored: number };
   purgeTrash: null;
   emptyTrash: { removed: number };
   createGroup: { id: string; name: string };

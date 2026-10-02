@@ -186,6 +186,7 @@ export const en: Record<PopupKey, string> = {
   "snapshots.reason.before-restore": "Before restore",
   "snapshots.reason.before-rebuild": "Before repair",
   "snapshots.reason.before-recovery": "Before recovery",
+  "snapshots.reason.before-merge": "Before merging duplicates",
   "error.not-found": "This copy no longer exists.",
   "error.not-linked": "This account is not linked to this site.",
   "error.invalid-group-name": "A group name needs 1–40 characters.",

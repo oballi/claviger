@@ -1,6 +1,6 @@
 // apps/extension/test/ui-groups-manage.test.tsx
 // @vitest-environment jsdom
-import { fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { AccountsScreen } from "@claviger/ui/manage";
@@ -177,7 +177,10 @@ describe("manage group filter", () => {
     const dialog = await screen.findByRole("dialog");
     await userEvent.type(within(dialog).getByLabelText("Grup adı"), "iş");
     await userEvent.click(within(dialog).getByRole("button", { name: "Kaydet" }));
-    expect((await within(dialog).findByRole("alert")).textContent).toContain("zaten var");
+    // The alert region is always mounted, so wait for its text rather than for the element.
+    await waitFor(() =>
+      expect(within(dialog).getByRole("alert").textContent).toContain("zaten var"),
+    );
   });
 
   it("shows an empty-group message without the snapshot offer", async () => {

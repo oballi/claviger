@@ -490,3 +490,39 @@ describe("trash rpcs", () => {
     expect(await call("emptyTrash", {})).toEqual({ removed: 0 });
   });
 });
+
+describe("duplicate rpcs", () => {
+  it.each([
+    { type: "listDuplicates" },
+    { type: "mergeAccounts", keepId: "a", removeIds: ["b"] },
+    { type: "undoMerge", undoId: "a" },
+  ])("forbids $type from an untrusted sender", async (request) => {
+    const response = await handleRpcMessage(
+      new VaultService(memoryPlatform()),
+      { channel: RPC_CHANNEL, request },
+      { id: "ext-id", url: "https://evil.example/" },
+      ctx,
+    );
+    expect(response).toMatchObject({ ok: false, error: { code: "forbidden" } });
+  });
+
+  it.each([
+    { type: "mergeAccounts", keepId: "a", removeIds: [] },
+    {
+      type: "mergeAccounts",
+      keepId: "a",
+      removeIds: Array.from({ length: 51 }, (_, i) => `x${i}`),
+    },
+    { type: "mergeAccounts", keepId: "", removeIds: ["b"] },
+    { type: "undoMerge", undoId: "" },
+    { type: "restoreTrash", id: "a", allowDuplicate: true },
+  ])("rejects a malformed $type", async (request) => {
+    const response = await handleRpcMessage(
+      new VaultService(memoryPlatform()),
+      { channel: RPC_CHANNEL, request },
+      trusted,
+      ctx,
+    );
+    expect(response).toMatchObject({ ok: false });
+  });
+});

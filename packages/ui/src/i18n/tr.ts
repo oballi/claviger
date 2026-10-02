@@ -183,6 +183,7 @@ export const tr = {
   "snapshots.reason.before-restore": "Geri yüklemeden önce",
   "snapshots.reason.before-rebuild": "Onarmadan önce",
   "snapshots.reason.before-recovery": "Kurtarmadan önce",
+  "snapshots.reason.before-merge": "Yinelenenleri birleştirmeden önce",
   "error.not-found": "Bu kopya artık yok.",
   "error.not-linked": "Bu hesap bu siteye bağlı değil.",
   "error.invalid-group-name": "Grup adı 1–40 karakter olmalı.",

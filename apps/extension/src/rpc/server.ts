@@ -107,6 +107,12 @@ async function dispatch(
       return service.listTrash();
     case "restoreTrash":
       return service.restoreTrash(req.id);
+    case "listDuplicates":
+      return service.listDuplicates();
+    case "mergeAccounts":
+      return service.mergeAccounts(req.keepId, req.removeIds);
+    case "undoMerge":
+      return service.undoMerge(req.undoId);
     case "purgeTrash":
       await service.purgeTrash(req.id);
       return null;

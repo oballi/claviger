@@ -62,6 +62,15 @@ export interface AccountView {
   remaining: number | null;
 }
 
+/** Ids only: secrets never cross the RPC boundary. `keepId` is the suggested keeper of an exact group. */
+export interface DuplicateGroupView {
+  kind: "exact" | "same-secret" | "similar";
+  ids: string[];
+  keepId: string | null;
+  /** HOTP copies with an older counter: keeping one would move the counter backwards. */
+  ineligible: string[];
+}
+
 export interface AccountListView {
   accounts: AccountView[];
   groups: GroupView[];

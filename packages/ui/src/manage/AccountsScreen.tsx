@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import type { AccountView, ServiceState } from "../contract/views";
+import type { AccountView, DuplicateGroupView, ServiceState } from "../contract/views";
 import { AccountForm } from "../components/AccountForm";
 import { Button } from "../components/Button";
 import { Dialog } from "../components/Dialog";
@@ -10,6 +10,7 @@ import { useAccountList } from "../hooks";
 import { useLocale, useT } from "../i18n/i18n";
 import { useUi } from "../platform";
 import { AccountEditor } from "./AccountEditor";
+import { DuplicatesDialog } from "./DuplicatesDialog";
 import { GroupsSection } from "./GroupsSection";
 import { GroupChips, type GroupFilter } from "./GroupChips";
 import { PageTitle } from "./ManageFrame";
@@ -58,6 +59,9 @@ export function AccountsScreen({
   const [overTable, setOverTable] = useState<object | null>(null);
   const moving = useRef(false);
   const [trashVersion, setTrashVersion] = useState(0);
+  const [dupes, setDupes] = useState<DuplicateGroupView[]>([]);
+  const [reviewing, setReviewing] = useState(false);
+  const [mergeUndo, setMergeUndo] = useState<string | null>(null);
 
   const [filter, setFilter] = useState<GroupFilter>("all");
   const [creating, setCreating] = useState(false);
@@ -85,7 +89,41 @@ export function AccountsScreen({
   const groupName = (a: AccountView) => groups.find((g) => g.id === a.groupId)?.name;
   const selected = accounts.find((a) => a.id === editing);
 
+  // The server keeps an undo offer for 60 s; the link goes away with it.
+  useEffect(() => {
+    if (!mergeUndo) return;
+    const id = setTimeout(() => setMergeUndo(null), 60_000);
+    return () => clearTimeout(id);
+  }, [mergeUndo]);
+
+  // Duplicates are recomputed server-side whenever the set of accounts changes.
+  const accountKey = accounts.map((a) => a.id).join(",");
+  useEffect(() => {
+    let live = true;
+    rpc("listDuplicates", {})
+      .then((r) => live && setDupes(r.groups))
+      .catch(() => live && setDupes([]));
+    return () => {
+      live = false;
+    };
+  }, [rpc, accountKey, trashVersion]);
+  const reviewable = dupes.filter((g) => g.kind !== "same-secret");
+  const extraCount = reviewable.reduce((n, g) => n + g.ids.length - 1, 0);
+
+  async function undoMerge() {
+    if (!mergeUndo) return;
+    const undoId = mergeUndo;
+    setMergeUndo(null);
+    try {
+      const { restored } = await rpc("undoMerge", { undoId });
+      await changed(t(restored === 1 ? "dupes.undoneOne" : "dupes.undone", { count: restored }));
+    } catch (e) {
+      setReorderError(errorMessage(t, e));
+    }
+  }
+
   function changed(text: string): Promise<void> {
+    setMergeUndo(null);
     setTrashVersion((v) => v + 1);
     setMessage(text);
     setReorderError(null);
@@ -248,8 +286,24 @@ export function AccountsScreen({
         }}
       />
 
-      <p role="status" className="m-0 -my-6 min-h-4 text-sm">
+      {extraCount > 0 ? (
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-y border-line py-3 text-sm">
+          <span>
+            {t(extraCount === 1 ? "dupes.foundOne" : "dupes.found", { count: extraCount })}
+          </span>
+          <Button variant="link" onClick={() => setReviewing(true)}>
+            {t("dupes.review")}
+          </Button>
+        </div>
+      ) : null}
+
+      <p role="status" className="m-0 -my-6 flex min-h-4 flex-wrap items-center gap-x-4 text-sm">
         {message}
+        {mergeUndo ? (
+          <Button variant="link" className="min-h-0" onClick={() => void undoMerge()}>
+            {t("trash.undo")}
+          </Button>
+        ) : null}
       </p>
 
       {error ? (
@@ -530,6 +584,27 @@ export function AccountsScreen({
       </dl>
 
       <TrashSection version={trashVersion} onMessage={(text) => void changed(text)} />
+
+      {reviewing && dupes.length > 0 ? (
+        <DuplicatesDialog
+          groups={dupes}
+          accounts={accounts}
+          groupName={groupName}
+          onClose={() => setReviewing(false)}
+          onMerged={({ removed, undoId }) => {
+            setReviewing(false);
+            void changed(
+              t(removed.length === 1 ? "dupes.mergedOne" : "dupes.merged", {
+                count: removed.length,
+              }),
+            ).then(() => setMergeUndo(undoId));
+          }}
+          onEdit={(id) => {
+            setReviewing(false);
+            setEditing(id);
+          }}
+        />
+      ) : null}
 
       {adding ? (
         <Dialog title={t("add.title")} onClose={() => setAdding(false)}>

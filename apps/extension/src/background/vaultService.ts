@@ -3,6 +3,10 @@ import {
   canonicalJson,
   CLOCK_OFFSET_THRESHOLD_SEC,
   computeClockOffset,
+  eligibleKeepers,
+  findDuplicateGroups,
+  isExactDuplicate,
+  pickKeeper,
   exportOtpauthText,
   exportClaviger,
   generateCode,
@@ -26,6 +30,7 @@ import {
 } from "@claviger/core";
 import type {
   AccountListView,
+  DuplicateGroupView,
   AccountView,
   FillOutcome,
   GroupView,
@@ -82,6 +87,7 @@ export const MIN_PASSWORD_LENGTH = 8;
 export const TOKEN_TTL_MS = 60_000;
 export const PREVIEW_TTL_MS = 10 * 60_000;
 export const CAPTURE_TTL_MS = 60_000;
+export const MERGE_UNDO_MS = 60_000;
 const CAPTURE_PREFIX = "data:image/png;base64,";
 /** A slower round trip makes the midpoint too uncertain. */
 export const MAX_CLOCK_SAMPLE_MS = 10_000;
@@ -141,6 +147,8 @@ export class VaultService {
   // Screen captures hold QR secrets: memory only, one at a time, never written to storage.
   private capture: { id: string; dataUrl: string; tabUrl: string; expiresAt: number } | null = null;
   private captureTimer: ReturnType<typeof setTimeout> | undefined;
+  // Merge undo offers: memory only, short-lived, dropped on lock.
+  private readonly mergeUndos = new Map<string, { ids: string[]; expiresAt: number }>();
   private readonly previews = new Map<
     string,
     {
@@ -613,6 +621,7 @@ export class VaultService {
   protected onLock(): void {
     this.tokens.clear();
     this.previews.clear();
+    this.mergeUndos.clear();
     this.dropCapture();
   }
 
@@ -871,6 +880,97 @@ export class VaultService {
     });
   }
 
+  listDuplicates(): Promise<{ groups: DuplicateGroupView[] }> {
+    return this.exclusive(async () => {
+      const { accounts, pinned } = await (await this.requireVault()).listAccounts();
+      const byId = new Map(accounts.map((a) => [a.id, a]));
+      const pins = new Set(pinned);
+      const groups = findDuplicateGroups(accounts).map((g): DuplicateGroupView => {
+        if (g.kind !== "exact") return { ...g, keepId: null, ineligible: [] };
+        const members = g.ids.map((id) => byId.get(id)!);
+        const ok = new Set(eligibleKeepers(members).map((a) => a.id));
+        return {
+          ...g,
+          keepId: pickKeeper(members, pins).id,
+          ineligible: g.ids.filter((id) => !ok.has(id)),
+        };
+      });
+      return { groups };
+    });
+  }
+
+  /** Only exact copies merge. The removed ones land in Recently deleted; the keeper's edits are not undone by undoMerge. */
+  mergeAccounts(
+    keepId: string,
+    removeIds: string[],
+  ): Promise<{ removed: string[]; undoId: string }> {
+    return this.exclusive(async () => {
+      const vault = await this.requireVault();
+      const { accounts, pinned } = await vault.listAccounts();
+      const byId = new Map(accounts.map((a) => [a.id, a]));
+      const keeper = byId.get(keepId);
+      const ids = [...new Set(removeIds)];
+      const copies = ids.map((id) => byId.get(id));
+      const refuse = () => new ServiceError("invalid-request", "These accounts cannot be merged");
+      if (!keeper || ids.length === 0 || ids.length > 50) throw refuse();
+      const found: Account[] = [];
+      for (const c of copies) {
+        if (!c || c.id === keepId || !isExactDuplicate(keeper, c)) throw refuse();
+        found.push(c);
+      }
+      // An HOTP counter must never move backwards.
+      if (!eligibleKeepers([keeper, ...found]).some((a) => a.id === keepId)) throw refuse();
+
+      await this.snapshot("before-merge");
+      const first = <K extends "issuer" | "label" | "groupId">(k: K) =>
+        keeper[k] || found.find((c) => c[k])?.[k];
+      const groupId = first("groupId");
+      await vault.updateAccount(keepId, {
+        domains: [...new Set([...keeper.domains, ...found.flatMap((c) => c.domains)])],
+        issuer: first("issuer") ?? "",
+        label: first("label") ?? "",
+        ...(groupId && groupId !== keeper.groupId ? { groupId } : {}),
+      });
+      if (!pinned.includes(keepId) && found.some((c) => pinned.includes(c.id)))
+        await vault.setPinned(keepId, true);
+
+      const removed: string[] = [];
+      for (const copy of found) {
+        await vault.deleteAccount(copy.id);
+        removed.push(copy.id);
+      }
+      const undoId = this.p.random.uuid();
+      this.mergeUndos.set(undoId, {
+        ids: removed,
+        expiresAt: this.p.clock.now() + MERGE_UNDO_MS,
+      });
+      return { removed, undoId };
+    });
+  }
+
+  undoMerge(undoId: string): Promise<{ restored: number }> {
+    return this.exclusive(async () => {
+      const vault = await this.requireVault();
+      const now = this.p.clock.now();
+      for (const [key, offer] of this.mergeUndos)
+        if (offer.expiresAt < now) this.mergeUndos.delete(key);
+      const offer = this.mergeUndos.get(undoId);
+      if (!offer) throw new ServiceError("not-found", "This merge can no longer be undone");
+      this.mergeUndos.delete(undoId);
+      let restored = 0;
+      for (const id of offer.ids) {
+        try {
+          await vault.restoreFromTrash(id, { allowDuplicate: true });
+          restored++;
+        } catch (e) {
+          // A copy purged or expired meanwhile must not block the others.
+          if (!isCoreError(e) || e.code !== "trash-entry-not-found") throw e;
+        }
+      }
+      return { restored };
+    });
+  }
+
   purgeTrash(id: string): Promise<void> {
     return this.exclusive(async () => (await this.requireVault()).purgeTrashEntry(id));
   }
@@ -1105,6 +1205,7 @@ export class VaultService {
     });
   }
 
+  // Not a backup: lastBackupAt stays untouched, and nothing is persisted.
   async changePassword(token: string, newPassword: string): Promise<void> {
     assertPassword(newPassword);
     // Queued: a storage move swaps this.vault, and a rewrite against the old area would be lost.
