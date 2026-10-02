@@ -41,6 +41,9 @@ const UPSTREAM_ARGON = {
   memorySize: 19456,
   hashLength: 32,
 } as const;
+// Each distinct key costs one Argon2id (up to 256 MiB, ~3 s). 4 keys stay bearable only because the
+// caller must supply the correct password for every derivation to run to completion.
+const MAX_V3_KEYS = 4;
 const PHC = /^\$argon2id\$v=19\$m=(\d+),t=(\d+),p=(\d+)\$/;
 
 const asRecord = (json: unknown): Record<string, unknown> | null =>
@@ -163,6 +166,14 @@ export async function parseUpstreamBackup(json: unknown, password?: string): Pro
     legacyPassphrase = toHex(keyBytes);
   }
 
+  const keyIds = new Set<string>();
+  for (const value of Object.values(data)) {
+    const enc = encEntrySchema.safeParse(value);
+    if (enc.success) keyIds.add(enc.data.keyId);
+  }
+  if (keyIds.size > MAX_V3_KEYS)
+    throw new CoreError("corrupt-file", "Too many distinct keys in backup");
+
   const v3Passphrases = new Map<string, string>();
   const result = emptyResult();
   let position = 0;
@@ -194,7 +205,8 @@ export async function parseUpstreamBackup(json: unknown, password?: string): Pro
     } else {
       const raw = rawEntrySchema.safeParse(value);
       if (!raw.success) {
-        if (asRecord(value) && "secret" in (value as object)) {
+        const record = asRecord(value);
+        if (record && ("secret" in record || record.dataType === "EncOTPStorage")) {
           result.issues.push({ position: position++, name: "", reason: "malformed-entry" });
         }
         continue;

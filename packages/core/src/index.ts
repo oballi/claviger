@@ -41,6 +41,7 @@ export {
 } from "./vault/trash";
 export { parseRecoveryCode } from "./vault/recovery";
 export { moveVaultData } from "./vault/migrate";
+export { canonicalJson } from "./vault/canonical";
 
 export type { ImportIssue, ImportIssueReason, ImportResult } from "./importers/types";
 export { parseImport, type ImportFormat, type ImportParseOutcome } from "./importers";

@@ -1,5 +1,6 @@
 import { CoreError } from "../errors";
 import type { StoragePort } from "../ports";
+import { canonicalJson } from "./canonical";
 import { isVaultKey } from "./format";
 
 /**
@@ -22,7 +23,7 @@ export async function moveVaultData(from: StoragePort, to: StoragePort): Promise
     throw error;
   }
   const written = await to.get(keys);
-  const verified = keys.every((key) => JSON.stringify(written[key]) === JSON.stringify(items[key]));
+  const verified = keys.every((key) => canonicalJson(written[key]) === canonicalJson(items[key]));
   if (!verified) {
     await to.remove(keys);
     throw new CoreError("vault-corrupt", "Copy verification failed");
