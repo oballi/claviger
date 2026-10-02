@@ -33,7 +33,7 @@ describe("public API", () => {
       "DEFAULT_ARGON2",
       "parseImport",
       "buildImportPreview",
-      "exportOtpvault",
+      "exportClaviger",
       "exportOtpauthText",
     ]) {
       expect(core, name).toHaveProperty(name);

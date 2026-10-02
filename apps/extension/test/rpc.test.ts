@@ -1,8 +1,8 @@
-import { CoreError } from "@otp-vault/core";
+import { CoreError } from "@claviger/core";
 import { describe, expect, it } from "vitest";
 import { VaultService } from "../src/background/vaultService";
-import { createRpcClient, RpcError } from "@otp-vault/ui/rpc-client";
-import { RPC_CHANNEL } from "@otp-vault/ui/protocol";
+import { createRpcClient, RpcError } from "@claviger/ui/rpc-client";
+import { RPC_CHANNEL } from "@claviger/ui/protocol";
 import { handleRpcMessage, isRpcEnvelope, isTrustedSender } from "../src/rpc/server";
 import { memoryPlatform } from "./helpers/platform";
 import { PASSWORD } from "./helpers/service";
@@ -365,7 +365,7 @@ describe("client", () => {
 
     const exported = await call("exportVault", {
       token: await token(),
-      format: "otpvault",
+      format: "claviger",
       exportPassword: "export password",
     });
     expect(exported).toMatchObject({ count: 2, skipped: 0 });

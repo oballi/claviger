@@ -29,10 +29,10 @@ importers:
 
   apps/extension:
     dependencies:
-      '@otp-vault/core':
+      '@claviger/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@otp-vault/ui':
+      '@claviger/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       react:
@@ -130,15 +130,15 @@ importers:
 
   packages/ui:
     dependencies:
+      '@claviger/core':
+        specifier: workspace:*
+        version: link:../core
       '@fontsource/geist':
         specifier: 5.3.0
         version: 5.3.0
       '@fontsource/geist-mono':
         specifier: 5.3.0
         version: 5.3.0
-      '@otp-vault/core':
-        specifier: workspace:*
-        version: link:../core
       qrcode-generator:
         specifier: 2.0.4
         version: 2.0.4

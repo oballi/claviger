@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
-import { generateCode } from "@otp-vault/core";
+import { generateCode } from "@claviger/core";
 import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { RpcError } from "@otp-vault/ui/rpc-client";
-import { formatCode } from "@otp-vault/ui";
-import type { UiPlatform } from "@otp-vault/ui";
-import { PopupApp } from "@otp-vault/ui/popup";
+import { RpcError } from "@claviger/ui/rpc-client";
+import { formatCode } from "@claviger/ui";
+import type { UiPlatform } from "@claviger/ui";
+import { PopupApp } from "@claviger/ui/popup";
 import { harness, renderUi, withStatus } from "./helpers/ui";
 import { PASSWORD } from "./helpers/service";
 

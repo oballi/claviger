@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { CountdownRing } from "@otp-vault/ui";
+import { CountdownRing } from "@claviger/ui";
 
 // jsdom rewrites import.meta.url, so resolve from the package root vitest runs in.
 const css = readFileSync(resolve(process.cwd(), "../../packages/ui/src/styles.css"), "utf8");

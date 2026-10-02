@@ -2,12 +2,12 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { RpcError } from "@otp-vault/ui/rpc-client";
-import { Button } from "@otp-vault/ui";
-import { ErrorBoundary } from "@otp-vault/ui";
-import { Icon } from "@otp-vault/ui";
-import { TextField } from "@otp-vault/ui";
-import { errorMessage } from "@otp-vault/ui";
+import { RpcError } from "@claviger/ui/rpc-client";
+import { Button } from "@claviger/ui";
+import { ErrorBoundary } from "@claviger/ui";
+import { Icon } from "@claviger/ui";
+import { TextField } from "@claviger/ui";
+import { errorMessage } from "@claviger/ui";
 import {
   formatCode,
   formatDate,
@@ -15,11 +15,11 @@ import {
   lockPolicyLabel,
   lockPolicySentence,
   passwordStrength,
-} from "@otp-vault/ui";
-import { en } from "@otp-vault/ui";
-import { pickLocale, translate } from "@otp-vault/ui";
-import { manageMessages } from "@otp-vault/ui/manage";
-import { tr } from "@otp-vault/ui";
+} from "@claviger/ui";
+import { en } from "@claviger/ui";
+import { pickLocale, translate } from "@claviger/ui";
+import { manageMessages } from "@claviger/ui/manage";
+import { tr } from "@claviger/ui";
 import { harness, renderUi } from "./helpers/ui";
 
 const t = (key: Parameters<typeof translate>[1], vars?: Record<string, string | number>) =>

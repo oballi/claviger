@@ -1,8 +1,8 @@
 import { readFileSync, existsSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { en, tr } from "@otp-vault/ui";
-import { manageMessages } from "@otp-vault/ui/manage";
+import { en, tr } from "@claviger/ui";
+import { manageMessages } from "@claviger/ui/manage";
 
 const UI_SRC = resolve(import.meta.dirname, "../../../packages/ui/src");
 

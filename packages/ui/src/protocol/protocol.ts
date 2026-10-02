@@ -119,7 +119,7 @@ export const rpcRequestSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("exportVault"),
     token,
-    format: z.enum(["otpvault", "otpauth"]),
+    format: z.enum(["claviger", "otpauth"]),
     exportPassword: password.optional(),
   }),
   z.object({ type: z.literal("changePassword"), token, newPassword: password }),

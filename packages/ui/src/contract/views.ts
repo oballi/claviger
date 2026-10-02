@@ -1,4 +1,4 @@
-import type { Account, ImportFormat, ImportIssue } from "@otp-vault/core";
+import type { Account, ImportFormat, ImportIssue } from "@claviger/core";
 import type {
   ClipboardClearSec,
   LockPolicy,

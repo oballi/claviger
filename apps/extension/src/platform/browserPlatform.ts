@@ -1,4 +1,4 @@
-import { systemClock, webRandom, type StoragePort } from "@otp-vault/core";
+import { systemClock, webRandom, type StoragePort } from "@claviger/core";
 import { browser, type Browser } from "wxt/browser";
 import { clearClipboardInDocument, clearViaOffscreen, type OffscreenPort } from "./clipboard";
 import { fillOtp, type FillResult } from "../inject/fillOtp";

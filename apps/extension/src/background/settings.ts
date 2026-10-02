@@ -1,5 +1,5 @@
 import "../zodConfig";
-import type { StoragePort } from "@otp-vault/core";
+import type { StoragePort } from "@claviger/core";
 import {
   clipboardClearSchema,
   lockPolicySchema,
@@ -9,7 +9,7 @@ import {
   type LockPolicy,
   type Theme,
   type ViewMode,
-} from "@otp-vault/ui/protocol";
+} from "@claviger/ui/protocol";
 import { z } from "zod";
 
 export { clipboardClearSchema, lockPolicySchema, themeSchema, viewModeSchema };

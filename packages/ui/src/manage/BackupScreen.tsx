@@ -35,7 +35,7 @@ export interface ImportSource {
   skippedImages?: string[];
 }
 
-const SOURCES = ["Google Authenticator", "Authenticator", "Aegis", "2FAS", "otp-vault"];
+const SOURCES = ["Google Authenticator", "Authenticator", "Aegis", "2FAS", "claviger"];
 
 function Radio({
   name,
@@ -94,7 +94,7 @@ export function BackupScreen({
   const { rpc, download, decodeQr, capabilities } = useUi();
   const t = useT();
   const locale = useLocale();
-  const [format, setFormat] = useState<"otpvault" | "otpauth">("otpvault");
+  const [format, setFormat] = useState<"claviger" | "otpauth">("claviger");
   const [custom, setCustom] = useState(false);
   const [exportPassword, setExportPassword] = useState("");
   const [exportConfirm, setExportConfirm] = useState("");
@@ -130,8 +130,8 @@ export function BackupScreen({
   }, [loadUsage]);
 
   const customProblem = custom ? newPasswordProblem(t, exportPassword, exportConfirm) : null;
-  const ready = format === "otpvault" ? !customProblem : plainAck;
-  const filename = `otp-vault-${isoDate(Date.now())}.${format === "otpvault" ? "otpvault" : "txt"}`;
+  const ready = format === "claviger" ? !customProblem : plainAck;
+  const filename = `claviger-${isoDate(Date.now())}.${format === "claviger" ? "claviger" : "txt"}`;
   const target = state.storageArea === "local" ? "sync" : "local";
 
   // Losing readiness (e.g. unticking the acknowledgement) must not strand the open panel.
@@ -148,7 +148,7 @@ export function BackupScreen({
     setExportConfirm("");
   }
 
-  function chooseFormat(next: "otpvault" | "otpauth") {
+  function chooseFormat(next: "claviger" | "otpauth") {
     setFormat(next);
     setConfirming(false);
     setPlainAck(false);
@@ -254,8 +254,8 @@ export function BackupScreen({
           <legend className="sr-only">{t("backup.format")}</legend>
           <Radio
             name="export-format"
-            checked={format === "otpvault"}
-            onSelect={() => chooseFormat("otpvault")}
+            checked={format === "claviger"}
+            onSelect={() => chooseFormat("claviger")}
             title={t("backup.encrypted")}
             hint={t("backup.encryptedHint")}
             badge={t("common.recommended")}
@@ -275,7 +275,7 @@ export function BackupScreen({
         </fieldset>
 
         <div className="flex max-w-md flex-col gap-5 border-t border-hair py-5">
-          {format === "otpvault" ? (
+          {format === "claviger" ? (
             <>
               <fieldset className="m-0 flex flex-col gap-1 border-0 p-0">
                 <legend className="sr-only">{t("backup.passwordChoice")}</legend>
@@ -353,7 +353,7 @@ export function BackupScreen({
                 onConfirmed={async (token, password) => {
                   const file = await rpc(
                     "exportVault",
-                    format === "otpvault"
+                    format === "claviger"
                       ? { token, format, exportPassword: custom ? exportPassword : password }
                       : { token, format },
                   );
@@ -401,7 +401,8 @@ export function BackupScreen({
               type="file"
               className="sr-only"
               multiple
-              accept=".json,.txt,.2fas,.otpvault,application/json,text/plain,image/png,image/jpeg,image/webp,image/gif"
+              // .otpvault: files written by earlier previews
+              accept=".json,.txt,.2fas,.claviger,.otpvault,application/json,text/plain,image/png,image/jpeg,image/webp,image/gif"
               onChange={(e) => {
                 const input = e.currentTarget;
                 void readFiles(Array.from(input.files ?? [])).finally(() => {

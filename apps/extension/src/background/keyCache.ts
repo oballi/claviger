@@ -1,4 +1,4 @@
-import { fromBase64, toBase64 } from "@otp-vault/core";
+import { fromBase64, toBase64 } from "@claviger/core";
 import type { Platform } from "../platform/ports";
 import type { LockPolicy } from "./settings";
 

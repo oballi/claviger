@@ -1,4 +1,4 @@
-import type { MemoryStorage } from "@otp-vault/core/testing";
+import type { MemoryStorage } from "@claviger/core/testing";
 
 function gate() {
   let release!: () => void;

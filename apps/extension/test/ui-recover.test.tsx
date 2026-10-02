@@ -2,7 +2,7 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { RecoverScreen } from "@otp-vault/ui/manage";
+import { RecoverScreen } from "@claviger/ui/manage";
 import { harness, renderUi } from "./helpers/ui";
 
 const NEW_PASSWORD = "yeni parola cümlesi";

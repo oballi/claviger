@@ -1,4 +1,4 @@
-import { parseImport, parseOtpauthUri } from "@otp-vault/core";
+import { parseImport, parseOtpauthUri } from "@claviger/core";
 import { describe, expect, it } from "vitest";
 import { ATTEMPTS_KEY } from "../src/background/throttle";
 import { PERSISTED_KEY } from "../src/background/keyCache";
@@ -87,27 +87,27 @@ describe("export", () => {
       p.clock.ms = Date.UTC(2026, 0, 1, 12, 0, 0);
       const { token } = await service.reauth(PASSWORD);
       const { filename } = await service.exportVault(token, "otpauth");
-      expect(filename).toBe("otp-vault-2026-01-02.txt");
+      expect(filename).toBe("claviger-2026-01-02.txt");
     } finally {
       if (zone === undefined) delete process.env.TZ;
       else process.env.TZ = zone;
     }
   });
 
-  it("exports an encrypted .otpvault file that imports back", async () => {
+  it("exports an encrypted .claviger file that imports back", async () => {
     const { p, service } = await unlockedService();
     await service.addAccount({ uri: `otpauth://totp/GitHub:me?secret=${SECRET}&issuer=GitHub` });
-    expect(await codeOf(service.exportVault("unused", "otpvault", "short"))).toBe(
+    expect(await codeOf(service.exportVault("unused", "claviger", "short"))).toBe(
       "invalid-request",
     );
     const { token } = await service.reauth(PASSWORD);
-    const { filename, content } = await service.exportVault(token, "otpvault", "export password");
+    const { filename, content } = await service.exportVault(token, "claviger", "export password");
     const d = new Date(p.clock.now());
     const local = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    expect(filename).toBe(`otp-vault-${local}.otpvault`);
+    expect(filename).toBe(`claviger-${local}.claviger`);
     expect(content).not.toContain(SECRET);
     const parsed = await parseImport(content, "export password");
-    expect(parsed).toMatchObject({ status: "ok", format: "otp-vault" });
+    expect(parsed).toMatchObject({ status: "ok", format: "claviger" });
   });
 
   it("exports plain otpauth text", async () => {
@@ -164,7 +164,7 @@ describe("export result and backup time", () => {
     p.clock.advance(5000);
     await service.exportVault(
       (await service.reauth(PASSWORD)).token,
-      "otpvault",
+      "claviger",
       "export password",
     );
     expect((await service.getState()).lastBackupAt).toBe(p.clock.now());

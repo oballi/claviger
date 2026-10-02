@@ -9,7 +9,7 @@ import {
   QrImageTooLargeError,
   QrImageUnreadableError,
   reducedQrSize,
-} from "@otp-vault/ui/qr-limits";
+} from "@claviger/ui/qr-limits";
 import { qrPixels, sideBySide } from "./helpers/qr";
 
 const URI_A = "otpauth://totp/Acme:bob?secret=JBSWY3DPEHPK3PXP&issuer=Acme";

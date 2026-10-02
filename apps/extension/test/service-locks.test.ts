@@ -1,4 +1,4 @@
-import { moveVaultData, Vault } from "@otp-vault/core";
+import { moveVaultData, Vault } from "@claviger/core";
 import { describe, expect, it } from "vitest";
 import { VaultService } from "../src/background/vaultService";
 import { pauseOnce } from "./helpers/pause";

@@ -3,7 +3,7 @@ import {
   CLOCK_OFFSET_THRESHOLD_SEC,
   computeClockOffset,
   exportOtpauthText,
-  exportOtpvault,
+  exportClaviger,
   generateCode,
   HEADER_KEY,
   isVaultKey,
@@ -22,7 +22,7 @@ import {
   type AccountPatch,
   type StoragePort,
   type VaultDeps,
-} from "@otp-vault/core";
+} from "@claviger/core";
 import type {
   AccountListView,
   AccountView,
@@ -35,8 +35,8 @@ import type {
   SnapshotInfo,
   StorageUsageView,
   TrashItemView,
-} from "@otp-vault/ui/views";
-import { TRASH_RETENTION_DAYS } from "@otp-vault/ui/views";
+} from "@claviger/ui/views";
+import { TRASH_RETENTION_DAYS } from "@claviger/ui/views";
 import type { Platform, StorageAreaName } from "../platform/ports";
 import { ServiceError } from "./errors";
 import {
@@ -1025,10 +1025,10 @@ export class VaultService {
 
   async exportVault(
     token: string,
-    format: "otpvault" | "otpauth",
+    format: "claviger" | "otpauth",
     exportPassword?: string,
   ): Promise<{ filename: string; content: string; count: number; skipped: number }> {
-    if (format === "otpvault") assertPassword(exportPassword ?? "");
+    if (format === "claviger") assertPassword(exportPassword ?? "");
     return this.exclusive(async () => {
       const vault = await this.spendToken(token);
       const { accounts, unreadable, groups } = await vault.listAccounts();
@@ -1037,17 +1037,17 @@ export class VaultService {
       const pad = (n: number) => String(n).padStart(2, "0");
       const date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
       const result =
-        format === "otpvault"
+        format === "claviger"
           ? {
-              filename: `otp-vault-${date}.otpvault`,
-              content: await exportOtpvault(
+              filename: `claviger-${date}.claviger`,
+              content: await exportClaviger(
                 accounts,
                 exportPassword ?? "",
                 { random: this.p.random, clock: this.p.clock, kdf: this.p.kdf },
                 groups,
               ),
             }
-          : { filename: `otp-vault-${date}.txt`, content: exportOtpauthText(accounts) };
+          : { filename: `claviger-${date}.txt`, content: exportOtpauthText(accounts) };
       await saveSettings(this.p.local, { lastBackupAt: this.p.clock.now() });
       return { ...result, count: accounts.length, skipped: unreadable.length };
     });

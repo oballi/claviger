@@ -1,5 +1,5 @@
-import { Vault } from "@otp-vault/core";
-import { MemoryStorage } from "@otp-vault/core/testing";
+import { Vault } from "@claviger/core";
+import { MemoryStorage } from "@claviger/core/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DAILY_CHECK_MS } from "../src/background/vaultService";
 import { DAY_MS, recordsStorage, SnapshotStore } from "../src/background/snapshots";

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { CORE_VERSION } from "@otp-vault/core";
+import { CORE_VERSION } from "@claviger/core";
 import config from "../wxt.config";
 
 type ManifestFn = (env: {
@@ -63,10 +63,24 @@ describe("manifest", () => {
     });
   });
 
+  it("uses the claviger name, tagline and Firefox id", () => {
+    for (const [lang, desc, menu] of [
+      ["en", "Open Source 2FA Authenticator", "Fill with claviger"],
+      ["tr", "A\u00e7\u0131k kaynak 2FA do\u011frulay\u0131c\u0131", "claviger ile doldur"],
+    ] as const) {
+      const m = JSON.parse(
+        readFileSync(new URL(`../public/_locales/${lang}/messages.json`, import.meta.url), "utf8"),
+      );
+      expect(m.extName.message).toBe("claviger");
+      expect(m.extDescription.message).toBe(desc);
+      expect(m.menuFill.message).toBe(menu);
+    }
+  });
+
   it("pins the Firefox add-on id and minimum version", () => {
     expect(manifestFor("firefox").browser_specific_settings).toEqual({
       gecko: {
-        id: "otp-vault@otp-vault.dev",
+        id: "claviger@claviger.app",
         strict_min_version: "140.0",
         data_collection_permissions: { required: ["none"] },
       },

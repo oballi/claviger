@@ -1,12 +1,23 @@
 import { useCallback, useState } from "react";
 
-const KEY = "otpv.popup.collapsed";
+const KEY = "claviger.popup.collapsed";
+// Renamed from the earlier product name; migrated once on read.
+const LEGACY_KEY = "otpv.popup.collapsed";
 const MAX_KEYS = 64;
 const MAX_KEY_LENGTH = 64;
 
 function read(): Set<string> {
   try {
-    const raw: unknown = JSON.parse(localStorage.getItem(KEY) ?? "[]");
+    let stored = localStorage.getItem(KEY);
+    if (stored === null) {
+      const old = localStorage.getItem(LEGACY_KEY);
+      if (old !== null) {
+        localStorage.setItem(KEY, old);
+        stored = old;
+        localStorage.removeItem(LEGACY_KEY);
+      }
+    }
+    const raw: unknown = JSON.parse(stored ?? "[]");
     if (!Array.isArray(raw)) return new Set();
     return new Set(
       raw

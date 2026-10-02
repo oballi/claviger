@@ -1,4 +1,4 @@
-import { generateCode } from "@otp-vault/core";
+import { generateCode } from "@claviger/core";
 import { describe, expect, it, vi } from "vitest";
 import { handleUserTrigger } from "../src/background/triggers";
 import { saveSettings } from "../src/background/settings";

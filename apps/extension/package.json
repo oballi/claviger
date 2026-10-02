@@ -1,5 +1,5 @@
 {
-  "name": "@otp-vault/extension",
+  "name": "@claviger/extension",
   "version": "0.1.0",
   "license": "MIT",
   "private": true,
@@ -21,8 +21,8 @@
     "lint:firefox": "web-ext lint --source-dir .output/firefox-mv3 --self-hosted"
   },
   "dependencies": {
-    "@otp-vault/core": "workspace:*",
-    "@otp-vault/ui": "workspace:*",
+    "@claviger/core": "workspace:*",
+    "@claviger/ui": "workspace:*",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "zod": "4.6.5",

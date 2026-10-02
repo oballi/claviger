@@ -4,6 +4,7 @@ import { utf8Decode, utf8Encode } from "../encoding/bytes";
 import type { RandomPort } from "../ports";
 import type { EncryptedRecord } from "./format";
 
+// legacy name; changing it breaks existing vaults
 /** The AAD includes the record's storage key, so swapped records are detected. */
 export const recordAad = (key: string) => `otp-vault/v1/${key}`;
 

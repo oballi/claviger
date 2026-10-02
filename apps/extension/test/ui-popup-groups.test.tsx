@@ -2,7 +2,7 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { PopupApp } from "@otp-vault/ui/popup";
+import { PopupApp } from "@claviger/ui/popup";
 import { harness, renderUi } from "./helpers/ui";
 
 async function seeded() {
@@ -99,7 +99,7 @@ describe("popup groups", () => {
     "treats stored %s as all expanded",
     async (raw) => {
       const h = await seeded();
-      localStorage.setItem("otpv.popup.collapsed", raw);
+      localStorage.setItem("claviger.popup.collapsed", raw);
       renderUi(<PopupApp pollMs={0} />, h.ui);
       expect(await screen.findByText("Alpha")).toBeTruthy();
       expect(screen.getAllByRole("button", { expanded: true })).toHaveLength(3);
@@ -108,12 +108,24 @@ describe("popup groups", () => {
 
   it("prunes stale keys and ignores oversized entries", async () => {
     const h = await seeded();
-    localStorage.setItem("otpv.popup.collapsed", JSON.stringify(["dead-group", "x".repeat(65)]));
+    localStorage.setItem(
+      "claviger.popup.collapsed",
+      JSON.stringify(["dead-group", "x".repeat(65)]),
+    );
     renderUi(<PopupApp pollMs={0} />, h.ui);
     await userEvent.click(await screen.findByRole("button", { name: /Home/ }));
-    const stored = JSON.parse(localStorage.getItem("otpv.popup.collapsed") ?? "[]") as string[];
+    const stored = JSON.parse(localStorage.getItem("claviger.popup.collapsed") ?? "[]") as string[];
     expect(stored).toHaveLength(1);
     expect(stored).not.toContain("dead-group");
+  });
+
+  it("migrates the legacy collapsed key once", async () => {
+    const h = await seeded();
+    localStorage.setItem("otpv.popup.collapsed", JSON.stringify(["dead-group"]));
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    expect(await screen.findByText("Alpha")).toBeTruthy();
+    expect(localStorage.getItem("claviger.popup.collapsed")).toBe('["dead-group"]');
+    expect(localStorage.getItem("otpv.popup.collapsed")).toBeNull();
   });
 
   it("wires aria-controls only while open", async () => {

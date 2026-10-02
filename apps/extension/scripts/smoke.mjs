@@ -1,6 +1,6 @@
 /* global chrome */
 // Loads the built Chrome extension in headless Chromium and walks the first-run flow.
-// Needs the SMOKE=1 build (`pnpm --filter @otp-vault/extension build:smoke`): it adds <all_urls> so fill and capture can be
+// Needs the SMOKE=1 build (`pnpm --filter @claviger/extension build:smoke`): it adds <all_urls> so fill and capture can be
 // driven without a real toolbar click. The real activeTab grants are on the manual checklist.
 // EXTENSION_DIR overrides the build folder. Needs a Chromium binary: set CHROMIUM_PATH, or run `pnpm exec playwright-core install chromium` once.
 import { mkdtempSync, readFileSync } from "node:fs";
@@ -13,20 +13,17 @@ import qrcode from "qrcode-generator";
 const ext = process.env.EXTENSION_DIR
   ? resolve(process.env.EXTENSION_DIR)
   : resolve(import.meta.dirname, "../.output-smoke/chrome-mv3");
-const ctx = await chromium.launchPersistentContext(
-  mkdtempSync(join(tmpdir(), "otp-vault-smoke-")),
-  {
-    executablePath: process.env.CHROMIUM_PATH || undefined,
-    headless: true,
-    locale: "tr-TR",
-    args: [
-      `--disable-extensions-except=${ext}`,
-      `--load-extension=${ext}`,
-      "--headless=new",
-      "--lang=tr-TR",
-    ],
-  },
-);
+const ctx = await chromium.launchPersistentContext(mkdtempSync(join(tmpdir(), "claviger-smoke-")), {
+  executablePath: process.env.CHROMIUM_PATH || undefined,
+  headless: true,
+  locale: "tr-TR",
+  args: [
+    `--disable-extensions-except=${ext}`,
+    `--load-extension=${ext}`,
+    "--headless=new",
+    "--lang=tr-TR",
+  ],
+});
 const errors = [];
 // Chromium reports CSP violations (e.g. eval) as console errors too; this names them explicitly.
 await ctx.addInitScript(() => {
@@ -106,7 +103,7 @@ try {
   const origin = `http://127.0.0.1:${server.address().port}`;
   const rpc = (request) =>
     popup.evaluate(
-      (req) => chrome.runtime.sendMessage({ channel: "otp-vault/rpc", request: req }),
+      (req) => chrome.runtime.sendMessage({ channel: "claviger/rpc", request: req }),
       request,
     );
   const must = async (request) => {

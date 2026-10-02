@@ -2,7 +2,7 @@
 import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { AccountEditor, AccountsScreen } from "@otp-vault/ui/manage";
+import { AccountEditor, AccountsScreen } from "@claviger/ui/manage";
 import { harness, renderUi, type Harness } from "./helpers/ui";
 import { PASSWORD } from "./helpers/service";
 

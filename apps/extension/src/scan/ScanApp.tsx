@@ -1,8 +1,8 @@
-import { registrableDomain } from "@otp-vault/core";
-import { ImportScreen } from "@otp-vault/ui/manage";
-import { QrImageTooLargeError } from "@otp-vault/ui/qr-limits";
-import { RpcError } from "@otp-vault/ui/rpc-client";
-import { Button, errorMessage, useUi } from "@otp-vault/ui";
+import { registrableDomain } from "@claviger/core";
+import { ImportScreen } from "@claviger/ui/manage";
+import { QrImageTooLargeError } from "@claviger/ui/qr-limits";
+import { RpcError } from "@claviger/ui/rpc-client";
+import { Button, errorMessage, useUi } from "@claviger/ui";
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { useScanT } from "./messages";
 import { cropSelection, type Cropper } from "./crop";

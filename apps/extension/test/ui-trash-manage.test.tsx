@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { AccountsScreen } from "@otp-vault/ui/manage";
+import { AccountsScreen } from "@claviger/ui/manage";
 import { describe, expect, it, vi } from "vitest";
 import { harness, renderUi, type Harness } from "./helpers/ui";
 

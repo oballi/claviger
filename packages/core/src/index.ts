@@ -48,5 +48,5 @@ export { buildImportPreview, type PreviewItem } from "./importers/preview";
 export { parseGoogleMigrationUri, type MigrationBatch } from "./importers/googleMigration";
 export { parseOtpauthText } from "./importers/otpauthText";
 
-export { EXPORT_FORMAT, exportOtpvault } from "./exporters/otpvault";
+export { EXPORT_FORMAT, exportClaviger } from "./exporters/claviger";
 export { exportOtpauthText } from "./exporters/otpauthText";

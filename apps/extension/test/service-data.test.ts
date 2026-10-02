@@ -1,4 +1,4 @@
-import { generateCode, Vault } from "@otp-vault/core";
+import { generateCode, Vault } from "@claviger/core";
 import { describe, expect, it } from "vitest";
 import {
   PREVIEW_TTL_MS,
@@ -46,12 +46,12 @@ describe("import", () => {
     const { service } = await unlockedService();
     const exported = await service.exportVault(
       (await service.reauth(PASSWORD)).token,
-      "otpvault",
+      "claviger",
       "export password",
     );
     expect(await service.importPreview(exported.content)).toEqual({
       status: "needs-password",
-      format: "otp-vault",
+      format: "claviger",
     });
     expect(await service.importPreview("hello")).toEqual({ status: "unrecognized" });
     expect(await codeOf(service.importPreview(exported.content, "wrong password"))).toBe(
@@ -346,7 +346,7 @@ describe("races (fix round 1)", () => {
 });
 
 describe("groups in backups", () => {
-  it("round-trips group names, order and membership through an .otpvault file", async () => {
+  it("round-trips group names, order and membership through an .claviger file", async () => {
     const a = await unlockedService();
     const x = await a.service.addAccount({ draft: { secret: SECRET, issuer: "GitHub" } });
     await a.service.addAccount({ draft: { secret: "GEZDGNBVGY3TQOJQ", issuer: "Bank" } });
@@ -356,7 +356,7 @@ describe("groups in backups", () => {
     await a.service.createGroup("Empty");
     const exported = await a.service.exportVault(
       (await a.service.reauth(PASSWORD)).token,
-      "otpvault",
+      "claviger",
       "export password",
     );
     const b = await unlockedService();

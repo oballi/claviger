@@ -84,7 +84,7 @@ export default defineConfig(
               message: "packages/ui reaches the platform only through UiPlatform.",
             },
             {
-              group: ["@otp-vault/extension", "@otp-vault/extension/*", "**/apps/**"],
+              group: ["@claviger/extension", "@claviger/extension/*", "**/apps/**"],
               message: "packages/ui must not depend on an app.",
             },
           ],
@@ -130,7 +130,7 @@ export default defineConfig(
         {
           paths: [
             {
-              name: "@otp-vault/core",
+              name: "@claviger/core",
               allowTypeImports: true,
               message:
                 "Popup bundle: import core at runtime only from the background or manage pages.",
@@ -152,10 +152,10 @@ export default defineConfig(
                 "**/rpc/protocol",
                 "**/rpc/server",
                 "**/zodConfig",
-                "@otp-vault/ui/protocol",
-                "@otp-vault/ui/zod-config",
-                "@otp-vault/ui/manage",
-                "@otp-vault/ui/testing",
+                "@claviger/ui/protocol",
+                "@claviger/ui/zod-config",
+                "@claviger/ui/manage",
+                "@claviger/ui/testing",
                 "**/platform/browserPlatform",
                 "**/manage/**",
                 "**/qr/**",
@@ -187,7 +187,7 @@ export default defineConfig(
         "error",
         {
           paths: [
-            { name: "@otp-vault/core", allowTypeImports: true, message: "Popup-safe module." },
+            { name: "@claviger/core", allowTypeImports: true, message: "Popup-safe module." },
             { name: "zod", allowTypeImports: true, message: "Popup-safe module." },
           ],
           patterns: [

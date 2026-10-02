@@ -7,7 +7,7 @@ const root = join(import.meta.dirname, "../packages/ui");
 const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 
 // A stale target silently breaks imports or tree-shaking exemptions (zod jitless config).
-test("every @otp-vault/ui export target exists", () => {
+test("every @claviger/ui export target exists", () => {
   for (const [key, target] of Object.entries(pkg.exports)) {
     assert.ok(existsSync(join(root, target)), `exports["${key}"] -> ${target} is missing`);
   }

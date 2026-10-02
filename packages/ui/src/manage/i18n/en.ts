@@ -205,7 +205,7 @@ export const manageEn: Record<ManageKey, string> = {
   "backup.last": "Last backup: {date}.",
   "backup.export": "Export",
   "backup.format": "Backup format",
-  "backup.encrypted": "Encrypted otp-vault backup",
+  "backup.encrypted": "Encrypted claviger backup",
   "backup.encryptedHint":
     "A file that needs the backup password to open. Use this to move to another device.",
   "backup.plain": "Plain otpauth list",
@@ -257,7 +257,7 @@ export const manageEn: Record<ManageKey, string> = {
   "import.decrypted": "decrypted",
   "import.another": "Choose another file",
   "import.unrecognized":
-    "This content wasn't recognized. It should be a Google Authenticator, Authenticator extension, Aegis, 2FAS or otp-vault backup, or otpauth:// links.",
+    "This content wasn't recognized. It should be a Google Authenticator, Authenticator extension, Aegis, 2FAS or claviger backup, or otpauth:// links.",
   "import.passwordNeeded": "This {format} is password protected.",
   "import.password": "File password",
   "import.open": "Open",
@@ -286,7 +286,7 @@ export const manageEn: Record<ManageKey, string> = {
   "format.upstream-authenticator": "Authenticator extension backup",
   "format.aegis": "Aegis backup",
   "format.2fas": "2FAS backup",
-  "format.otp-vault": "otp-vault backup",
+  "format.claviger": "claviger backup",
   "manage.found": "We found your vault.",
   "manage.corrupt":
     "The vault header can't be read, so the vault can't be opened. Nothing has been deleted. Removing the extension would delete this data; if you have no backup, keep it installed and report the problem.",

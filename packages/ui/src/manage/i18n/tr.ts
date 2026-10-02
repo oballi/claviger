@@ -201,7 +201,7 @@ export const manageTr = {
   "backup.last": "Son yedek: {date}.",
   "backup.export": "Dışa aktar",
   "backup.format": "Yedek biçimi",
-  "backup.encrypted": "Şifreli otp-vault yedeği",
+  "backup.encrypted": "Şifreli claviger yedeği",
   "backup.encryptedHint":
     "Bir dosya; açmak için yedek parolası gerekir. Başka cihaza taşımak için bunu kullan.",
   "backup.plain": "Düz metin otpauth listesi",
@@ -252,7 +252,7 @@ export const manageTr = {
   "import.decrypted": "şifresi çözüldü",
   "import.another": "Başka dosya seç",
   "import.unrecognized":
-    "Bu içerik tanınmadı. Google Authenticator, Authenticator eklentisi, Aegis, 2FAS veya otp-vault yedeği ya da otpauth:// bağlantıları olmalı.",
+    "Bu içerik tanınmadı. Google Authenticator, Authenticator eklentisi, Aegis, 2FAS veya claviger yedeği ya da otpauth:// bağlantıları olmalı.",
   "import.passwordNeeded": "{format} parola ile korunuyor.",
   "import.password": "Dosya parolası",
   "import.open": "Aç",
@@ -281,7 +281,7 @@ export const manageTr = {
   "format.upstream-authenticator": "Authenticator eklentisi yedeği",
   "format.aegis": "Aegis yedeği",
   "format.2fas": "2FAS yedeği",
-  "format.otp-vault": "otp-vault yedeği",
+  "format.claviger": "claviger yedeği",
   "manage.found": "Kasan bulundu.",
   "manage.corrupt":
     "Kasa başlığı okunamadığı için kasa açılamıyor. Verilerin silinmedi. Eklentiyi kaldırırsan bu veriler de silinir; bir yedeğin yoksa eklentiyi kaldırma ve sorunu bildir.",

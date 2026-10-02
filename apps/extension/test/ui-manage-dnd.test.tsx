@@ -2,7 +2,7 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { AccountsScreen } from "@otp-vault/ui/manage";
+import { AccountsScreen } from "@claviger/ui/manage";
 import { harness, renderUi } from "./helpers/ui";
 
 const dt = (types: string[] = []) => ({
@@ -192,7 +192,7 @@ describe("manage drag between groups", () => {
     const s = await setup({ grouped: true });
     const member = await openGroup(s);
     fireEvent.dragStart(member, dt());
-    const group = dt(["application/x-otp-vault-group"]);
+    const group = dt(["application/x-claviger-group"]);
     expect(fireEvent.dragOver(screen.getByTestId("ungrouped-drop"), group)).toBe(true);
     expect(fireEvent.dragOver(s.row("Alpha"), group)).toBe(true);
     expect(fireEvent.dragOver(s.groupLi("Kişisel"), group)).toBe(true);

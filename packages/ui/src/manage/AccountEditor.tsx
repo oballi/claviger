@@ -1,4 +1,4 @@
-import { parseOtpauthUri } from "@otp-vault/core";
+import { parseOtpauthUri } from "@claviger/core";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { AccountView, GroupView } from "../contract/views";
 import { RpcError } from "../rpc/client";

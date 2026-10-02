@@ -1,7 +1,7 @@
 import "../../src/zodConfig";
 import "../../src/styles.css";
-import { LocaleProvider, pickLocale, UiProvider } from "@otp-vault/ui";
-import { manageMessages } from "@otp-vault/ui/manage";
+import { LocaleProvider, pickLocale, UiProvider } from "@claviger/ui";
+import { manageMessages } from "@claviger/ui/manage";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserUiPlatform } from "../../src/platform/uiPlatform";

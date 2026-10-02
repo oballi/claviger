@@ -1,7 +1,7 @@
 import type { PopupKey } from "./tr";
 
 export const en: Record<PopupKey, string> = {
-  "app.name": "otp-vault",
+  "app.name": "claviger",
   "common.loading": "Loading…",
   "common.cancel": "Cancel",
   "common.save": "Save",
@@ -59,7 +59,7 @@ export const en: Record<PopupKey, string> = {
   "status.noVault.action": "Start setup",
   "status.unsupported.title": "Update required.",
   "status.unsupported.body":
-    "This vault was created by a newer otp-vault version. Please update the extension.",
+    "This vault was created by a newer claviger version. Please update the extension.",
   "status.corrupt.title": "Vault unreadable.",
   "status.corrupt.body": "The vault data looks damaged. Nothing has been deleted.",
   "status.corrupt.action": "Details",
@@ -161,9 +161,9 @@ export const en: Record<PopupKey, string> = {
   "recovery.label": "Recovery code",
   "recovery.download": "Download as text file",
   "recovery.print": "Print",
-  "recovery.filename": "otp-vault-recovery-code.txt",
+  "recovery.filename": "claviger-recovery-code.txt",
   "recovery.fileText":
-    "otp-vault recovery code\n\n{code}\n\nDon't share this code. If you forget your password, it opens your vault.\n",
+    "claviger recovery code\n\n{code}\n\nDon't share this code. If you forget your password, it opens your vault.\n",
   "recovery.onceLabel": "ONCE",
   "recovery.once":
     "This code is not shown again. If you lose it, create a new one in settings; the old one stops working.",

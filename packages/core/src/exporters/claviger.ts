@@ -14,10 +14,12 @@ import {
   type PasswordKeyslot,
 } from "../vault/keyslot";
 
-export const EXPORT_FORMAT = "otp-vault-export";
+export const EXPORT_FORMAT = "claviger-export";
+// legacy name; changing it breaks existing vaults
+export const LEGACY_EXPORT_FORMAT = "otp-vault-export";
 
 const exportSchema = z.object({
-  format: z.literal(EXPORT_FORMAT),
+  format: z.enum([EXPORT_FORMAT, LEGACY_EXPORT_FORMAT]),
   version: z.literal(1),
   exportId: z.string().min(1),
   createdAt: z.number(),
@@ -31,6 +33,7 @@ const payloadSchema = z.object({
   groups: z.unknown().optional(),
 });
 const groupNameSchema = z.string().max(200);
+// legacy name; changing it breaks existing vaults
 const payloadAad = (exportId: string) => `otp-vault/v1/export/${exportId}`;
 
 function toPortable(a: AccountInput): AccountInput {
@@ -38,7 +41,7 @@ function toPortable(a: AccountInput): AccountInput {
   return { type, secret, issuer, label, algorithm, digits, period, counter, domains };
 }
 
-export async function exportOtpvault(
+export async function exportClaviger(
   accounts: (AccountInput & { groupId?: string })[],
   password: string,
   deps: Pick<VaultDeps, "random" | "clock" | "kdf">,
@@ -81,13 +84,15 @@ export async function exportOtpvault(
   );
 }
 
-export function isOtpvaultExport(json: unknown): boolean {
+export function isClavigerExport(json: unknown): boolean {
   return (
-    !!json && typeof json === "object" && (json as { format?: unknown }).format === EXPORT_FORMAT
+    !!json &&
+    typeof json === "object" &&
+    [EXPORT_FORMAT, LEGACY_EXPORT_FORMAT].includes((json as { format?: unknown }).format as string)
   );
 }
 
-export async function parseOtpvaultExport(json: unknown, password: string): Promise<ImportResult> {
+export async function parseClavigerExport(json: unknown, password: string): Promise<ImportResult> {
   if (isNewerVersion(json, "version"))
     throw new CoreError("unsupported-format", "This export was created by a newer version");
   const file = exportSchema.safeParse(json);

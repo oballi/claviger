@@ -1,5 +1,5 @@
 import type { FillResult } from "../inject/fillOtp";
-import type { Argon2Params, ClockPort, RandomPort, StoragePort } from "@otp-vault/core";
+import type { Argon2Params, ClockPort, RandomPort, StoragePort } from "@claviger/core";
 
 export interface AlarmPort {
   create(name: string, delayMinutes: number): Promise<void>;
@@ -44,4 +44,4 @@ export interface Platform {
   kdf?: Argon2Params;
 }
 
-export type { StorageAreaName } from "@otp-vault/ui/views";
+export type { StorageAreaName } from "@claviger/ui/views";

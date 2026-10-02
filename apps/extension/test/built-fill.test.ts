@@ -38,7 +38,7 @@ function inPage(source: string, url: string): { fn: Fill; input: HTMLInputElemen
   return { fn, input };
 }
 
-// Needs a build first (`pnpm --filter @otp-vault/extension build` and `build:firefox`).
+// Needs a build first (`pnpm --filter @claviger/extension build` and `build:firefox`).
 for (const dir of ["chrome-mv3", "firefox-mv3"]) {
   const file = new URL(`../.output/${dir}/background.js`, import.meta.url);
   const present = existsSync(file);

@@ -55,7 +55,8 @@ export default defineConfig({
       ? {
           browser_specific_settings: {
             gecko: {
-              id: "otp-vault@otp-vault.dev",
+              // New id: Firefox storage is keyed by it.
+              id: "claviger@claviger.app",
               strict_min_version: "140.0",
               // AMO has required this for new extensions since Nov 2025; no data is collected.
               data_collection_permissions: { required: ["none"] },

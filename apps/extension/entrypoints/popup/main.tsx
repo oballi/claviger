@@ -1,6 +1,6 @@
 import "../../src/styles.css";
-import { applyCachedTheme, LocaleProvider, pickLocale, UiProvider } from "@otp-vault/ui";
-import { PopupApp } from "@otp-vault/ui/popup";
+import { applyCachedTheme, LocaleProvider, pickLocale, UiProvider } from "@claviger/ui";
+import { PopupApp } from "@claviger/ui/popup";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserUiPlatform } from "../../src/platform/uiPlatform";

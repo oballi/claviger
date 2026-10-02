@@ -1,6 +1,6 @@
 # Vault and backup format (version 1)
 
-This document describes how otp-vault stores data so that anyone can audit it, recover their data, or write a compatible tool. Field names are exact. Binary values are standard base64. All encryption is AES-256-GCM with a 96-bit random IV; the stored `ct` is ciphertext followed by the 128-bit tag.
+This document describes how claviger stores data so that anyone can audit it, recover their data, or write a compatible tool. Field names are exact. Binary values are standard base64. All encryption is AES-256-GCM with a 96-bit random IV; the stored `ct` is ciphertext followed by the 128-bit tag.
 
 ## Storage keys
 
@@ -79,11 +79,11 @@ The plaintext is UTF-8 JSON. The AAD is `otp-vault/v1/<storage key>` (for exampl
 
 **Index plaintext**: `{ "order": ["<uuid>", ...], "pinned": ["<uuid>", ...], "updatedAt": 0 }`. If the index is unreadable the accounts are still shown and the index can be rebuilt.
 
-## Encrypted backup (`.otpvault`)
+## Encrypted backup (`.claviger`)
 
 ```json
 {
-  "format": "otp-vault-export",
+  "format": "claviger-export",
   "version": 1,
   "exportId": "<uuid>",
   "createdAt": 1790000000000,
@@ -109,3 +109,8 @@ Restoring creates a new account with a fresh id (the old id keeps its tombstone,
 - Any incompatible change to the header, records, index or tombstones increases `format`; the backup file has its own `version`.
 - A reader that finds a newer `format`, record `v` or backup `version` refuses to modify the data and reports it as unsupported instead of treating it as corrupt.
 - New versions must migrate older data automatically and without loss.
+
+## Legacy names
+
+The project was called otp-vault before it became claviger. These identifiers are bound into existing ciphertexts and are frozen: `otp-vault/v1/<storage key>`, `otp-vault/v1/keyslot/<kind>/<scope>`, `otp-vault/recovery/v1`, `otp-vault/v1/export/<exportId>`, `otp-vault/v1/trash:<uuid>`.
+Backups: new files use `"format": "claviger-export"` and the extension `.claviger`; readers also accept `"otp-vault-export"` and `.otpvault`. The encryption is identical.

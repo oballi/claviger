@@ -1,12 +1,12 @@
 {
   "extName": {
-    "message": "otp-vault"
+    "message": "claviger"
   },
   "extDescription": {
-    "message": "Encrypted, open-source two-factor authentication codes."
+    "message": "Open Source 2FA Authenticator"
   },
   "menuFill": {
-    "message": "Insert 2FA code"
+    "message": "Fill with claviger"
   },
   "commandFill": {
     "message": "Fill this site's 2FA code"

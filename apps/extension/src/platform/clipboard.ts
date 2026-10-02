@@ -1,4 +1,4 @@
-export const OFFSCREEN_CHANNEL = "otp-vault/offscreen";
+export const OFFSCREEN_CHANNEL = "claviger/offscreen";
 
 export function isOffscreenClear(message: unknown): boolean {
   return (

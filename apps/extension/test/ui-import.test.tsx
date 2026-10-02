@@ -2,9 +2,9 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { LocaleProvider } from "@otp-vault/ui";
-import { UiProvider } from "@otp-vault/ui";
-import { ImportScreen, manageMessages } from "@otp-vault/ui/manage";
+import { LocaleProvider } from "@claviger/ui";
+import { UiProvider } from "@claviger/ui";
+import { ImportScreen, manageMessages } from "@claviger/ui/manage";
 import { harness, renderUi, type Harness } from "./helpers/ui";
 import { PASSWORD } from "./helpers/service";
 
@@ -121,18 +121,18 @@ describe("ImportScreen", () => {
     const { token } = await source.ui.rpc("reauth", { password: PASSWORD });
     const backup = await source.ui.rpc("exportVault", {
       token,
-      format: "otpvault",
+      format: "claviger",
       exportPassword: "backup password",
     });
     await open(backup.content, backup.filename);
     const field = await screen.findByLabelText("Dosya parolası");
-    expect(screen.getByText("otp-vault yedeği parola ile korunuyor.")).toBeTruthy();
+    expect(screen.getByText("claviger yedeği parola ile korunuyor.")).toBeTruthy();
     await userEvent.type(field, "wrong password");
     await userEvent.click(screen.getByRole("button", { name: "Aç" }));
     await vi.waitFor(() => expect(screen.getByRole("alert").textContent).toBe("Parola yanlış."));
     await userEvent.type(field, "backup password");
     await userEvent.click(screen.getByRole("button", { name: "Aç" }));
-    expect(await screen.findByText(/· otp-vault yedeği · şifresi çözüldü$/)).toBeTruthy();
+    expect(await screen.findByText(/· claviger yedeği · şifresi çözüldü$/)).toBeTruthy();
   });
 
   it("explains unrecognized content and goes back", async () => {
@@ -161,7 +161,7 @@ describe("ImportScreen", () => {
   it("links back to the accounts page", async () => {
     await open(ACME);
     const crumb = screen.getByRole("navigation", { name: "Konum" });
-    expect(within(crumb).getByRole("link", { name: "otp-vault" }).getAttribute("href")).toBe(
+    expect(within(crumb).getByRole("link", { name: "claviger" }).getAttribute("href")).toBe(
       "#/accounts",
     );
   });
@@ -179,7 +179,7 @@ describe("ImportScreen", () => {
     const { token } = await source.ui.rpc("reauth", { password: PASSWORD });
     const backup = await source.ui.rpc("exportVault", {
       token,
-      format: "otpvault",
+      format: "claviger",
       exportPassword: "backup password",
     });
     await open(backup.content, backup.filename);

@@ -1,4 +1,4 @@
-import type { UiPlatform } from "@otp-vault/ui";
+import type { UiPlatform } from "@claviger/ui";
 
 /** Lazy so the wasm decoder is only fetched by pages that import images. */
 export const decodeQr: NonNullable<UiPlatform["decodeQr"]> = async (image) => {

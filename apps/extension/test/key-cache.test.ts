@@ -1,4 +1,4 @@
-import { toBase64 } from "@otp-vault/core";
+import { toBase64 } from "@claviger/core";
 import { describe, expect, it } from "vitest";
 import { KeyCache, MANUAL_LOCK_KEY, PERSISTED_KEY, SESSION_KEY } from "../src/background/keyCache";
 import type { LockPolicy } from "../src/background/settings";

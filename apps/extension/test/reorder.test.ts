@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dropPlacement, neighbourOf, reorderByDrop, swapOrder } from "@otp-vault/ui";
+import { dropPlacement, neighbourOf, reorderByDrop, swapOrder } from "@claviger/ui";
 
 const rows = [
   { id: "p1", pinned: true },

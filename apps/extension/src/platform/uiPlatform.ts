@@ -1,5 +1,5 @@
 import { browser } from "wxt/browser";
-import type { ManageRoute, UiPlatform } from "@otp-vault/ui";
+import type { ManageRoute, UiPlatform } from "@claviger/ui";
 import { rpc } from "./browserRpc";
 
 const CLOCK_ORIGIN = "https://www.google.com/*";

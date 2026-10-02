@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { UndoToast } from "@otp-vault/ui";
-import { PopupApp } from "@otp-vault/ui/popup";
+import { UndoToast } from "@claviger/ui";
+import { PopupApp } from "@claviger/ui/popup";
 import { useState } from "react";
-import { RpcError } from "@otp-vault/ui";
+import { RpcError } from "@claviger/ui";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { harness, renderUi, type Harness } from "./helpers/ui";
 

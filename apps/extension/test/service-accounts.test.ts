@@ -1,4 +1,4 @@
-import { generateCode } from "@otp-vault/core";
+import { generateCode } from "@claviger/core";
 import { describe, expect, it } from "vitest";
 import { saveSettings } from "../src/background/settings";
 import { AUTOLOCK_ALARM } from "../src/background/vaultService";
