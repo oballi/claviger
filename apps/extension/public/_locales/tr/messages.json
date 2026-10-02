@@ -1,12 +1,12 @@
 {
   "extName": {
-    "message": "otp-vault"
+    "message": "claviger"
   },
   "extDescription": {
-    "message": "Şifreli, açık kaynak iki adımlı doğrulama kodları."
+    "message": "Açık kaynak 2FA doğrulayıcı"
   },
   "menuFill": {
-    "message": "2FA kodunu ekle"
+    "message": "claviger ile doldur"
   },
   "commandFill": {
     "message": "Bu sitenin 2FA kodunu doldur"

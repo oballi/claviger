@@ -1,5 +1,5 @@
 export const tr = {
-  "app.name": "otp-vault",
+  "app.name": "claviger",
   "common.loading": "Yükleniyor…",
   "common.cancel": "Vazgeç",
   "common.save": "Kaydet",
@@ -57,7 +57,7 @@ export const tr = {
   "status.noVault.action": "Kurulumu başlat",
   "status.unsupported.title": "Güncelleme gerekli.",
   "status.unsupported.body":
-    "Bu kasa daha yeni bir otp-vault sürümüyle oluşturulmuş. Eklentiyi güncelle.",
+    "Bu kasa daha yeni bir claviger sürümüyle oluşturulmuş. Eklentiyi güncelle.",
   "status.corrupt.title": "Kasa okunamıyor.",
   "status.corrupt.body": "Kasa verisi bozulmuş görünüyor. Verilerin silinmedi.",
   "status.corrupt.action": "Ayrıntılar",
@@ -158,9 +158,9 @@ export const tr = {
   "recovery.label": "Kurtarma kodu",
   "recovery.download": "Metin dosyası olarak indir",
   "recovery.print": "Yazdır",
-  "recovery.filename": "otp-vault-kurtarma-kodu.txt",
+  "recovery.filename": "claviger-kurtarma-kodu.txt",
   "recovery.fileText":
-    "otp-vault kurtarma kodu\n\n{code}\n\nBu kodu kimseyle paylaşma. Parolanı unutursan kasanı bu kodla açabilirsin.\n",
+    "claviger kurtarma kodu\n\n{code}\n\nBu kodu kimseyle paylaşma. Parolanı unutursan kasanı bu kodla açabilirsin.\n",
   "recovery.onceLabel": "BİR KEZ",
   "recovery.once":
     "Bu kod bir daha gösterilmez. Kaybedersen ayarlardan yeni bir kod oluşturabilirsin; eskisi geçersiz olur.",

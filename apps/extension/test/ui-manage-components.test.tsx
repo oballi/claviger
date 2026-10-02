@@ -284,7 +284,7 @@ describe("RecoveryCodeDisplay", () => {
     expect(ui.copy).toHaveBeenCalledWith(code);
     await userEvent.click(screen.getByRole("button", { name: "Metin dosyası olarak indir" }));
     expect(ui.download).toHaveBeenCalledWith(
-      "otp-vault-kurtarma-kodu.txt",
+      "claviger-kurtarma-kodu.txt",
       expect.stringContaining(code),
     );
     await userEvent.click(screen.getByRole("button", { name: "Yazdır" }));

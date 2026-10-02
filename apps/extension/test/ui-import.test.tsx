@@ -161,7 +161,7 @@ describe("ImportScreen", () => {
   it("links back to the accounts page", async () => {
     await open(ACME);
     const crumb = screen.getByRole("navigation", { name: "Konum" });
-    expect(within(crumb).getByRole("link", { name: "otp-vault" }).getAttribute("href")).toBe(
+    expect(within(crumb).getByRole("link", { name: "claviger" }).getAttribute("href")).toBe(
       "#/accounts",
     );
   });
