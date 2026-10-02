@@ -35,6 +35,45 @@ const names = async (h: Harness) =>
   (await h.ui.rpc("listAccounts", {})).accounts.map((a) => a.issuer);
 
 describe("AccountsScreen", () => {
+  it("lays out the accounts table without a minimum width or horizontal scroll class", async () => {
+    const h = await seeded();
+    await open(h);
+    const table = screen.getByRole("table");
+    expect(table.className).not.toContain("min-w-");
+    expect(table.className).toContain("table-fixed");
+    expect(table.closest(".grid")!.className).toContain("lg:grid-cols-[minmax(0,1fr)_300px]");
+  });
+
+  it("truncates long cells and exposes the full text in a title", async () => {
+    const h = await seeded();
+    const long = "Çok uzun bir servis adı ".repeat(8).trim();
+    const site = "https://" + "alt-alan-adi-cok-uzun.".repeat(5) + "example.com";
+    await h.ui.rpc("addAccountUri", {
+      uri: `otpauth://totp/${encodeURIComponent(long)}:me?secret=GEZDGNBVGY3TQOJR&issuer=${encodeURIComponent(long)}`,
+      sourceUrl: site,
+    });
+    await open(h);
+    const row = screen.getByText(long).closest("tr")!;
+    expect(screen.getByText(long).className).toContain("truncate");
+    expect(screen.getByText(long).getAttribute("title")).toBe(long);
+    const cells = within(row).getAllByRole("cell");
+    for (const i of [2, 3, 4]) expect(cells[i]!.className).toContain("truncate");
+    expect(cells[4]!.getAttribute("title")).toBe(cells[4]!.textContent);
+  });
+
+  it("keeps the Edit link reachable: nowrap in a 96px column", async () => {
+    const h = await seeded();
+    await open(h);
+    const row = screen.getByText("GitHub").closest("tr")!;
+    const cell = within(row).getAllByRole("cell").at(-1)!;
+    expect(cell.className).toContain("whitespace-nowrap");
+    expect(cell.className).toContain("text-right");
+    expect(cell.className).toContain("pr-1");
+    const cols = screen.getByRole("table").querySelectorAll("col");
+    expect((cols[cols.length - 1] as HTMLElement).style.width).toBe("96px");
+    expect((cols[0] as HTMLElement).style.width).toBe("32px");
+  });
+
   it("lists accounts with linked sites, types and the summary strip", async () => {
     const h = await seeded();
     await open(h);

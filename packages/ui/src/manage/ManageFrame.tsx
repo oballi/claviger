@@ -13,16 +13,20 @@ const SECTIONS = [
 export function ManageFrame({
   active,
   onLock,
+  wide = false,
   children,
 }: {
   active: ManageRoute | null;
+  wide?: boolean;
   onLock?: () => void;
   children: ReactNode;
 }) {
   const t = useT();
   return (
     <div className="min-h-screen bg-bg px-[clamp(20px,5vw,72px)] pt-7 pb-14 font-sans text-text">
-      <div className="mx-auto flex w-full max-w-[1040px] flex-col gap-12">
+      <div
+        className={`mx-auto flex w-full ${wide ? "max-w-[1240px]" : "max-w-[1040px]"} flex-col gap-12`}
+      >
         <header className="flex flex-wrap items-center gap-x-10 gap-y-4 border-b border-hair pb-3.5">
           <div className="font-mono text-[13px] tracking-wide">{t("app.name")}</div>
           {onLock ? (

@@ -8,23 +8,28 @@ import { useT } from "../i18n/i18n";
 import { useUi } from "../platform";
 import { dropId, moveId } from "./groupOrder";
 
-type Kind = "rename" | "up" | "down" | "delete" | "title";
+type Kind = "rename" | "up" | "down" | "delete" | "title" | "toggle" | "member";
 
 /** Design board "Yönetim — gruplar", right column. */
 export function GroupsSection({
   groups,
   accounts,
   onChanged,
+  onDragAccount,
 }: {
   groups: readonly GroupView[];
   accounts: readonly AccountView[];
   onChanged: (message: string) => void | Promise<void>;
+  dragAccount?: { id: string; source: "table" | "member" } | null;
+  onDragAccount?: (d: { id: string; source: "member" } | null) => void;
+  onMoveToGroup?: (id: string, groupId: string | null) => Promise<void>;
 }) {
   const { rpc } = useUi();
   const t = useT();
   const [renaming, setRenaming] = useState<{ id: string; value: string } | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
+  const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
   const [error, setError] = useState<{ id: string; text: string } | null>(null);
   const busy = useRef(false);
   const sectionRef = useRef<HTMLElement>(null);
@@ -32,6 +37,14 @@ export function GroupsSection({
   const [tick, setTick] = useState(0);
   const ids = groups.map((g) => g.id);
   const count = (id: string) => accounts.filter((a) => a.groupId === id).length;
+
+  const members = (id: string) => accounts.filter((a) => a.groupId === id);
+  const toggle = (id: string) =>
+    setOpen((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
 
   const requestFocus = (id: string, kind: Kind) => {
     focusReq.current = { id, kind };
@@ -85,6 +98,17 @@ export function GroupsSection({
       await onChanged(t("groups.renamed", { name: renaming.value.trim() }));
     });
 
+  const leaveGroup = (g: GroupView, a: AccountView) =>
+    run(g.id, async () => {
+      const list = members(g.id);
+      const at = list.findIndex((m) => m.id === a.id);
+      const next = list[at + 1] ?? list[at - 1];
+      await rpc("setAccountGroup", { id: a.id, groupId: null });
+      if (next) requestFocus(next.id, "member");
+      else requestFocus(g.id, "toggle");
+      await onChanged(t("accounts.leftGroup", { name: a.issuer || a.label }));
+    });
+
   const remove = (g: GroupView) =>
     run(g.id, async () => {
       await rpc("deleteGroup", { id: g.id });
@@ -133,7 +157,7 @@ export function GroupsSection({
               if (dragged) void reorder(g.id, dropId(ids, dragged, g.id), null);
             }}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               <span
                 draggable="true"
                 aria-hidden="true"
@@ -175,10 +199,42 @@ export function GroupsSection({
                 </>
               ) : (
                 <>
-                  <span className="min-w-0 flex-1 truncate text-sm">{g.name}</span>
-                  <span className="font-mono text-xs text-muted">{count(g.id)}</span>
+                  <button
+                    type="button"
+                    data-focus={`${g.id}:toggle`}
+                    aria-expanded={open.has(g.id)}
+                    aria-controls={`members-${g.id}`}
+                    onClick={() => toggle(g.id)}
+                    className="flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-left font-sans text-sm text-text"
+                  >
+                    <span className="truncate" title={g.name}>
+                      {g.name}
+                    </span>
+                    <span className="font-mono text-xs text-muted">{count(g.id)}</span>
+                  </button>
                   <Button
                     variant="link"
+                    className="px-1 text-xs"
+                    data-focus={`${g.id}:up`}
+                    aria-label={t("groups.up", { name: g.name })}
+                    disabled={i === 0}
+                    onClick={() => void reorder(g.id, moveId(ids, g.id, -1), "up")}
+                  >
+                    {"\u2191"}
+                  </Button>
+                  <Button
+                    variant="link"
+                    className="px-1 text-xs"
+                    data-focus={`${g.id}:down`}
+                    aria-label={t("groups.down", { name: g.name })}
+                    disabled={i === groups.length - 1}
+                    onClick={() => void reorder(g.id, moveId(ids, g.id, 1), "down")}
+                  >
+                    {"\u2193"}
+                  </Button>
+                  <Button
+                    variant="link"
+                    className="text-xs font-normal"
                     data-focus={`${g.id}:rename`}
                     aria-label={t("groups.renameAria", { name: g.name })}
                     onClick={() => {
@@ -189,45 +245,60 @@ export function GroupsSection({
                   >
                     {t("groups.rename")}
                   </Button>
+                  <Button
+                    variant="link"
+                    className="text-xs font-normal"
+                    data-focus={`${g.id}:delete`}
+                    aria-label={t("groups.deleteAria", { name: g.name })}
+                    onClick={() => {
+                      setError(null);
+                      setRenaming(null);
+                      setConfirming(g.id);
+                    }}
+                  >
+                    {t("groups.delete")}
+                  </Button>
                 </>
               )}
             </div>
-            {renaming?.id !== g.id ? (
-              <div className="flex items-center gap-1 pl-8 text-xs">
-                <Button
-                  variant="link"
-                  className="px-2 text-xs"
-                  data-focus={`${g.id}:up`}
-                  aria-label={t("groups.up", { name: g.name })}
-                  disabled={i === 0}
-                  onClick={() => void reorder(g.id, moveId(ids, g.id, -1), "up")}
-                >
-                  {"\u2191"}
-                </Button>
-                <Button
-                  variant="link"
-                  className="px-2 text-xs"
-                  data-focus={`${g.id}:down`}
-                  aria-label={t("groups.down", { name: g.name })}
-                  disabled={i === groups.length - 1}
-                  onClick={() => void reorder(g.id, moveId(ids, g.id, 1), "down")}
-                >
-                  {"\u2193"}
-                </Button>
-                <Button
-                  variant="link"
-                  className="px-2 text-xs"
-                  data-focus={`${g.id}:delete`}
-                  aria-label={t("groups.deleteAria", { name: g.name })}
-                  onClick={() => {
-                    setError(null);
-                    setRenaming(null);
-                    setConfirming(g.id);
-                  }}
-                >
-                  {t("groups.delete")}
-                </Button>
-              </div>
+            {renaming?.id !== g.id && open.has(g.id) ? (
+              <ul id={`members-${g.id}`} className="m-0 flex list-none flex-col p-0 pl-7">
+                {members(g.id).length === 0 ? (
+                  <li className="py-2 text-xs text-muted">{t("groups.emptyDrop")}</li>
+                ) : (
+                  members(g.id).map((a) => (
+                    <li
+                      key={a.id}
+                      draggable="true"
+                      onDragStart={(e) => {
+                        e.stopPropagation();
+                        onDragAccount?.({ id: a.id, source: "member" });
+                      }}
+                      onDragEnd={() => onDragAccount?.(null)}
+                      className="flex min-h-11 items-center gap-2 text-sm"
+                    >
+                      <span
+                        className="min-w-0 flex-1 truncate"
+                        title={`${a.issuer} ${a.label}`.trim()}
+                      >
+                        {a.issuer || a.label}
+                        {a.issuer && a.label ? (
+                          <span className="text-xs text-muted"> {a.label}</span>
+                        ) : null}
+                      </span>
+                      <Button
+                        variant="link"
+                        className="shrink-0 text-xs font-normal"
+                        data-focus={`${a.id}:member`}
+                        aria-label={t("groups.removeFromGroupAria", { name: a.issuer || a.label })}
+                        onClick={() => void leaveGroup(g, a)}
+                      >
+                        {t("groups.removeFromGroup")}
+                      </Button>
+                    </li>
+                  ))
+                )}
+              </ul>
             ) : null}
             {confirming === g.id ? (
               <div className="flex flex-wrap items-center gap-3 pl-8 text-sm">

@@ -295,16 +295,16 @@ export function AccountsScreen({
         </section>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-14 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[680px] table-fixed border-collapse text-left text-sm">
+      <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="min-w-0 overflow-x-auto">
+          <table className="w-full table-fixed border-collapse text-left text-sm">
             <colgroup>
               <col style={{ width: "32px" }} />
+              <col style={{ width: "20%" }} />
+              <col style={{ width: "26%" }} />
+              <col style={{ width: "13%" }} />
               <col style={{ width: "17%" }} />
-              <col style={{ width: "22%" }} />
-              <col style={{ width: "12%" }} />
-              <col style={{ width: "22%" }} />
-              <col style={{ width: "8%" }} />
+              <col style={{ width: "9%" }} />
               <col style={{ width: "96px" }} />
             </colgroup>
             <caption className="sr-only">{t("accounts.title")}</caption>
@@ -396,7 +396,9 @@ export function AccountsScreen({
                     </td>
                     <td className="pr-4">
                       <span className="flex min-w-0 items-center gap-2.5">
-                        <span className="min-w-0 truncate">{name}</span>
+                        <span className="min-w-0 truncate" title={name}>
+                          {name}
+                        </span>
                         {a.pinned ? (
                           <span className="rounded-full border border-line px-[7px] py-px font-mono text-[10px] text-muted">
                             {t("accounts.pinnedBadge")}
@@ -404,17 +406,23 @@ export function AccountsScreen({
                         ) : null}
                       </span>
                     </td>
-                    <td className="truncate pr-4 text-muted">{a.issuer ? a.label : ""}</td>
-                    <td className={`truncate pr-4 text-xs ${groupName(a) ? "" : "text-muted"}`}>
+                    <td className="truncate pr-4 text-muted" title={a.issuer ? a.label : undefined}>
+                      {a.issuer ? a.label : ""}
+                    </td>
+                    <td
+                      className={`truncate pr-4 text-xs ${groupName(a) ? "" : "text-muted"}`}
+                      title={groupName(a)}
+                    >
                       {groupName(a) ?? "\u2014"}
                     </td>
                     <td
                       className={`truncate pr-4 font-mono text-xs ${a.domains.length ? "" : "text-muted"}`}
+                      title={a.domains.length ? a.domains.join(", ") : undefined}
                     >
                       {a.domains.length ? a.domains.join(", ") : t("accounts.unbound")}
                     </td>
                     <td className="pr-4 font-mono text-xs text-muted">{typeLabel(a.type)}</td>
-                    <td className="text-right">
+                    <td className="whitespace-nowrap pr-1 text-right">
                       <Button
                         variant="link"
                         aria-label={t("accounts.edit", { name: editName })}
