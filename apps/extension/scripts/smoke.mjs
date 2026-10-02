@@ -1,15 +1,18 @@
 /* global chrome */
 // Loads the built Chrome extension in headless Chromium and walks the first-run flow.
+// Needs the SMOKE=1 build (`pnpm --filter @otp-vault/extension build:smoke`): it adds <all_urls> so fill and capture can be
+// driven without a real toolbar click. The real activeTab grants are on the manual checklist.
 // EXTENSION_DIR overrides the build folder. Needs a Chromium binary: set CHROMIUM_PATH, or run `pnpm exec playwright-core install chromium` once.
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { chromium } from "playwright-core";
+import qrcode from "qrcode-generator";
 
 const ext = process.env.EXTENSION_DIR
   ? resolve(process.env.EXTENSION_DIR)
-  : resolve(import.meta.dirname, "../.output/chrome-mv3");
+  : resolve(import.meta.dirname, "../.output-smoke/chrome-mv3");
 const ctx = await chromium.launchPersistentContext(
   mkdtempSync(join(tmpdir(), "otp-vault-smoke-")),
   {
@@ -78,21 +81,105 @@ try {
   await page.waitForURL(/manage\.html#\/backup/, { timeout: 10_000 });
   if (manageTabs().length !== manageBefore) throw new Error("popup opened a second manage tab");
 
-  // Clipboard clearing end to end: the real alarm fires the offscreen document. Unpacked extensions may use sub-minute alarms.
-  // Playwright cannot grant permissions to extension origins, so the read-back happens on a local http page.
-  const server = createServer((_, res) =>
-    res.setHeader("content-type", "text/html").end("<p>x</p>"),
-  );
+  const fixture = (name) => readFileSync(join(import.meta.dirname, "fixtures", name), "utf8");
+  const QR_URI = "otpauth://totp/Fixture:qr@example.test?secret=GEZDGNBVGY3TQOJQ&issuer=Fixture";
+  const qr = qrcode(0, "M");
+  qr.addData(QR_URI);
+  qr.make();
+  const qrHtml = fixture("qr-page.html").replace("__QR__", qr.createDataURL(8, 16));
+  const server = createServer((req, res) => {
+    const path = new URL(req.url, "http://x").pathname;
+    const body =
+      path === "/fill-page.html"
+        ? fixture("fill-page.html")
+        : path === "/qr-page.html"
+          ? qrHtml
+          : "<p>x</p>";
+    res.setHeader("content-type", "text/html").end(body);
+  });
   await new Promise((r) => server.listen(0, "127.0.0.1", r));
   const origin = `http://127.0.0.1:${server.address().port}`;
-  await ctx.grantPermissions(["clipboard-read", "clipboard-write"], { origin });
-  const reader = await ctx.newPage();
-  await reader.goto(origin);
   const rpc = (request) =>
     popup.evaluate(
       (req) => chrome.runtime.sendMessage({ channel: "otp-vault/rpc", request: req }),
       request,
     );
+  const must = async (request) => {
+    const r = await rpc(request);
+    if (!r?.ok) throw new Error(`${request.type} failed: ${JSON.stringify(r)}`);
+    return r.data ?? r.value ?? r;
+  };
+  const activeTabId = () =>
+    popup.evaluate(async () => {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      return tab?.id;
+    });
+
+  // Fill: the SMOKE build holds <all_urls>, so the real activeTab grant is replaced by a queried tab id.
+  const FILL_URI = "otpauth://totp/Fill:me?secret=JBSWY3DPEHPK3PXP&issuer=Fill";
+  await must({ type: "addAccountUri", uri: FILL_URI, sourceUrl: `${origin}/` });
+  const fillId = (await must({ type: "listAccounts" })).accounts.find(
+    (a) => a.issuer === "Fill",
+  ).id;
+  const codeOf = async () =>
+    (await must({ type: "listAccounts" })).accounts.find((a) => a.id === fillId).code;
+  const filled = async (mode) => {
+    const fp = await ctx.newPage();
+    fp.on("pageerror", (e) => errors.push(`fixture: ${e.message}`));
+    await fp.goto(`${origin}/fill-page.html?mode=${mode}`);
+    await fp.bringToFront();
+    const tabId = await activeTabId();
+    const before = await codeOf();
+    const out = await must({ type: "fillCode", id: fillId, tabId });
+    const after = await codeOf();
+    if (out.result !== "filled") throw new Error(`fill (${mode}) gave ${JSON.stringify(out)}`);
+    return { fp, before, after };
+  };
+  {
+    const { fp, before, after } = await filled("split");
+    const value = (await fp.locator(".box").evaluateAll((els) => els.map((e) => e.value))).join("");
+    if (!/^\d{6}$/.test(value) || (value !== before && value !== after))
+      throw new Error("six-box fill wrote an unexpected value");
+    await fp.close();
+  }
+  {
+    const { fp, before, after } = await filled("single");
+    const value = await fp.locator("#otp").inputValue();
+    if (!/^\d{6}$/.test(value) || (value !== before && value !== after))
+      throw new Error("one-time-code fill wrote an unexpected value");
+    if ((await fp.locator("#pw").inputValue()) !== "") throw new Error("password field was filled");
+    await fp.close();
+  }
+
+  // Scan: capture the QR page under the SMOKE permission, then drive scan.html#<id> as a page.
+  {
+    const qp = await ctx.newPage();
+    await qp.goto(`${origin}/qr-page.html`);
+    await qp.bringToFront();
+    const dataUrl = await popup.evaluate(() => chrome.tabs.captureVisibleTab({ format: "png" }));
+    const { id: captureId } = await must({
+      type: "storeCapture",
+      dataUrl,
+      tabUrl: `${origin}/qr-page.html`,
+    });
+    await qp.close();
+    const scan = await ctx.newPage();
+    scan.on("pageerror", (e) => errors.push(`scan: ${e.message}`));
+    scan.on("console", (m) => m.type() === "error" && errors.push(`scan console: ${m.text()}`));
+    await scan.goto(`chrome-extension://${id}/scan.html#${captureId}`);
+    await scan.getByRole("button", { name: "Ekle" }).click({ timeout: 30_000 });
+    await scan.getByText(/Eklendi/).waitFor();
+    const found = (await must({ type: "listAccounts" })).accounts.find(
+      (a) => a.issuer === "Fixture",
+    );
+    if (!found) throw new Error("scanned account was not added");
+    if (!found.domains.includes("127.0.0.1")) throw new Error("scanned account not linked to site");
+    await scan.close();
+  }
+
+  await ctx.grantPermissions(["clipboard-read", "clipboard-write"], { origin });
+  const reader = await ctx.newPage();
+  await reader.goto(origin);
   const set = await rpc({ type: "setClipboardClear", seconds: 30 });
   if (!set?.ok) throw new Error(`setClipboardClear failed: ${JSON.stringify(set)}`);
   await popup.bringToFront();

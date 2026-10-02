@@ -15,6 +15,7 @@
     "typecheck": "wxt prepare && tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "coverage": "vitest run --coverage",
+    "build:smoke": "SMOKE=1 wxt build",
     "smoke": "node scripts/smoke.mjs",
     "lint:firefox": "web-ext lint --source-dir .output/firefox-mv3 --self-hosted"
   },

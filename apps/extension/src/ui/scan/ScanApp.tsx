@@ -69,6 +69,8 @@ export function ScanApp({
   const frameRef = useRef<HTMLDivElement>(null);
   const anchor = useRef<{ x: number; y: number } | null>(null);
   const started = useRef(false);
+  // Bumped on every clear so a decode still running cannot repopulate the page afterwards.
+  const generation = useRef(0);
 
   const viewSize = (): Size => {
     const box = frameRef.current?.getBoundingClientRect();
@@ -76,11 +78,13 @@ export function ScanApp({
   };
 
   async function scan(image: () => Promise<Blob | ImageData> | Blob | ImageData, inCrop: boolean) {
+    const gen = generation.current;
     setScanning(true);
     setNotice(null);
     try {
       if (!decodeQr) throw new Error("QR decoding is not available here");
       const texts = await decodeQr(await image());
+      if (gen !== generation.current) return;
       const usable = texts.filter((text) => OTP_TEXT.test(text));
       if (usable.length > 0) {
         setResults(usable);
@@ -90,6 +94,7 @@ export function ScanApp({
       if (texts.length > 0) setNotice(t("import.qrNotOtp"));
       else if (inCrop) setNotice(t("scan.cropNone"));
     } catch (e) {
+      if (gen !== generation.current) return;
       setResults(null);
       setNotice(e instanceof QrImageTooLargeError ? t("import.imageTooLarge") : t("scan.failed"));
     } finally {
@@ -132,6 +137,8 @@ export function ScanApp({
   }, []);
 
   function clearAll(next: Phase) {
+    generation.current++;
+    setScanning(false);
     setCapture(null);
     setResults(null);
     setAdded({});

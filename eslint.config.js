@@ -10,6 +10,7 @@ export default defineConfig(
       "**/dist/**",
       "**/coverage/**",
       "**/.output/**",
+      "**/.output-smoke/**",
       "**/.wxt/**",
       ".superpowers/**",
     ],

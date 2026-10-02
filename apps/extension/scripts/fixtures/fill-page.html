@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Fill fixture</title>
+  </head>
+  <body>
+    <!-- ?mode=split shows six single-digit boxes; ?mode=single shows one autocomplete field and a password field. -->
+    <form id="split" hidden>
+      <input class="box" maxlength="1" inputmode="numeric" aria-label="digit 1" />
+      <input class="box" maxlength="1" inputmode="numeric" aria-label="digit 2" />
+      <input class="box" maxlength="1" inputmode="numeric" aria-label="digit 3" />
+      <input class="box" maxlength="1" inputmode="numeric" aria-label="digit 4" />
+      <input class="box" maxlength="1" inputmode="numeric" aria-label="digit 5" />
+      <input class="box" maxlength="1" inputmode="numeric" aria-label="digit 6" />
+    </form>
+    <form id="single" hidden>
+      <input id="pw" type="password" autocomplete="current-password" />
+      <input id="otp" type="text" autocomplete="one-time-code" />
+    </form>
+    <script>
+      const mode = new URLSearchParams(location.search).get("mode") ?? "split";
+      document.getElementById(mode).hidden = false;
+    </script>
+  </body>
+</html>

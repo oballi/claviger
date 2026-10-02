@@ -1,7 +1,11 @@
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "wxt";
 
+// Smoke-only: lets the end-to-end test drive fill and capture without a real toolbar click. Never shipped.
+const smoke = process.env.SMOKE === "1";
+
 export default defineConfig({
+  outDir: smoke ? ".output-smoke" : ".output",
   modules: ["@wxt-dev/module-react"],
   imports: false,
   vite: () => ({ plugins: [tailwindcss()] }),
@@ -26,6 +30,7 @@ export default defineConfig({
       "contextMenus",
       ...(browser === "firefox" ? [] : ["offscreen"]),
     ],
+    ...(smoke ? { host_permissions: ["<all_urls>"] } : {}),
     optional_host_permissions: ["https://www.google.com/*"],
     commands: {
       "fill-code": {

@@ -177,6 +177,22 @@ describe("ScanApp", () => {
     expect(screen.queryByText("GitHub (me)")).toBeNull();
   });
 
+  it("ignores a decode that finishes after the vault locked", async () => {
+    const h = await harness({ tabUrl: SITE });
+    const { id } = await h.service.storeCapture(CAPTURE);
+    let finish: (texts: string[]) => void = () => {};
+    h.ui.decodeQr.mockImplementation(() => new Promise<string[]>((r) => (finish = r)));
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+    renderUi(<ScanApp captureId={id} />, h.ui);
+    await screen.findByRole("img");
+    await h.service.lock();
+    expect(await screen.findByText(/Kasa kilitlendi/, {}, { timeout: 5000 })).toBeTruthy();
+    await act(async () => finish([URI_A]));
+    expect(screen.queryByText("GitHub (me)")).toBeNull();
+    expect(document.body.innerHTML).not.toContain(SECRET);
+    expect(errorLog).not.toHaveBeenCalled();
+  });
+
   it("clears everything five minutes after the page loaded", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {
