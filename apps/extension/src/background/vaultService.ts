@@ -334,10 +334,11 @@ export class VaultService {
     }
   }
 
-  protected async requireVault(): Promise<Vault> {
+  /** `touch: false` is for background polling, which is not user activity. */
+  protected async requireVault(opts: { touch?: boolean } = {}): Promise<Vault> {
     const vault = await this.ensureLoaded();
     if (!vault) throw new ServiceError("locked", "The vault is locked");
-    await this.touch();
+    if (opts.touch !== false) await this.touch();
     return vault;
   }
 
@@ -725,8 +726,8 @@ export class VaultService {
       await this.lock();
   }
 
-  async listAccounts(opts: { pageUrl?: string } = {}): Promise<AccountListView> {
-    const vault = await this.requireVault();
+  async listAccounts(opts: { pageUrl?: string; passive?: boolean } = {}): Promise<AccountListView> {
+    const vault = await this.requireVault({ touch: !opts.passive });
     const { clockOffsetSec } = await this.settings();
     const listing = await vault.listAccounts();
     const now = this.p.clock.now();

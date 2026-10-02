@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { AccountListView } from "./contract/views";
 import { useUi } from "./platform";
 
@@ -23,22 +23,50 @@ export function useAccountList(pageUrl: string | undefined | null, pollMs: numbe
   const [list, setList] = useState<AccountListView | null>(null);
   const [error, setError] = useState<unknown>(null);
 
-  const reload = useCallback(async () => {
-    if (pageUrl === null) return;
-    try {
-      setList(await rpc("listAccounts", pageUrl ? { pageUrl } : {}));
-      setError(null);
-    } catch (e) {
-      setError(e);
-    }
-  }, [rpc, pageUrl]);
+  // Set by real input; a poll without it must not postpone the background auto-lock.
+  const activeRef = useRef(false);
+  useEffect(() => {
+    const mark = () => {
+      activeRef.current = true;
+    };
+    document.addEventListener("pointerdown", mark, true);
+    document.addEventListener("keydown", mark, true);
+    return () => {
+      document.removeEventListener("pointerdown", mark, true);
+      document.removeEventListener("keydown", mark, true);
+    };
+  }, []);
+
+  const load = useCallback(
+    async (passive: boolean) => {
+      if (pageUrl === null) return;
+      try {
+        setList(
+          await rpc("listAccounts", {
+            ...(pageUrl ? { pageUrl } : {}),
+            ...(passive ? { passive } : {}),
+          }),
+        );
+        setError(null);
+      } catch (e) {
+        setError(e);
+      }
+    },
+    [rpc, pageUrl],
+  );
+
+  const reload = useCallback(() => load(false), [load]);
 
   useEffect(() => {
-    void reload();
+    void load(false);
     if (pollMs <= 0 || pageUrl === null) return;
-    const id = setInterval(() => void reload(), pollMs);
+    const id = setInterval(() => {
+      const passive = !activeRef.current;
+      activeRef.current = false;
+      void load(passive);
+    }, pollMs);
     return () => clearInterval(id);
-  }, [reload, pollMs, pageUrl]);
+  }, [load, pollMs, pageUrl]);
 
   return { list, error, reload };
 }

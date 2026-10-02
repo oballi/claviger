@@ -266,6 +266,23 @@ describe("client", () => {
     await expect(call("listAccounts", {})).rejects.toMatchObject({ code: "locked" });
   });
 
+  it("passes the optional passive flag to listAccounts and rejects a non-boolean", async () => {
+    const seen: unknown[] = [];
+    const service = {
+      listAccounts: async (o: unknown) => {
+        seen.push(o);
+        return {};
+      },
+    } as unknown as VaultService;
+    const call = clientFor(service);
+    await call("listAccounts", { passive: true });
+    expect(seen).toEqual([{ pageUrl: undefined, passive: true }]);
+    await expect(
+      call("listAccounts", { passive: "yes" } as unknown as { passive: boolean }),
+    ).rejects.toMatchObject({ code: "invalid-request" });
+    expect(seen).toHaveLength(1);
+  });
+
   it("reports a missing response", async () => {
     const call = createRpcClient(async () => undefined);
     await expect(call("getState", {})).rejects.toMatchObject({ code: "no-response" });

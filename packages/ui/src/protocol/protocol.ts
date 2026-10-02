@@ -66,7 +66,11 @@ export const rpcRequestSchema = z.discriminatedUnion("type", [
     password: password.optional(),
   }),
   z.object({ type: z.literal("quarantineVault") }),
-  z.object({ type: z.literal("listAccounts"), pageUrl: url.optional() }),
+  z.object({
+    type: z.literal("listAccounts"),
+    pageUrl: url.optional(),
+    passive: z.boolean().optional(),
+  }),
   z.object({
     type: z.literal("addAccountUri"),
     uri: url,

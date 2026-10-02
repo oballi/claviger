@@ -72,7 +72,7 @@ async function dispatch(
     case "quarantineVault":
       return service.quarantineVault();
     case "listAccounts":
-      return service.listAccounts({ pageUrl: req.pageUrl });
+      return service.listAccounts({ pageUrl: req.pageUrl, passive: req.passive });
     case "addAccountUri":
       return service.addAccount(
         { uri: req.uri },
