@@ -111,13 +111,7 @@ try {
     if (!r?.ok) throw new Error(`${request.type} failed: ${JSON.stringify(r)}`);
     return r.data ?? r.value ?? r;
   };
-  const activeTabId = () =>
-    popup.evaluate(async () => {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      return tab?.id;
-    });
-
-  // Fill: the SMOKE build holds <all_urls>, so the real activeTab grant is replaced by a queried tab id.
+  // Fill: the SMOKE build holds <all_urls>, so no real shortcut grant is needed; a hook triggers the command path.
   const FILL_URI = "otpauth://totp/Fill:me?secret=JBSWY3DPEHPK3PXP&issuer=Fill";
   await must({ type: "addAccountUri", uri: FILL_URI, sourceUrl: `${origin}/` });
   const fillId = (await must({ type: "listAccounts" })).accounts.find(
@@ -136,11 +130,13 @@ try {
     fp.on("pageerror", (e) => errors.push(`fixture: ${e.message}`));
     await fp.goto(`${origin}/fill-page.html?mode=${mode}`);
     await fp.bringToFront();
-    const tabId = await activeTabId();
     const before = await codeOf();
-    const out = await must({ type: "fillCode", id: fillId, tabId });
+    // The SMOKE-only hook runs the real shortcut path (active tab, domain match, fill); the field values decide.
+    const out = await popup.evaluate(() =>
+      chrome.runtime.sendMessage({ channel: "claviger/smoke-fill" }),
+    );
     const after = await codeOf();
-    if (out.result !== "filled") throw new Error(`fill (${mode}) gave ${JSON.stringify(out)}`);
+    if (!out?.ok) throw new Error(`fill (${mode}) gave ${JSON.stringify(out)}`);
     return { fp, before, after };
   };
   {

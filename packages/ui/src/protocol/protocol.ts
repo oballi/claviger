@@ -2,7 +2,6 @@ import "./zodConfig";
 import { z } from "zod";
 import type {
   AccountListView,
-  FillOutcome,
   ImportPreviewView,
   ServiceState,
   SnapshotInfo,
@@ -145,12 +144,6 @@ export const rpcRequestSchema = z.discriminatedUnion("type", [
     endMs: z.number(),
   }),
   z.object({ type: z.literal("setClockCheckEnabled"), enabled: z.boolean() }),
-  // No tab URL or frame here: the service re-reads the tab's URL itself.
-  z.object({
-    type: z.literal("fillCode"),
-    id,
-    tabId: z.number().int().nonnegative(),
-  }),
   // The service re-checks the prefix; this cap only bounds the message before it gets there.
   z.object({ type: z.literal("storeCapture"), dataUrl: z.string().max(32_000_000), tabUrl: url }),
   z.object({ type: z.literal("takeCapture"), id: z.string().min(1).max(64) }),
@@ -207,7 +200,6 @@ export interface RpcResults {
   storageUsage: StorageUsageView;
   applyClockSample: { offsetSec: number; applied: number };
   setClockCheckEnabled: null;
-  fillCode: { result: FillOutcome; code: string | null };
   storeCapture: { id: string };
   takeCapture: { dataUrl: string; tabUrl: string };
 }

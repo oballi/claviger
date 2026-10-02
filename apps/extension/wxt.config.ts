@@ -15,7 +15,7 @@ export default defineConfig({
   outDir: smoke ? ".output-smoke" : ".output",
   modules: ["@wxt-dev/module-react"],
   imports: false,
-  vite: () => ({ plugins: [tailwindcss()] }),
+  vite: () => ({ plugins: [tailwindcss()], define: { __SMOKE__: JSON.stringify(smoke) } }),
   hooks: {
     // WXT 0.21.4 runs the unimport transform even with `imports: false`, treats parameters named `storage`
     // as globals and injects a `wxt/utils/storage` import into core. Hence disabled.

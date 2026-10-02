@@ -2,7 +2,7 @@ import { generateCode } from "@claviger/core";
 import { describe, expect, it, vi } from "vitest";
 import { handleUserTrigger } from "../src/background/triggers";
 import { MIN_FILL_REMAINING_SEC, VaultService } from "../src/background/vaultService";
-import { codeOf, PASSWORD, unlockedService } from "./helpers/service";
+import { PASSWORD, unlockedService } from "./helpers/service";
 
 const SECRET = "JBSWY3DPEHPK3PXP";
 const TAB = 1;
@@ -27,186 +27,170 @@ const totpNow = (ms: number) =>
     ms,
   );
 
-describe("fillCode", () => {
+describe("fill from the active tab", () => {
+  const hotpAt = async (counter: number) =>
+    (
+      await generateCode(
+        { type: "hotp", secret: SECRET, algorithm: "SHA1", digits: 6, period: 30, counter },
+        0,
+      )
+    ).code;
+
   it("fills a linked account", async () => {
-    const { p, service, id } = await setup();
-    const r = await service.fillCode({ id, tabId: TAB });
-    expect(r).toEqual({ result: "filled", code: null });
+    const { p, service } = await setup();
+    expect(await service.fillFromCommand()).toBe("done");
     expect(p.tabs.fills).toHaveLength(1);
     expect(p.tabs.fills[0]).toMatchObject({ tabId: TAB, explicit: false });
     expect(p.tabs.fills[0]?.code).toBe((await totpNow(p.clock.now())).code);
     expect(p.tabs.fills[0]?.expectedDomain).toBe("bank.com");
+    expect(p.tabs.badges).toEqual([]);
   });
 
-  it("refuses a tab that is not the active one", async () => {
-    const { p, service, id } = await setup();
-    expect(await codeOf(service.fillCode({ id, tabId: 99 }))).toBe("invalid-request");
-    p.tabs.activeTab = null;
-    expect(await codeOf(service.fillCode({ id, tabId: TAB }))).toBe("invalid-request");
-    expect(p.tabs.fills).toHaveLength(0);
-  });
-
-  it("treats a wrong-site answer from the page as refused", async () => {
-    const { p, service, id } = await setup();
+  it("badges ! when the page answers wrong-site", async () => {
+    const { p, service } = await setup();
     p.tabs.next = "wrong-site";
-    const r = await service.fillCode({ id, tabId: TAB });
-    expect(r.result).toBe("refused");
-    expect(r.code).toBe(p.tabs.fills[0]?.code);
+    await service.fillFromCommand();
+    expect(p.tabs.fills).toHaveLength(1);
+    expect(p.tabs.badges).toEqual(["!", ""]);
   });
 
   it("re-reads the tab url again after the wait, right before injecting", async () => {
-    const { p, service, id } = await setup();
+    const { p, service } = await setup();
     const urls = [BANK, "https://evil.io/"];
     p.tabs.url = async () => urls.shift() ?? "https://evil.io/";
-    expect(await codeOf(service.fillCode({ id, tabId: TAB }))).toBe("not-linked");
+    await service.fillFromCommand();
     expect(p.tabs.fills).toHaveLength(0);
+    expect(p.tabs.badges).toEqual(["!", ""]);
   });
 
   it("refuses when the second read shows a non-https page", async () => {
-    const { p, service, id } = await setup();
+    const { p, service } = await setup();
     const urls = [BANK, "http://bank.com/"];
     p.tabs.url = async () => urls.shift() ?? "http://bank.com/";
-    expect((await service.fillCode({ id, tabId: TAB })).result).toBe("refused");
+    await service.fillFromCommand();
     expect(p.tabs.fills).toHaveLength(0);
+    expect(p.tabs.badges).toEqual(["!", ""]);
   });
 
   it("does not advance HOTP when the first check refuses", async () => {
-    const { p, service, id } = await setup({ type: "hotp" });
+    const { p, service } = await setup({ type: "hotp" });
     p.tabs.activeTab = { id: TAB, url: "http://bank.com/" };
-    await service.fillCode({ id, tabId: TAB });
-    const view = await service.listAccounts();
-    const c5 = await generateCode(
-      { type: "hotp", secret: SECRET, algorithm: "SHA1", digits: 6, period: 30, counter: 5 },
-      0,
-    );
-    expect(view.accounts[0]?.code).toBe(c5.code);
+    await service.fillFromCommand();
+    expect(p.tabs.fills).toHaveLength(0);
+    expect((await service.listAccounts()).accounts[0]?.code).toBe(await hotpAt(5));
   });
 
-  it("an unlinked account is always refused and never burns an HOTP counter", async () => {
-    const { p, service, id } = await setup({ type: "hotp" });
+  it("an unlinked account is never filled and never burns an HOTP counter", async () => {
+    const { p, service } = await setup({ type: "hotp" });
     p.tabs.activeTab = { id: TAB, url: "https://other.com/" };
-    expect(await codeOf(service.fillCode({ id, tabId: TAB }))).toBe("not-linked");
+    await service.fillFromCommand();
     expect(p.tabs.fills).toHaveLength(0);
-    const c5 = await generateCode(
-      { type: "hotp", secret: SECRET, algorithm: "SHA1", digits: 6, period: 30, counter: 5 },
-      0,
-    );
-    expect((await service.listAccounts()).accounts[0]?.code).toBe(c5.code);
+    expect((await service.listAccounts()).accounts[0]?.code).toBe(await hotpAt(5));
+  });
+
+  it("does not advance HOTP when the tab navigates to an unlinked site before injection", async () => {
+    const { p, service } = await setup({ type: "hotp" });
+    p.tabs.liveUrl = "https://bank.com.evil.io/";
+    await service.fillFromCommand();
+    expect(p.tabs.fills).toHaveLength(0);
+    expect((await service.listAccounts()).accounts[0]?.code).toBe(await hotpAt(5));
   });
 
   it("treats look-alike hosts as unlinked", async () => {
-    const { p, service, id } = await setup();
+    const { p, service } = await setup();
     for (const url of ["https://bank.com.evil.io/", "https://evilbank.com/", "https://bank.co/"]) {
       p.tabs.activeTab = { id: TAB, url };
-      expect(await codeOf(service.fillCode({ id, tabId: TAB }))).toBe("not-linked");
+      await service.fillFromCommand();
     }
     expect(p.tabs.fills).toHaveLength(0);
   });
 
   it("never lists or fills an account only because the page host looks like its domain", async () => {
-    const { p, service, id } = await setup();
+    const { p, service } = await setup();
     const evil = "https://bank.com.evil.io/";
     p.tabs.activeTab = { id: TAB, url: evil };
     const view = await service.listAccounts({ pageUrl: evil });
     expect(view.matches).toEqual({ exact: [] });
-    expect(await codeOf(service.fillCode({ id, tabId: TAB }))).toBe("not-linked");
+    await service.fillFromCommand();
     expect(p.tabs.fills).toHaveLength(0);
   });
 
   it("re-reads the tab url at fill time", async () => {
-    const { p, service, id } = await setup();
+    const { p, service } = await setup();
     p.tabs.liveUrl = "https://bank.com.evil.io/";
-    expect(await codeOf(service.fillCode({ id, tabId: TAB }))).toBe("not-linked");
+    await service.fillFromCommand();
     expect(p.tabs.fills).toHaveLength(0);
+    expect(p.tabs.badges).toEqual(["!", ""]);
   });
 
   it("refuses when the tab url is unknown", async () => {
-    const { p, service, id } = await setup();
+    const { p, service } = await setup();
     p.tabs.liveUrl = null;
-    expect((await service.fillCode({ id, tabId: TAB })).result).toBe("refused");
+    await service.fillFromCommand();
     expect(p.tabs.fills).toHaveLength(0);
+    expect(p.tabs.badges).toEqual(["!", ""]);
   });
 
   it("refuses http pages but allows http on localhost", async () => {
     const { p, service, id } = await setup();
     p.tabs.activeTab = { id: TAB, url: "http://bank.com/login" };
-    expect((await service.fillCode({ id, tabId: TAB })).result).toBe("refused");
+    await service.fillFromCommand();
     expect(p.tabs.fills).toHaveLength(0);
     await service.updateAccount(id, { domains: ["localhost"] });
     p.tabs.activeTab = { id: TAB, url: "http://localhost:3000/login" };
-    expect((await service.fillCode({ id, tabId: TAB })).result).toBe("filled");
+    await service.fillFromCommand();
+    expect(p.tabs.fills).toHaveLength(1);
   });
 
   it("waits for the next code when under two seconds remain", async () => {
-    const { p, service, id } = await setup();
+    const { p, service } = await setup();
     // 28.5 s into the period: 1.5 s remaining.
     p.clock.ms = Math.floor(p.clock.ms / 30_000) * 30_000 + 28_500;
     const before = (await totpNow(p.clock.now())).code;
     expect(MIN_FILL_REMAINING_SEC).toBe(2);
-    const r = await service.fillCode({ id, tabId: TAB });
-    expect(r.result).toBe("filled");
+    await service.fillFromCommand();
     const typed = p.tabs.fills[0]?.code;
     expect(typed).toBe((await totpNow(p.clock.now())).code);
     expect(typed).not.toBe(before);
   });
 
   it("does not wait when two seconds or more remain", async () => {
-    const { p, service, id } = await setup();
+    const { p, service } = await setup();
     p.clock.ms = Math.floor(p.clock.ms / 30_000) * 30_000 + 27_900;
     const t0 = p.clock.now();
-    await service.fillCode({ id, tabId: TAB });
+    await service.fillFromCommand();
+    expect(p.tabs.fills).toHaveLength(1);
     expect(p.clock.now()).toBe(t0);
   });
 
   it("increments an HOTP counter exactly once per fill", async () => {
-    const { p, service, id } = await setup({ type: "hotp" });
-    await service.fillCode({ id, tabId: TAB });
-    const view = await service.listAccounts();
-    const expected = await generateCode(
-      { type: "hotp", secret: SECRET, algorithm: "SHA1", digits: 6, period: 30, counter: 6 },
-      0,
-    );
-    expect(view.accounts[0]?.code).toBe(expected.code);
-    expect(p.tabs.fills[0]?.code).toBe(
-      (
-        await generateCode(
-          { type: "hotp", secret: SECRET, algorithm: "SHA1", digits: 6, period: 30, counter: 6 },
-          0,
-        )
-      ).code,
-    );
+    const { p, service } = await setup({ type: "hotp" });
+    await service.fillFromCommand();
+    expect((await service.listAccounts()).accounts[0]?.code).toBe(await hotpAt(6));
+    expect(p.tabs.fills).toHaveLength(1);
+    expect(p.tabs.fills[0]?.code).toBe(await hotpAt(6));
   });
 
-  it("returns the code for copying when the page has no field", async () => {
-    const { p, service, id } = await setup();
+  it("badges ! when the page has no field or refuses scripts", async () => {
+    const { p, service } = await setup();
     p.tabs.next = "no-field";
-    const r = await service.fillCode({ id, tabId: TAB });
-    expect(r.result).toBe("copied-instead");
-    expect(r.code).toBe(p.tabs.fills[0]?.code);
-  });
-
-  it("returns the code for copying when the page refuses scripts", async () => {
-    const { p, service, id } = await setup();
+    await service.fillFromCommand();
     p.tabs.next = null;
-    const r = await service.fillCode({ id, tabId: TAB });
-    expect(r.result).toBe("refused");
-    expect(r.code).toBe(p.tabs.fills[0]?.code);
+    await service.fillFromCommand();
+    expect(p.tabs.badges).toEqual(["!", "", "!", ""]);
   });
 
-  it("reports not-found for an unknown account", async () => {
-    const { service } = await setup();
-    expect(await codeOf(service.fillCode({ id: "nope", tabId: TAB }))).toBe("not-found");
-  });
-
-  it("is locked when the vault is locked", async () => {
-    const { service, id } = await setup();
-    await service.lock();
-    expect(await codeOf(service.fillCode({ id, tabId: TAB }))).toBe("locked");
+  it("the menu path fills the same single linked account for the clicked tab", async () => {
+    const { p, service } = await setup();
+    await service.fillFromMenu({ id: TAB, url: BANK }, 0, undefined);
+    expect(p.tabs.fills).toHaveLength(1);
+    expect(p.tabs.fills[0]?.code).toBe((await totpNow(p.clock.now())).code);
   });
 
   it("never sends the secret to the page", async () => {
-    const { p, service, id } = await setup();
-    await service.fillCode({ id, tabId: TAB });
+    const { p, service } = await setup();
+    await service.fillFromCommand();
+    expect(p.tabs.fills).toHaveLength(1);
     for (const f of p.tabs.fills) {
       expect(f.code).toMatch(/^[0-9A-Z]{4,10}$/);
       expect(JSON.stringify(f)).not.toContain(SECRET);
@@ -220,12 +204,12 @@ describe("legacy site memory", () => {
     (await p.local.get([KEY]))[KEY];
 
   it("removes a stored record on unlock, again when it reappears, and never writes one", async () => {
-    const { p, service, id } = await setup();
+    const { p, service } = await setup();
     await p.local.set({ [KEY]: { v: 1, data: "legacy" } });
     await service.lock();
     await service.unlock(PASSWORD);
     expect(await stored(p)).toBeUndefined();
-    await service.fillCode({ id, tabId: TAB });
+    await service.fillFromCommand();
     expect(await stored(p)).toBeUndefined();
     // A record that comes back later (for example via sync) is purged on the next unlock too.
     await p.local.set({ [KEY]: { v: 1, data: "again" } });

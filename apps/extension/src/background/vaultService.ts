@@ -1,5 +1,6 @@
 import {
   buildImportPreview,
+  canonicalJson,
   CLOCK_OFFSET_THRESHOLD_SEC,
   computeClockOffset,
   exportOtpauthText,
@@ -40,7 +41,6 @@ import { TRASH_RETENTION_DAYS } from "@claviger/ui/views";
 import type { Platform, StorageAreaName } from "../platform/ports";
 import { ServiceError } from "./errors";
 import {
-  canonicalJson,
   DAY_MS,
   NotCorruptError,
   recordsStorage,
@@ -1408,18 +1408,6 @@ export class VaultService {
       const updated = await vault.incrementHotp(id);
       return (await generateCode(updated, this.p.clock.now())).code;
     });
-  }
-
-  async fillCode(opts: {
-    id: string;
-    tabId: number;
-  }): Promise<{ result: FillOutcome; code: string | null }> {
-    // Only the tab the user is looking at; a stale or forged id must not reach another tab.
-    if ((await this.p.tabs.active())?.id !== opts.tabId) {
-      throw new ServiceError("invalid-request", "Not the active tab");
-    }
-    // Top frame only: the popup has no frame URL to check, so it never targets subframes.
-    return this.fillInto({ id: opts.id, tabId: opts.tabId });
   }
 
   async flashBadge(text: string): Promise<void> {

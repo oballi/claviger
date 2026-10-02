@@ -12,8 +12,6 @@ import {
 import { SNAPSHOT_REASONS, type SnapshotReason } from "@claviger/ui/protocol";
 import { z } from "zod";
 
-export { canonicalJson };
-
 export const SNAPSHOT_PREFIX = "snapshot:";
 export const QUARANTINE_PREFIX = "quarantine:";
 export const MAX_SNAPSHOTS = 7;

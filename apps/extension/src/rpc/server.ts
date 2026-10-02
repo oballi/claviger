@@ -176,8 +176,6 @@ async function dispatch(
     case "setClockCheckEnabled":
       await service.setClockCheckEnabled(req.enabled);
       return null;
-    case "fillCode":
-      return service.fillCode({ id: req.id, tabId: req.tabId });
     case "storeCapture":
       return service.storeCapture({ dataUrl: req.dataUrl, tabUrl: req.tabUrl });
     case "takeCapture":
