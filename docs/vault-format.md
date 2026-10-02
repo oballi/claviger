@@ -96,6 +96,10 @@ A random 256-bit file key encrypts the payload with AAD `otp-vault/v1/export/<ex
 
 Groups are additive and keep `version` at 1: an account may carry `"group": "<name>"` and the payload may carry `"groups": ["<name>", ...]` (display order). Names are matched on import by case-insensitive NFC key, reusing existing groups; invalid or over-limit names import the account ungrouped. Groups that none of the imported accounts use are not created. Older readers ignore both fields and import everything ungrouped.
 
+## Recently deleted (trash)
+
+Deleted accounts are kept for 30 days as one sealed entry per account (`trash:<id>`) in `storage.local` only, never in sync, outside the vault namespace and outside snapshots and exports. Each entry is encrypted with the vault key. Entries left by a replaced or deleted vault cannot be opened by the new vault: they stay encrypted in `storage.local`, hidden, until they expire or are evicted. An old copy of an entry's ciphertext replayed into storage can make a purged entry reappear; this is accepted.
+
 ## Versioning rules
 
 - Any incompatible change to the header, records, index or tombstones increases `format`; the backup file has its own `version`.

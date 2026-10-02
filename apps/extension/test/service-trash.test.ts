@@ -201,4 +201,22 @@ describe("recently deleted in the service", () => {
     expect(await fresh.listTrash()).toEqual([]);
     expect(await codeOf(fresh.restoreTrash(id))).toBe("trash-corrupt");
   });
+
+  it("binds the bin when the key is loaded from the session cache", async () => {
+    const { p } = await unlockedService();
+    const fresh = new VaultService(p);
+    const { id } = await add(fresh, "Cached");
+    await fresh.deleteAccount(id);
+    expect(trashKeys(p.local)).toEqual([`trash:${id}`]);
+    expect((await fresh.listTrash()).map((i) => i.id)).toEqual([id]);
+  });
+
+  it("binds the bin after unlocking with the recovery code", async () => {
+    const { service, p, recoveryCode } = await unlockedService();
+    await service.lock();
+    await service.unlockWithRecovery(recoveryCode!, "a brand new password");
+    const { id } = await add(service, "Recovered");
+    await service.deleteAccount(id);
+    expect(trashKeys(p.local)).toEqual([`trash:${id}`]);
+  });
 });

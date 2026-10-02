@@ -785,13 +785,14 @@ export class VaultService {
   }
 
   async listTrash(): Promise<TrashItemView[]> {
-    const vault = await this.requireVault();
-    await this.exclusive(async () => {
+    const vault = await this.exclusive(async () => {
+      const v = await this.requireVault();
       try {
-        await vault.purgeExpiredTrash();
+        await v.purgeExpiredTrash();
       } catch {
         // Housekeeping only.
       }
+      return v;
     });
     const now = this.p.clock.now();
     const dayStart = (ms: number) => new Date(ms).setHours(0, 0, 0, 0);
