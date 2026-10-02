@@ -2,6 +2,9 @@ import { browser } from "wxt/browser";
 import type { ManageRoute, UiPlatform } from "../ui/platform";
 import { rpc } from "./browserRpc";
 
+const CLOCK_ORIGIN = "https://www.google.com/*";
+const CLOCK_URL = "https://www.google.com/generate_204";
+
 async function findManageTab(): Promise<{ tabId: number; windowId: number } | null> {
   const origin = new URL(browser.runtime.getURL("/")).origin;
   const isManage = (documentUrl: string | undefined) => {
@@ -51,6 +54,23 @@ export function createBrowserUiPlatform(context: "popup" | "manage"): UiPlatform
       if (context === "manage") return undefined;
       const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
       return tab?.id === undefined || !tab.url ? undefined : { id: tab.id, url: tab.url };
+    },
+    requestClockPermission: () => browser.permissions.request({ origins: [CLOCK_ORIGIN] }),
+    async removeClockPermission() {
+      await browser.permissions.remove({ origins: [CLOCK_ORIGIN] });
+    },
+    async fetchServerDate() {
+      const startMs = Date.now();
+      const response = await fetch(CLOCK_URL, {
+        method: "HEAD",
+        cache: "no-store",
+        credentials: "omit",
+        referrerPolicy: "no-referrer",
+      });
+      const endMs = Date.now();
+      const serverDate = response.headers.get("date");
+      if (!serverDate) throw new Error("The response has no Date header");
+      return { serverDate, startMs, endMs };
     },
     download(filename, content) {
       const url = URL.createObjectURL(new Blob([content], { type: "application/octet-stream" }));

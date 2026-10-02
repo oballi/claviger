@@ -26,6 +26,7 @@ export default defineConfig({
       "contextMenus",
       ...(browser === "firefox" ? [] : ["offscreen"]),
     ],
+    optional_host_permissions: ["https://www.google.com/*"],
     commands: {
       "fill-code": {
         suggested_key: { default: "Alt+Shift+O" },

@@ -289,6 +289,17 @@ export function CodesScreen({
           <Icon name="lock" size={17} />
         </button>
       </header>
+      {state.clockOffsetSec !== 0 ? (
+        <div className="px-7">
+          <Button
+            variant="link"
+            onClick={() => openManage("security")}
+            className="text-xs text-muted"
+          >
+            {t("clock.popupNote", { offset: state.clockOffsetSec })}
+          </Button>
+        </div>
+      ) : null}
       <div className="px-7 pt-1">
         <div className="flex h-11 items-center gap-2.5 border-b border-hair">
           <Icon name="search" size={15} className="text-muted" />

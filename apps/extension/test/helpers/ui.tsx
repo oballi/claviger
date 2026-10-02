@@ -44,6 +44,12 @@ export async function harness(
     copy: vi.fn(async (_text: string) => {}),
     openManage: vi.fn(),
     activeTab: vi.fn(async () => (opts.tabUrl ? { id: TAB_ID, url: opts.tabUrl } : undefined)),
+    requestClockPermission: vi.fn(async () => true),
+    removeClockPermission: vi.fn(async () => {}),
+    fetchServerDate: vi.fn(async () => {
+      const now = p.clock.now();
+      return { serverDate: new Date(now).toUTCString(), startMs: now, endMs: now };
+    }),
     download: vi.fn(),
     print: vi.fn(),
   } satisfies UiPlatform;

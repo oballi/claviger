@@ -14,6 +14,10 @@ export interface UiPlatform {
   openManage(route?: ManageRoute): void;
   /** The tab the popup was opened on; undefined on the manage page or when the tab has no URL. */
   activeTab(): Promise<{ id: number; url: string } | undefined>;
+  /** Must be the first await in a click handler so the user gesture still holds. */
+  requestClockPermission(): Promise<boolean>;
+  removeClockPermission(): Promise<void>;
+  fetchServerDate(): Promise<{ serverDate: string; startMs: number; endMs: number }>;
   download(filename: string, content: string): void;
   print(): void;
 }

@@ -11,6 +11,7 @@ import { errorMessage } from "../errors";
 import { lockPolicyLabel } from "../format";
 import { useT } from "../i18n/i18n";
 import { useUi } from "../platform";
+import { ClockRow } from "./ClockRow";
 import { PageTitle, SettingsRow, SettingsSection } from "./ManageFrame";
 
 type Panel = "password" | "recovery" | "lock" | "reveal" | "delete" | null;
@@ -327,6 +328,7 @@ export function SecurityScreen({
           }
         />
         <SettingsRow title={t("security.shortcut")} description={t("security.shortcutHint")} />
+        <ClockRow state={state} disabled={codePending} onChanged={onChanged} />
         <SettingsRow
           title={t("security.view")}
           description={`${t("security.viewHint")} ${state.viewMode === "hidden" ? t("view.hiddenHint") : ""}`.trim()}

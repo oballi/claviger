@@ -1095,6 +1095,10 @@ export class VaultService {
       if (!(await this.settings()).clockCheckEnabled) {
         throw new ServiceError("invalid-request", "The clock check is turned off");
       }
+      // The clock went back during the request; the midpoint would be meaningless.
+      if (sample.endMs < sample.startMs) {
+        throw new ServiceError("invalid-request", "The measurement ran backwards");
+      }
       const offset = computeClockOffset(sample.serverDate, sample.startMs, sample.endMs);
       if (offset === null)
         throw new ServiceError("invalid-request", "The server date could not be read");

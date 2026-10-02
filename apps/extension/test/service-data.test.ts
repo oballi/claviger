@@ -146,6 +146,14 @@ describe("clock", () => {
     ).toBe("invalid-request");
   });
 
+  it("refuses a sample whose end is before its start", async () => {
+    const { service } = await unlockedService();
+    await service.setClockCheckEnabled(true);
+    const sample = { serverDate: new Date(0).toUTCString(), startMs: 2000, endMs: 1000 };
+    expect(await codeOf(service.applyClockSample(sample))).toBe("invalid-request");
+    expect((await service.getState()).clockOffsetSec).toBe(0);
+  });
+
   it("toggles the clock check and clears the offset when turned off", async () => {
     const { service } = await unlockedService();
     await service.setClockCheckEnabled(true);

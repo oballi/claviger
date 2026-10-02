@@ -441,6 +441,17 @@ export const tr = {
   "security.shortcut": "Klavye kısayolu: Alt+Shift+O",
   "security.shortcutHint":
     "Chrome'da chrome://extensions/shortcuts adresinden, Firefox'ta eklenti yönetimi > dişli > \"Eklenti kısayollarını yönet\" ile değiştirilir.",
+  "clock.title": "Saat kontrolü",
+  "clock.hint":
+    "Kodlar tutmuyorsa bilgisayarının saatini bir kez Google'ın sunucusuyla karşılaştırır. İstek Google'a gider ve yalnızca sen istediğinde çalışır.",
+  "clock.check": "Kontrol et",
+  "clock.denied": "İzin verilmedi; kontrol yapılmadı.",
+  "clock.ok": "Saatin doğru (fark {offset} sn).",
+  "clock.applied": "Saatin {offset} sn farklı; kodlar buna göre düzeltildi.",
+  "clock.changed": "Saat ölçüm sırasında değişti; tekrar dene.",
+  "clock.failed": "Google'a ulaşılamadı. Kontrol açık kaldı, düzeltme uygulanmadı.",
+  "clock.remove": "Düzeltmeyi kaldır",
+  "clock.popupNote": "Saat farkı düzeltiliyor ({offset} sn)",
   "error.snapshot-password-required": "Bu kopya başka bir kasaya ait; parolasını gir.",
 } as const;
 

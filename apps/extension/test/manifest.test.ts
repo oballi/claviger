@@ -30,6 +30,12 @@ describe("manifest", () => {
     });
   });
 
+  it.each(["chrome", "firefox"])("asks for the clock source only as optional for %s", (browser) => {
+    const manifest = manifestFor(browser);
+    expect(manifest.host_permissions).toBeUndefined();
+    expect(manifest.optional_host_permissions).toEqual(["https://www.google.com/*"]);
+  });
+
   it("declares clipboard permissions per browser", () => {
     const base = [
       "storage",

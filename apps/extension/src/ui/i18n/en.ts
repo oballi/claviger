@@ -449,5 +449,16 @@ export const en: Record<MessageKey, string> = {
   "security.shortcut": "Keyboard shortcut: Alt+Shift+O",
   "security.shortcutHint":
     'Change it at chrome://extensions/shortcuts in Chrome, or in Firefox via Add-ons > gear > "Manage Extension Shortcuts".',
+  "clock.title": "Clock check",
+  "clock.hint":
+    "If codes are rejected, compares your computer's clock once with Google's server. The request goes to Google and only runs when you ask.",
+  "clock.check": "Check now",
+  "clock.denied": "Permission was not granted; nothing was checked.",
+  "clock.ok": "Your clock is right (off by {offset} s).",
+  "clock.applied": "Your clock is off by {offset} s; codes are corrected accordingly.",
+  "clock.changed": "The clock changed during the measurement; try again.",
+  "clock.failed": "Could not reach Google. The check stays on, no correction applied.",
+  "clock.remove": "Remove correction",
+  "clock.popupNote": "Correcting clock difference ({offset} s)",
   "error.snapshot-password-required": "This copy belongs to another vault; enter its password.",
 };
