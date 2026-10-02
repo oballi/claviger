@@ -3,6 +3,7 @@ export * from "./AccountsScreen";
 export * from "./BackupScreen";
 export * from "./ClockRow";
 export * from "./CorruptScreen";
+export * from "./GroupsSection";
 export * from "./ImportScreen";
 export * from "./ManageApp";
 export * from "./ManageFrame";

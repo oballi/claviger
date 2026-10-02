@@ -10,6 +10,7 @@ import { useAccountList } from "../hooks";
 import { useLocale, useT } from "../i18n/i18n";
 import { useUi } from "../platform";
 import { AccountEditor } from "./AccountEditor";
+import { GroupsSection } from "./GroupsSection";
 import { GroupChips, type GroupFilter } from "./GroupChips";
 import { PageTitle } from "./ManageFrame";
 import { TextField } from "../components/TextField";
@@ -291,138 +292,141 @@ export function AccountsScreen({
         </section>
       ) : null}
 
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[680px] table-fixed border-collapse text-left text-sm">
-          <colgroup>
-            <col style={{ width: "32px" }} />
-            <col style={{ width: "17%" }} />
-            <col style={{ width: "22%" }} />
-            <col style={{ width: "12%" }} />
-            <col style={{ width: "22%" }} />
-            <col style={{ width: "8%" }} />
-            <col style={{ width: "96px" }} />
-          </colgroup>
-          <caption className="sr-only">{t("accounts.title")}</caption>
-          <thead>
-            <tr className="border-b border-line text-xs text-muted">
-              <th scope="col" className="pb-2.5 font-normal">
-                <span className="sr-only">{t("accounts.dragColumn")}</span>
-              </th>
-              <th scope="col" className="pb-2.5 font-normal">
-                {t("add.issuer")}
-              </th>
-              <th scope="col" className="pb-2.5 font-normal">
-                {t("add.label")}
-              </th>
-              <th scope="col" className="pb-2.5 font-normal">
-                {t("groups.column")}
-              </th>
-              <th scope="col" className="pb-2.5 font-normal">
-                {t("accounts.site")}
-              </th>
-              <th scope="col" className="pb-2.5 font-normal">
-                {t("add.type")}
-              </th>
-              <th scope="col" className="pb-2.5 font-normal">
-                <span className="sr-only">{t("accounts.actions")}</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {list && rows.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="py-6 text-muted">
-                  {q
-                    ? t("accounts.noMatch")
-                    : effective !== "all" && accounts.length > 0
-                      ? t("groups.empty")
-                      : t("codes.empty")}
-                  {!q && effective === "all" && state.snapshotOffer ? (
-                    <Button
-                      variant="link"
-                      onClick={() => openManage("backup")}
-                      className="mt-3 block justify-start text-[13px]"
-                    >
-                      {t(
-                        state.snapshotOffer.accountCount === 1
-                          ? "snapshots.offerOne"
-                          : "snapshots.offer",
-                        { count: state.snapshotOffer.accountCount },
-                      )}
-                    </Button>
-                  ) : null}
-                </td>
+      <div className="grid grid-cols-1 gap-14 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[680px] table-fixed border-collapse text-left text-sm">
+            <colgroup>
+              <col style={{ width: "32px" }} />
+              <col style={{ width: "17%" }} />
+              <col style={{ width: "22%" }} />
+              <col style={{ width: "12%" }} />
+              <col style={{ width: "22%" }} />
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "96px" }} />
+            </colgroup>
+            <caption className="sr-only">{t("accounts.title")}</caption>
+            <thead>
+              <tr className="border-b border-line text-xs text-muted">
+                <th scope="col" className="pb-2.5 font-normal">
+                  <span className="sr-only">{t("accounts.dragColumn")}</span>
+                </th>
+                <th scope="col" className="pb-2.5 font-normal">
+                  {t("add.issuer")}
+                </th>
+                <th scope="col" className="pb-2.5 font-normal">
+                  {t("add.label")}
+                </th>
+                <th scope="col" className="pb-2.5 font-normal">
+                  {t("groups.column")}
+                </th>
+                <th scope="col" className="pb-2.5 font-normal">
+                  {t("accounts.site")}
+                </th>
+                <th scope="col" className="pb-2.5 font-normal">
+                  {t("add.type")}
+                </th>
+                <th scope="col" className="pb-2.5 font-normal">
+                  <span className="sr-only">{t("accounts.actions")}</span>
+                </th>
               </tr>
-            ) : null}
-            {rows.map((a) => {
-              const name = a.issuer || a.label;
-              const editName =
-                a.issuer && a.label ? `${a.issuer} (${a.label})` : name || t("add.unnamed");
-              return (
-                <tr
-                  key={a.id}
-                  className="h-14 border-b border-hair"
-                  onDragOver={(e) => {
-                    if (!q && dragging && sameGroup(dragging, a.id)) e.preventDefault();
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    void drop(a.id);
-                  }}
-                >
-                  <td>
-                    {q ? null : (
-                      // Mouse-only and not a button (Firefox will not drag buttons); keyboard users use the move buttons in the edit dialog.
-                      <span
-                        draggable="true"
-                        aria-hidden="true"
-                        data-testid="drag-handle"
-                        title={t("accounts.dragHandle", { name: editName })}
-                        onDragStart={(e) => {
-                          setDragging(a.id);
-                          e.dataTransfer?.setData("text/plain", a.id);
-                        }}
-                        onDragEnd={() => setDragging(null)}
-                        className="flex h-11 w-8 cursor-grab items-center justify-center text-muted"
+            </thead>
+            <tbody>
+              {list && rows.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-6 text-muted">
+                    {q
+                      ? t("accounts.noMatch")
+                      : effective !== "all" && accounts.length > 0
+                        ? t("groups.empty")
+                        : t("codes.empty")}
+                    {!q && effective === "all" && state.snapshotOffer ? (
+                      <Button
+                        variant="link"
+                        onClick={() => openManage("backup")}
+                        className="mt-3 block justify-start text-[13px]"
                       >
-                        <Icon name="grip" size={16} />
-                      </span>
-                    )}
-                  </td>
-                  <td className="pr-4">
-                    <span className="flex min-w-0 items-center gap-2.5">
-                      <span className="min-w-0 truncate">{name}</span>
-                      {a.pinned ? (
-                        <span className="rounded-full border border-line px-[7px] py-px font-mono text-[10px] text-muted">
-                          {t("accounts.pinnedBadge")}
-                        </span>
-                      ) : null}
-                    </span>
-                  </td>
-                  <td className="truncate pr-4 text-muted">{a.issuer ? a.label : ""}</td>
-                  <td className={`truncate pr-4 text-xs ${groupName(a) ? "" : "text-muted"}`}>
-                    {groupName(a) ?? "\u2014"}
-                  </td>
-                  <td
-                    className={`truncate pr-4 font-mono text-xs ${a.domains.length ? "" : "text-muted"}`}
-                  >
-                    {a.domains.length ? a.domains.join(", ") : t("accounts.unbound")}
-                  </td>
-                  <td className="pr-4 font-mono text-xs text-muted">{typeLabel(a.type)}</td>
-                  <td className="text-right">
-                    <Button
-                      variant="link"
-                      aria-label={t("accounts.edit", { name: editName })}
-                      onClick={() => setEditing(a.id)}
-                    >
-                      {t("account.edit")}
-                    </Button>
+                        {t(
+                          state.snapshotOffer.accountCount === 1
+                            ? "snapshots.offerOne"
+                            : "snapshots.offer",
+                          { count: state.snapshotOffer.accountCount },
+                        )}
+                      </Button>
+                    ) : null}
                   </td>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              ) : null}
+              {rows.map((a) => {
+                const name = a.issuer || a.label;
+                const editName =
+                  a.issuer && a.label ? `${a.issuer} (${a.label})` : name || t("add.unnamed");
+                return (
+                  <tr
+                    key={a.id}
+                    className="h-14 border-b border-hair"
+                    onDragOver={(e) => {
+                      if (!q && dragging && sameGroup(dragging, a.id)) e.preventDefault();
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      void drop(a.id);
+                    }}
+                  >
+                    <td>
+                      {q ? null : (
+                        // Mouse-only and not a button (Firefox will not drag buttons); keyboard users use the move buttons in the edit dialog.
+                        <span
+                          draggable="true"
+                          aria-hidden="true"
+                          data-testid="drag-handle"
+                          title={t("accounts.dragHandle", { name: editName })}
+                          onDragStart={(e) => {
+                            setDragging(a.id);
+                            e.dataTransfer?.setData("text/plain", a.id);
+                          }}
+                          onDragEnd={() => setDragging(null)}
+                          className="flex h-11 w-8 cursor-grab items-center justify-center text-muted"
+                        >
+                          <Icon name="grip" size={16} />
+                        </span>
+                      )}
+                    </td>
+                    <td className="pr-4">
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <span className="min-w-0 truncate">{name}</span>
+                        {a.pinned ? (
+                          <span className="rounded-full border border-line px-[7px] py-px font-mono text-[10px] text-muted">
+                            {t("accounts.pinnedBadge")}
+                          </span>
+                        ) : null}
+                      </span>
+                    </td>
+                    <td className="truncate pr-4 text-muted">{a.issuer ? a.label : ""}</td>
+                    <td className={`truncate pr-4 text-xs ${groupName(a) ? "" : "text-muted"}`}>
+                      {groupName(a) ?? "\u2014"}
+                    </td>
+                    <td
+                      className={`truncate pr-4 font-mono text-xs ${a.domains.length ? "" : "text-muted"}`}
+                    >
+                      {a.domains.length ? a.domains.join(", ") : t("accounts.unbound")}
+                    </td>
+                    <td className="pr-4 font-mono text-xs text-muted">{typeLabel(a.type)}</td>
+                    <td className="text-right">
+                      <Button
+                        variant="link"
+                        aria-label={t("accounts.edit", { name: editName })}
+                        onClick={() => setEditing(a.id)}
+                      >
+                        {t("account.edit")}
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <GroupsSection groups={groups} accounts={accounts} onChanged={changed} />
       </div>
 
       <dl className="m-0 grid grid-cols-1 border-y border-hair sm:grid-cols-3">
