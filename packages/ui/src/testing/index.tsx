@@ -1,5 +1,6 @@
 import { render } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { manageMessages } from "../manage/i18n";
 import { LocaleProvider, type Locale } from "../i18n/i18n";
 import { UiProvider, type UiPlatform } from "../platform";
 
@@ -15,7 +16,9 @@ export function withStatus(ui: UiPlatform, status: "unsupported" | "corrupt"): U
 export function renderUi(node: ReactNode, ui: UiPlatform, locale: Locale = "tr") {
   return render(
     <UiProvider value={ui}>
-      <LocaleProvider locale={locale}>{node}</LocaleProvider>
+      <LocaleProvider locale={locale} extra={manageMessages}>
+        {node}
+      </LocaleProvider>
     </UiProvider>,
   );
 }

@@ -208,6 +208,30 @@ try {
       throw new Error("deleting a group did not ungroup its accounts");
   }
 
+  // Recently deleted: delete -> bin -> restore round trip; the popup shows the entry link.
+  {
+    const bin = await must({
+      type: "addAccountManual",
+      draft: { secret: "JBSWY3DPEHPK3PXQ", issuer: "BinCheck" },
+    });
+    await must({ type: "deleteAccount", id: bin.id });
+    const items = await must({ type: "listTrash" });
+    const mine = items.find((i) => i.id === bin.id);
+    if (!mine || mine.daysLeft !== 30) throw new Error("deleted account is not in the bin");
+    if (JSON.stringify(items).includes("JBSWY3DPEHPK3PXQ"))
+      throw new Error("bin view leaks the secret");
+    await popup.goto(`chrome-extension://${id}/popup.html`);
+    await popup.getByRole("button", { name: /Son silinenler · \d+/ }).waitFor({ timeout: 10_000 });
+    const restored = await must({ type: "restoreTrash", id: bin.id });
+    const listed = await must({ type: "listAccounts" });
+    if (!listed.accounts.some((a) => a.id === restored.id && a.issuer === "BinCheck"))
+      throw new Error("restore did not bring the account back");
+    await must({ type: "deleteAccount", id: restored.id });
+    await must({ type: "purgeTrash", id: restored.id });
+    if ((await must({ type: "listTrash" })).some((i) => i.id === restored.id))
+      throw new Error("removing from the list left an entry behind");
+  }
+
   await ctx.grantPermissions(["clipboard-read", "clipboard-write"], { origin });
   const reader = await ctx.newPage();
   await reader.goto(origin);

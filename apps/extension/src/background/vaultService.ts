@@ -34,11 +34,14 @@ import type {
   ServiceStatus,
   SnapshotInfo,
   StorageUsageView,
+  TrashItemView,
 } from "@otp-vault/ui/views";
+import { TRASH_RETENTION_DAYS } from "@otp-vault/ui/views";
 import type { Platform, StorageAreaName } from "../platform/ports";
 import { ServiceError } from "./errors";
 import {
   canonicalJson,
+  DAY_MS,
   NotCorruptError,
   recordsStorage,
   SnapshotStore,
@@ -254,8 +257,15 @@ export class VaultService {
     return name === "sync" && !this.p.sync ? "local" : name;
   }
 
-  protected deps(storage: StoragePort): VaultDeps {
-    return { storage, random: this.p.random, clock: this.p.clock, kdf: this.p.kdf };
+  protected deps(storage: StoragePort, opts: { trash?: boolean } = {}): VaultDeps {
+    return {
+      storage,
+      random: this.p.random,
+      clock: this.p.clock,
+      kdf: this.p.kdf,
+      // Opt-in for live vaults only; device-local on purpose, whichever area holds the vault.
+      ...(opts.trash ? { trash: this.p.local } : {}),
+    };
   }
 
   /** Adopts a vault in the other area (sync arrival on a new device, or an interrupted area move). */
@@ -290,7 +300,10 @@ export class VaultService {
     const dek = await this.keys.load(lockPolicy);
     if (!dek || epoch !== this.lockEpoch) return null;
     try {
-      const vault = await Vault.fromKey(this.deps(this.area(this.effective(storageArea))), dek);
+      const vault = await Vault.fromKey(
+        this.deps(this.area(this.effective(storageArea)), { trash: true }),
+        dek,
+      );
       if (epoch !== this.lockEpoch) return null;
       this.vault = vault;
       await this.clearPurgeMarker();
@@ -466,10 +479,13 @@ export class VaultService {
         // Best effort; the marker stays for the next setup.
       }
     }
-    const { vault, recoveryCode } = await Vault.create(this.deps(this.area(opts.storageArea)), {
-      password: opts.password,
-      createRecoveryCode: opts.createRecoveryCode,
-    });
+    const { vault, recoveryCode } = await Vault.create(
+      this.deps(this.area(opts.storageArea), { trash: true }),
+      {
+        password: opts.password,
+        createRecoveryCode: opts.createRecoveryCode,
+      },
+    );
     await saveSettings(this.p.local, {
       lockPolicy: opts.lockPolicy,
       storageArea: opts.storageArea,
@@ -488,7 +504,7 @@ export class VaultService {
       let vault: Vault;
       try {
         vault = await Vault.unlockWithPassword(
-          this.deps(this.area(this.effective(settings.storageArea))),
+          this.deps(this.area(this.effective(settings.storageArea)), { trash: true }),
           password,
         );
       } catch (e) {
@@ -507,6 +523,11 @@ export class VaultService {
       } catch {
         // Housekeeping only; never fails an unlock.
       }
+      try {
+        await vault.purgeExpiredTrash();
+      } catch {
+        // Housekeeping only; never fails an unlock.
+      }
     });
   }
 
@@ -521,7 +542,7 @@ export class VaultService {
       let result: { vault: Vault; recoveryCode: string };
       try {
         result = await Vault.unlockWithRecovery(
-          this.deps(this.area(this.effective(settings.storageArea))),
+          this.deps(this.area(this.effective(settings.storageArea)), { trash: true }),
           code,
           newPassword,
         );
@@ -761,6 +782,49 @@ export class VaultService {
       await this.snapshot("before-delete");
       await vault.deleteAccount(id);
     });
+  }
+
+  async listTrash(): Promise<TrashItemView[]> {
+    const vault = await this.exclusive(async () => {
+      const v = await this.requireVault();
+      try {
+        await v.purgeExpiredTrash();
+      } catch {
+        // Housekeeping only.
+      }
+      return v;
+    });
+    const now = this.p.clock.now();
+    const dayStart = (ms: number) => new Date(ms).setHours(0, 0, 0, 0);
+    return (await vault.listTrash()).map((i) => ({
+      id: i.id,
+      issuer: i.issuer,
+      label: i.label,
+      deletedAt: i.deletedAt,
+      expiresAt: i.expiresAt,
+      ageDays: Math.max(0, Math.round((dayStart(now) - dayStart(i.deletedAt)) / DAY_MS)),
+      daysLeft: Math.min(
+        TRASH_RETENTION_DAYS,
+        Math.max(0, Math.ceil((i.expiresAt - now) / DAY_MS)),
+      ),
+    }));
+  }
+
+  restoreTrash(id: string): Promise<{ id: string; name: string }> {
+    return this.exclusive(async () => {
+      const restored = await (await this.requireVault()).restoreFromTrash(id);
+      return { id: restored.id, name: restored.issuer || restored.label };
+    });
+  }
+
+  purgeTrash(id: string): Promise<void> {
+    return this.exclusive(async () => (await this.requireVault()).purgeTrashEntry(id));
+  }
+
+  emptyTrash(): Promise<{ removed: number }> {
+    return this.exclusive(async () => ({
+      removed: await (await this.requireVault()).emptyTrash(),
+    }));
   }
 
   reorder(order: string[]): Promise<void> {
@@ -1045,7 +1109,7 @@ export class VaultService {
       }
       // The data has moved, so the setting is saved even if a lock arrived meanwhile.
       await saveSettings(this.p.local, { storageArea: area });
-      const moved = await Vault.fromKey(this.deps(target), vault.exportKey());
+      const moved = await Vault.fromKey(this.deps(target, { trash: true }), vault.exportKey());
       if (epoch === this.lockEpoch) this.vault = moved;
     });
   }

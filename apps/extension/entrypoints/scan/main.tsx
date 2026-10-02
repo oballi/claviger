@@ -1,6 +1,7 @@
 import "../../src/zodConfig";
 import "../../src/styles.css";
 import { LocaleProvider, pickLocale, UiProvider } from "@otp-vault/ui";
+import { manageMessages } from "@otp-vault/ui/manage";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserUiPlatform } from "../../src/platform/uiPlatform";
@@ -16,7 +17,7 @@ history.replaceState(null, "", window.location.pathname);
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <UiProvider value={createBrowserUiPlatform("scan", { decodeQr })}>
-      <LocaleProvider locale={locale}>
+      <LocaleProvider locale={locale} extra={manageMessages}>
         <ScanApp captureId={captureId} />
       </LocaleProvider>
     </UiProvider>

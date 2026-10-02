@@ -4,6 +4,8 @@ import type { MessageKey, Translate } from "./i18n/i18n";
 const KNOWN: Record<string, MessageKey> = {
   "wrong-password": "error.wrong-password",
   locked: "error.locked",
+  "trash-entry-not-found": "error.trash-entry-not-found",
+  "trash-corrupt": "error.trash-corrupt",
   "invalid-token": "error.invalid-token",
   "duplicate-account": "error.duplicate-account",
   "invalid-uri": "error.invalid-uri",

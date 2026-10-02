@@ -18,6 +18,8 @@ export interface RandomPort {
 
 export interface VaultDeps {
   storage: StoragePort;
+  /** Device-local bin for deleted accounts (never synced). Absent: deletes are not recoverable. */
+  trash?: StoragePort;
   random: RandomPort;
   clock: ClockPort;
   kdf?: Argon2Params;

@@ -18,6 +18,7 @@ export * from "./components/ReauthForm";
 export * from "./components/RecoveryCodeDisplay";
 export * from "./components/StatusScreen";
 export * from "./components/TextField";
+export * from "./components/UndoToast";
 export * from "./components/Toast";
 export * from "./errors";
 export * from "./format";

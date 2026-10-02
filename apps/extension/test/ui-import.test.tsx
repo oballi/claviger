@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { LocaleProvider } from "@otp-vault/ui";
 import { UiProvider } from "@otp-vault/ui";
-import { ImportScreen } from "@otp-vault/ui/manage";
+import { ImportScreen, manageMessages } from "@otp-vault/ui/manage";
 import { harness, renderUi, type Harness } from "./helpers/ui";
 import { PASSWORD } from "./helpers/service";
 
@@ -56,7 +56,9 @@ describe("ImportScreen", () => {
     const view = renderUi(node(ACME), ui);
     view.rerender(
       <UiProvider value={ui}>
-        <LocaleProvider locale="tr">{node(BANK)}</LocaleProvider>
+        <LocaleProvider locale="tr" extra={manageMessages}>
+          {node(BANK)}
+        </LocaleProvider>
       </UiProvider>,
     );
     await screen.findByRole("checkbox", { name: "Bank (ali) hesabını seç" });

@@ -12,3 +12,4 @@ export * from "./SecurityScreen";
 export * from "./SetupWizard";
 export * from "./SnapshotsSection";
 export * from "./WizardFrame";
+export * from "./i18n";

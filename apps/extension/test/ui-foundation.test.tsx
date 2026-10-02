@@ -18,11 +18,12 @@ import {
 } from "@otp-vault/ui";
 import { en } from "@otp-vault/ui";
 import { pickLocale, translate } from "@otp-vault/ui";
+import { manageMessages } from "@otp-vault/ui/manage";
 import { tr } from "@otp-vault/ui";
 import { harness, renderUi } from "./helpers/ui";
 
 const t = (key: Parameters<typeof translate>[1], vars?: Record<string, string | number>) =>
-  translate("tr", key, vars);
+  translate("tr", key, vars, manageMessages);
 
 describe("i18n", () => {
   it("picks Turkish only when the browser prefers it", () => {

@@ -8,11 +8,12 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
-import type { AccountView, ServiceState, StorageUsageView } from "../contract/views";
+import type { AccountView, ServiceState, StorageUsageView, TrashItemView } from "../contract/views";
 import { RpcError } from "../rpc/client";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { Toast } from "../components/Toast";
+import { UndoToast } from "../components/UndoToast";
 import { errorMessage } from "../errors";
 import { useAccountList } from "../hooks";
 import { useLocale, useT } from "../i18n/i18n";
@@ -23,10 +24,12 @@ import { AddAccount } from "./AddAccount";
 
 import { GroupSection } from "./GroupSection";
 import { useCollapsed } from "./useCollapsed";
+import { useTrash } from "./useTrash";
 import { NO_GROUP_KEY, sectionsOf } from "../groups";
 import { neighbourOf, swapOrder } from "../reorder";
 
 const EditAccount = lazy(() => import("./EditAccount").then((m) => ({ default: m.EditAccount })));
+const TrashList = lazy(() => import("./TrashList").then((m) => ({ default: m.TrashList })));
 
 function Section({
   title,
@@ -89,6 +92,13 @@ export function CodesScreen({
   const deleting = useRef(false);
   const listRef = useRef<HTMLDivElement>(null);
   const clearToast = useCallback(() => setToast(null), []);
+  const [undo, setUndo] = useState<{ id: string; name: string; focus: boolean } | null>(null);
+  const trash = useTrash();
+  const [showTrash, setShowTrash] = useState(false);
+  const [focusSearch, setFocusSearch] = useState(false);
+  // Last input modality: only a keyboard delete moves focus to "Undo" (the confirm button is gone).
+  const viaKeyboard = useRef(false);
+  const clearUndo = useCallback(() => setUndo(null), []);
 
   useEffect(() => {
     (capabilities.activeTab ? activeTab() : Promise.resolve(undefined)).then(setTab, () =>
@@ -101,9 +111,15 @@ export function CodesScreen({
     if (error instanceof RpcError && error.code === "locked") onLocked();
   }, [error, onLocked]);
 
+  // A stale offer must not reappear when the list view returns.
+  const away = adding || editing !== null || showTrash;
+  useEffect(() => {
+    if (away) setUndo(null);
+  }, [away]);
+
   // "/" must work as soon as the popup opens, when focus is still on <body> (spec §6.2).
   useEffect(() => {
-    if (adding || editing) return;
+    if (adding || editing || showTrash) return;
     function onKey(event: globalThis.KeyboardEvent) {
       const target = event.target as HTMLElement | null;
       if (event.key !== "/" || target?.closest("input, textarea, select")) return;
@@ -113,7 +129,7 @@ export function CodesScreen({
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [adding, editing]);
+  }, [adding, editing, showTrash]);
 
   // A row can move to another section (and remount), so focus returns to its menu trigger by id.
   useEffect(() => {
@@ -128,6 +144,21 @@ export function CodesScreen({
     }
     setRefocus(null);
   }, [list, refocus]);
+
+  // The bin emptied while its view was open: go back to the list.
+  useEffect(() => {
+    if (!showTrash || trash.items.length > 0) return;
+    setShowTrash(false);
+    setActionError(null);
+    setFocusSearch(true);
+  }, [showTrash, trash.items.length]);
+
+  // The search field only exists once the list view has rendered again.
+  useEffect(() => {
+    if (!focusSearch || showTrash || adding || editing) return;
+    searchRef.current?.focus();
+    setFocusSearch(false);
+  }, [focusSearch, showTrash, adding, editing, list]);
 
   // An account deleted elsewhere must not leave the edit view blank or silently vanish.
   const gone = editing !== null && list !== null && !list.accounts.some((a) => a.id === editing);
@@ -149,6 +180,26 @@ export function CodesScreen({
           void reload();
         }}
       />
+    );
+  }
+
+  if (showTrash) {
+    return (
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <Suspense fallback={null}>
+          <TrashList
+            items={trash.items}
+            error={actionError}
+            onBack={() => {
+              setShowTrash(false);
+              setActionError(null);
+              setFocusSearch(true);
+            }}
+            onRestore={restoreFromList}
+          />
+        </Suspense>
+        <Toast message={toast} onDone={clearToast} />
+      </div>
     );
   }
 
@@ -293,6 +344,7 @@ export function CodesScreen({
   }
 
   function onListKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    viaKeyboard.current = true;
     if (event.key === "Escape" && query) {
       event.preventDefault();
       setQuery("");
@@ -323,6 +375,57 @@ export function CodesScreen({
       if (focusId) setRefocus(focusId);
     } catch (e) {
       setActionError(errorMessage(t, e));
+    }
+  }
+
+  async function removeAccount(account: AccountView) {
+    const name = account.issuer || account.label;
+    const keyboard = viaKeyboard.current;
+    setActionError(null);
+    try {
+      await rpc("deleteAccount", { id: account.id });
+      setConfirmDelete(null);
+      await reload();
+      // The bin is best effort: offer "Undo" only when the entry really is there.
+      const binned = (await trash.reload()).some((i) => i.id === account.id);
+      // The confirm button is gone; focus lands on "Undo" (keyboard) or the search field.
+      if (!(binned && keyboard)) searchRef.current?.focus();
+      if (binned) {
+        setToast(null);
+        setUndo({ id: account.id, name, focus: keyboard });
+      } else {
+        setToast(t("accounts.deleted", { name }));
+      }
+    } catch (e) {
+      setActionError(errorMessage(t, e));
+    }
+  }
+
+  async function undoDelete() {
+    if (!undo) return;
+    const { id, name } = undo;
+    setUndo(null);
+    searchRef.current?.focus();
+    try {
+      await rpc("restoreTrash", { id });
+      setToast(t("trash.restored", { name }));
+      await Promise.all([reload(), trash.reload()]);
+    } catch (e) {
+      setActionError(errorMessage(t, e));
+      void trash.reload();
+    }
+  }
+
+  async function restoreFromList(item: TrashItemView) {
+    setActionError(null);
+    try {
+      const restored = await rpc("restoreTrash", { id: item.id });
+      setToast(t("trash.restored", { name: restored.name || t("add.unnamed") }));
+      await Promise.all([reload(), trash.reload()]);
+    } catch (e) {
+      setActionError(errorMessage(t, e));
+      // The entry may be gone (expired or removed elsewhere): the list must not keep offering it.
+      await trash.reload();
     }
   }
 
@@ -441,14 +544,7 @@ export function CodesScreen({
               onConfirm: () => {
                 if (deleting.current) return;
                 deleting.current = true;
-                void act(
-                  async () => {
-                    await rpc("deleteAccount", { id: account.id });
-                    setConfirmDelete(null);
-                    searchRef.current?.focus();
-                  },
-                  t("accounts.deleted", { name: account.issuer || account.label }),
-                ).finally(() => {
+                void removeAccount(account).finally(() => {
                   deleting.current = false;
                 });
               },
@@ -465,6 +561,20 @@ export function CodesScreen({
     />
   );
 
+  const trashLink =
+    trash.items.length > 0 ? (
+      <Button
+        variant="link"
+        onClick={() => {
+          setActionError(null);
+          setUndo(null);
+          setShowTrash(true);
+        }}
+        className="mt-3 justify-start text-xs text-muted"
+      >
+        {t("trash.link", { count: trash.items.length })}
+      </Button>
+    ) : null;
   const validKeys = [NO_GROUP_KEY, ...(list?.groups.map((g) => g.id) ?? [])];
   const grouped = (list?.groups.length ?? 0) > 0;
   const siteRows = accounts.filter(onSite);
@@ -472,7 +582,11 @@ export function CodesScreen({
   const otherRows = accounts.filter((a) => !a.pinned && !onSite(a));
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col" onKeyDown={onListKeyDown}>
+    <div
+      className="relative flex min-h-0 flex-1 flex-col"
+      onKeyDown={onListKeyDown}
+      onPointerDown={() => (viaKeyboard.current = false)}
+    >
       <header className="flex items-center pt-2 pr-3 pl-7">
         <div className="flex-1 font-mono text-xs tracking-wide">{t("app.name")}</div>
         <button
@@ -560,8 +674,9 @@ export function CodesScreen({
       <div ref={listRef} className="min-h-0 flex-1 overflow-auto px-7 pb-[72px]">
         {list && accounts.length === 0 ? (
           <div className="flex flex-col items-start gap-4 pt-10">
+            {trashLink}
             <p className="m-0 text-sm text-muted">{t("codes.empty")}</p>
-            {state.snapshotOffer ? (
+            {state.snapshotOffer && trash.loaded && trash.items.length === 0 ? (
               <Button
                 variant="link"
                 onClick={() => openManage("backup")}
@@ -618,8 +733,20 @@ export function CodesScreen({
             )}
           </>
         )}
+        {accounts.length > 0 ? trashLink : null}
       </div>
-      <Toast message={toast} onDone={clearToast} />
+      <Toast message={toast} onDone={clearToast} raised={undo !== null} />
+      <UndoToast
+        token={undo?.id}
+        message={undo ? t("trash.deleted", { name: undo.name }) : null}
+        autoFocus={undo?.focus}
+        onUndo={() => void undoDelete()}
+        onDone={clearUndo}
+        onDismiss={() => {
+          setUndo(null);
+          searchRef.current?.focus();
+        }}
+      />
     </div>
   );
 }

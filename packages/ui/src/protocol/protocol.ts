@@ -7,6 +7,7 @@ import type {
   ServiceState,
   SnapshotInfo,
   StorageUsageView,
+  TrashItemView,
 } from "../contract/views";
 import { clipboardClearSchema, lockPolicySchema, themeSchema, viewModeSchema } from "./schemas";
 
@@ -81,6 +82,10 @@ export const rpcRequestSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("updateAccount"), id, patch: accountPatch }),
   z.object({ type: z.literal("deleteAccount"), id }),
+  z.object({ type: z.literal("listTrash") }),
+  z.object({ type: z.literal("restoreTrash"), id }),
+  z.object({ type: z.literal("purgeTrash"), id }),
+  z.object({ type: z.literal("emptyTrash") }),
   // Core does the real name validation; these caps only bound the message.
   z.object({ type: z.literal("createGroup"), name: z.string().max(200) }),
   z.object({ type: z.literal("renameGroup"), id, name: z.string().max(200) }),
@@ -166,6 +171,10 @@ export interface RpcResults {
   addAccountManual: { id: string; name: string };
   updateAccount: null;
   deleteAccount: null;
+  listTrash: TrashItemView[];
+  restoreTrash: { id: string; name: string };
+  purgeTrash: null;
+  emptyTrash: { removed: number };
   createGroup: { id: string; name: string };
   renameGroup: null;
   deleteGroup: null;
