@@ -136,7 +136,15 @@ export class VaultService {
   // Screen captures hold QR secrets: memory only, one at a time, never written to storage.
   private capture: { id: string; dataUrl: string; tabUrl: string; expiresAt: number } | null = null;
   private captureTimer: ReturnType<typeof setTimeout> | undefined;
-  private readonly previews = new Map<string, { accounts: AccountInput[]; expiresAt: number }>();
+  private readonly previews = new Map<
+    string,
+    {
+      accounts: AccountInput[];
+      groupNames: (string | undefined)[];
+      groups: string[];
+      expiresAt: number;
+    }
+  >();
 
   constructor(protected readonly p: Platform) {
     this.keys = new KeyCache(p);
@@ -876,7 +884,15 @@ export class VaultService {
       }
       const listing = await opened.listAccounts();
       await this.snapshot("before-restore");
-      const { added, duplicates } = await vault.addAccounts(listing.accounts);
+      // Same vault: the accounts that are still there keep their current group, so groups are not touched.
+      const names = new Map(listing.groups.map((g) => [g.id, g.name]));
+      const { added, duplicates } = sameVault
+        ? await vault.addAccounts(listing.accounts)
+        : await vault.addAccountsWithGroups(
+            listing.accounts,
+            listing.accounts.map((a) => (a.groupId ? names.get(a.groupId) : undefined)),
+            listing.groups.map((g) => g.name),
+          );
       return {
         added: added.length,
         skipped: duplicates.length,
@@ -935,7 +951,7 @@ export class VaultService {
     if (format === "otpvault") assertPassword(exportPassword ?? "");
     return this.exclusive(async () => {
       const vault = await this.spendToken(token);
-      const { accounts, unreadable } = await vault.listAccounts();
+      const { accounts, unreadable, groups } = await vault.listAccounts();
       // The user's calendar day: a UTC date would name an evening export after tomorrow (or yesterday).
       const now = new Date(this.p.clock.now());
       const pad = (n: number) => String(n).padStart(2, "0");
@@ -944,11 +960,12 @@ export class VaultService {
         format === "otpvault"
           ? {
               filename: `otp-vault-${date}.otpvault`,
-              content: await exportOtpvault(accounts, exportPassword ?? "", {
-                random: this.p.random,
-                clock: this.p.clock,
-                kdf: this.p.kdf,
-              }),
+              content: await exportOtpvault(
+                accounts,
+                exportPassword ?? "",
+                { random: this.p.random, clock: this.p.clock, kdf: this.p.kdf },
+                groups,
+              ),
             }
           : { filename: `otp-vault-${date}.txt`, content: exportOtpauthText(accounts) };
       await saveSettings(this.p.local, { lastBackupAt: this.p.clock.now() });
@@ -1063,6 +1080,8 @@ export class VaultService {
     this.previews.clear();
     this.previews.set(previewId, {
       accounts: outcome.result.accounts,
+      groupNames: outcome.result.groupNames ?? [],
+      groups: outcome.result.groups ?? [],
       expiresAt: this.p.clock.now() + PREVIEW_TTL_MS,
     });
     return {
@@ -1076,6 +1095,9 @@ export class VaultService {
         label: item.account.label,
         type: item.account.type,
         status: item.status,
+        ...(outcome.result.groupNames?.[index] !== undefined
+          ? { groupName: outcome.result.groupNames[index] }
+          : {}),
       })),
     };
   }
@@ -1089,14 +1111,14 @@ export class VaultService {
   importCommit(
     previewId: string,
     indexes: number[],
-  ): Promise<{ added: number; duplicates: number }> {
+  ): Promise<{ added: number; duplicates: number; ungrouped: number }> {
     return this.exclusive(() => this.commitPreview(previewId, indexes));
   }
 
   private async commitPreview(
     previewId: string,
     indexes: number[],
-  ): Promise<{ added: number; duplicates: number }> {
+  ): Promise<{ added: number; duplicates: number; ungrouped: number }> {
     const vault = await this.requireVault();
     this.evictExpiredPreviews();
     const preview = this.previews.get(previewId);
@@ -1105,11 +1127,15 @@ export class VaultService {
       throw new ServiceError("preview-expired", "The import preview expired; please start again");
     }
     await this.snapshot("before-import");
-    const chosen = [...new Set(indexes)]
-      .filter((i) => Number.isInteger(i) && i >= 0 && i < preview.accounts.length)
-      .map((i) => preview.accounts[i]!);
-    const { added, duplicates } = await vault.addAccounts(chosen);
-    return { added: added.length, duplicates: duplicates.length };
+    const picked = [...new Set(indexes)].filter(
+      (i) => Number.isInteger(i) && i >= 0 && i < preview.accounts.length,
+    );
+    const { added, duplicates, ungrouped } = await vault.addAccountsWithGroups(
+      picked.map((i) => preview.accounts[i]!),
+      picked.map((i) => preview.groupNames[i]),
+      preview.groups,
+    );
+    return { added: added.length, duplicates: duplicates.length, ungrouped };
   }
 
   async storageUsage(): Promise<StorageUsageView> {

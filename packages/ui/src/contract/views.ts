@@ -82,6 +82,7 @@ export interface ImportPreviewItemView {
   label: string;
   type: Account["type"];
   status: "new" | "duplicate";
+  groupName?: string;
 }
 
 export type ImportPreviewView =

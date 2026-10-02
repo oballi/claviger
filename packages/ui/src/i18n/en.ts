@@ -435,6 +435,8 @@ export const en: Record<MessageKey, string> = {
   "import.issue.malformed-entry": "Entry couldn't be read",
   "import.duplicatesNote": "Accounts you already have are not duplicated.",
   "import.commit": "Add accounts ({count})",
+  "import.ungrouped": "{count} accounts were added without a group.",
+  "import.ungroupedOne": "1 account was added without a group.",
   "import.result": "Added: {added}. Duplicates skipped: {duplicates}.",
   "import.toAccounts": "Go to accounts",
   "format.otpauth": "otpauth:// list",

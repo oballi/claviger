@@ -17,7 +17,7 @@ type Stage =
   | { kind: "password"; format: ImportFormat }
   | { kind: "preview"; preview: Preview; selected: Set<number>; decrypted: boolean }
   | { kind: "failed" }
-  | { kind: "result"; added: number; duplicates: number };
+  | { kind: "result"; added: number; duplicates: number; ungrouped: number };
 
 /** Design board "Yönetim — içe aktarma önizlemesi": nothing is saved until the user confirms. */
 export function ImportScreen({
@@ -153,6 +153,9 @@ export function ImportScreen({
       <div className="flex flex-col items-start gap-6">
         <p role="status" className="m-0 text-[15px]">
           {t("import.result", { added: stage.added, duplicates: stage.duplicates })}
+          {stage.ungrouped > 0
+            ? ` ${t(stage.ungrouped === 1 ? "import.ungroupedOne" : "import.ungrouped", { count: stage.ungrouped })}`
+            : ""}
         </p>
         <Button variant="primary" onClick={onDone}>
           {doneLabel ?? t("import.toAccounts")}

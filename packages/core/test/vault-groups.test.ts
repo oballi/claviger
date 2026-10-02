@@ -284,3 +284,49 @@ describe("read tolerance and tombstones", () => {
     expect(JSON.stringify(await deps.storage.get())).toBe(before);
   });
 });
+
+describe("addAccountsWithGroups", () => {
+  it("reuses groups case-insensitively, creates missing ones in the given order", async () => {
+    const { vault } = await setup();
+    const work = await vault.createGroup("Work");
+    const r = await vault.addAccountsWithGroups(
+      [
+        input("A", "JBSWY3DPEHPK3PXP"),
+        input("B", "GEZDGNBVGY3TQOJQ"),
+        input("C", "MFRGGZDFMZTWQ2LK"),
+      ],
+      ["work", "Zeta", undefined],
+      ["Zeta", "Alpha", "work"],
+    );
+    expect(r.ungrouped).toBe(0);
+    const listing = await vault.listAccounts();
+    expect(listing.groups.map((x) => x.name)).toEqual(["Work", "Zeta"]);
+    const byIssuer = Object.fromEntries(listing.accounts.map((a) => [a.issuer, a.groupId]));
+    expect(byIssuer).toEqual({ A: work.id, B: listing.groups[1]!.id, C: undefined });
+  });
+
+  it("imports an account with an invalid group name ungrouped", async () => {
+    const { vault } = await setup();
+    const r = await vault.addAccountsWithGroups([input("A")], ["x".repeat(41)], []);
+    expect(r.added).toHaveLength(1);
+    expect(r.ungrouped).toBe(0);
+    expect((await vault.listAccounts()).groups).toEqual([]);
+  });
+
+  it("files the rest ungrouped and counts them past the group limit", async () => {
+    const { vault } = await setup();
+    const names = Array.from({ length: 31 }, (_, i) => `G${i}`);
+    const inputs = names.map((_, i) =>
+      normalizeAccountInput({
+        secret: `JBSWY3DPEHPK3PX${"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"[i]}`,
+        issuer: `I${i}`,
+      }),
+    );
+    const r = await vault.addAccountsWithGroups(inputs, names, names);
+    expect(r.added).toHaveLength(31);
+    expect(r.ungrouped).toBe(1);
+    const listing = await vault.listAccounts();
+    expect(listing.groups).toHaveLength(30);
+    expect(listing.accounts.filter((a) => !a.groupId)).toHaveLength(1);
+  });
+});

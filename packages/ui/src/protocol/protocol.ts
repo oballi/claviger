@@ -190,7 +190,7 @@ export interface RpcResults {
   setStorageArea: null;
   deleteVault: null;
   importPreview: ImportPreviewView;
-  importCommit: { added: number; duplicates: number };
+  importCommit: { added: number; duplicates: number; ungrouped: number };
   storageUsage: StorageUsageView;
   applyClockSample: { offsetSec: number; applied: number };
   setClockCheckEnabled: null;

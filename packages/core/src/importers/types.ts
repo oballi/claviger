@@ -19,6 +19,10 @@ export interface ImportIssue {
 export interface ImportResult {
   accounts: AccountInput[];
   issues: ImportIssue[];
+  /** Ordered group names (only the encrypted backup carries groups). */
+  groups?: string[];
+  /** Group name per account, parallel to `accounts`. */
+  groupNames?: (string | undefined)[];
 }
 
 export const emptyResult = (): ImportResult => ({ accounts: [], issues: [] });

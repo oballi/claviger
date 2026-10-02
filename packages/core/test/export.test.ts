@@ -126,3 +126,69 @@ describe("otpauth text export", () => {
     expect(parseOtpauthText(text).accounts).toEqual(accounts.map((a) => ({ ...a, domains: [] })));
   });
 });
+
+describe(".otpvault groups", () => {
+  const g = [
+    { id: "g1", name: "Work" },
+    { id: "g2", name: "Home" },
+  ];
+  const grouped = [
+    { ...accounts[0]!, groupId: "g2" },
+    { ...accounts[1]!, groupId: "gone" },
+    { ...accounts[2]!, groupId: "g1" },
+  ];
+
+  it("writes group names and ordered groups, dropping unknown group ids", async () => {
+    const text = await exportOtpvault(grouped, "pw", makeDeps(), g);
+    expect(text).not.toContain("Work");
+    const result = await parseOtpvaultExport(JSON.parse(text), "pw");
+    expect(result.groups).toEqual(["Work", "Home"]);
+    expect(result.groupNames).toEqual(["Home", undefined, "Work"]);
+    expect(result.accounts).toEqual(accounts);
+    expect(result.issues).toEqual([]);
+  });
+
+  it("writes no group fields without groups", async () => {
+    const result = await parseOtpvaultExport(
+      JSON.parse(await exportOtpvault(accounts, "pw", makeDeps())),
+      "pw",
+    );
+    expect(result).toEqual({ accounts, issues: [] });
+  });
+
+  it("keeps an account whose group value is invalid, ungrouped", async () => {
+    const text = await sealedFile({
+      accounts: [
+        { secret: "JBSWY3DPEHPK3PXP", group: "x".repeat(201) },
+        { secret: "GEZDGNBVGY3TQOJQ", group: 5 },
+        { secret: "MFRGGZDFMZTWQ2LK", group: "Ok" },
+      ],
+      groups: ["Ok", 7, "y".repeat(201)],
+    });
+    const result = await parseOtpvaultExport(text, "pw");
+    expect(result.accounts).toHaveLength(3);
+    expect(result.groupNames).toEqual([undefined, undefined, "Ok"]);
+    expect(result.groups).toEqual(["Ok"]);
+  });
+});
+
+async function sealedFile(body: unknown) {
+  const deps = makeDeps();
+  const exportId = deps.random.uuid();
+  const fileKey = deps.random.bytes(32);
+  const keyslot = await createPasswordKeyslot(fileKey, "pw", exportId, deps.random, FAST_KDF);
+  const payload = await sealBytes(
+    fileKey,
+    utf8Encode(JSON.stringify(body)),
+    `otp-vault/v1/export/${exportId}`,
+    deps.random,
+  );
+  return {
+    format: "otp-vault-export",
+    version: 1,
+    exportId,
+    createdAt: 1,
+    keyslots: [keyslot],
+    payload,
+  };
+}

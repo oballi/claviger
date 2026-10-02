@@ -8,7 +8,7 @@ import {
 import { bytesEqual } from "../encoding/bytes";
 import { openBytes } from "../crypto/aes";
 import { DEFAULT_ARGON2 } from "../crypto/kdf";
-import { CoreError } from "../errors";
+import { CoreError, isCoreError } from "../errors";
 import type { StoragePort, VaultDeps } from "../ports";
 import {
   ACCOUNT_PREFIX,
@@ -40,7 +40,14 @@ import {
   type PasswordKeyslot,
   type RecoveryKeyslot,
 } from "./keyslot";
-import { assertFits, assertNameFree, newGroupId, normalizeGroupName, withoutGroup } from "./groups";
+import {
+  assertFits,
+  assertNameFree,
+  groupNameKey,
+  newGroupId,
+  normalizeGroupName,
+  withoutGroup,
+} from "./groups";
 import { decryptRecord, encryptRecord, recordAad } from "./records";
 import { generateRecoveryCode, parseRecoveryCode } from "./recovery";
 
@@ -85,6 +92,15 @@ export interface VaultInspection {
   status: "missing" | "ok" | "unsupported" | "corrupt";
   hasRecoveryCode: boolean | null;
   accountCount: number | null;
+}
+
+function cleanGroupName(raw: string): string | undefined {
+  try {
+    return normalizeGroupName(raw);
+  } catch (e) {
+    if (isCoreError(e, "invalid-group-name")) return undefined;
+    throw e;
+  }
 }
 
 export class Vault {
@@ -464,17 +480,31 @@ export class Vault {
     return this.exclusive(() => this.addAccountsUnlocked(inputs));
   }
 
+  /**
+   * Adds accounts and files them under groups by name in one write. Missing groups are created
+   * (matched by groupNameKey); past the group limits the rest land ungrouped and are counted.
+   */
+  addAccountsWithGroups(
+    inputs: AccountInput[],
+    names: (string | undefined)[],
+    orderedNames: string[],
+  ): Promise<{ added: Account[]; duplicates: AccountInput[]; ungrouped: number }> {
+    return this.exclusive(() => this.addAccountsUnlocked(inputs, { names, orderedNames }));
+  }
+
   private async addAccountsUnlocked(
     inputs: AccountInput[],
-  ): Promise<{ added: Account[]; duplicates: AccountInput[] }> {
+    grouping?: { names: (string | undefined)[]; orderedNames: string[] },
+  ): Promise<{ added: Account[]; duplicates: AccountInput[]; ungrouped: number }> {
     const { accounts } = await this.listAccounts();
     const seen = new Set(accounts.map(accountFingerprint));
     const now = this.deps.clock.now();
     const added: Account[] = [];
     const duplicates: AccountInput[] = [];
     const items: Record<string, unknown> = {};
+    const accepted: { account: Account; name: string | undefined }[] = [];
 
-    for (const input of inputs) {
+    for (const [i, input] of inputs.entries()) {
       const normalized = normalizeAccountInput(input);
       const fingerprint = accountFingerprint(normalized);
       if (seen.has(fingerprint)) {
@@ -488,6 +518,50 @@ export class Vault {
         createdAt: now,
         updatedAt: now,
       };
+      accepted.push({ account, name: grouping?.names[i] });
+    }
+    if (accepted.length === 0) return { added, duplicates, ungrouped: 0 };
+
+    const index = await this.readIndex({ strict: true });
+    let groups = index.groups ?? [];
+    let ungrouped = 0;
+    if (grouping) {
+      const byKey = new Map<string, string | null>();
+      for (const g of groups) byKey.set(groupNameKey(g.name), g.id);
+      const used = new Map<string, string>();
+      for (const { name } of accepted) {
+        const clean = name === undefined ? undefined : cleanGroupName(name);
+        if (clean !== undefined) used.set(groupNameKey(clean), clean);
+      }
+      const candidates: string[] = [];
+      for (const raw of [...grouping.orderedNames, ...used.values()]) {
+        const clean = cleanGroupName(raw);
+        if (clean !== undefined) candidates.push(clean);
+      }
+      for (const clean of candidates) {
+        const key = groupNameKey(clean);
+        if (!used.has(key) || byKey.has(key)) continue;
+        const next = [...groups, { id: newGroupId(this.deps.random, groups), name: clean }];
+        try {
+          assertFits(next);
+        } catch (e) {
+          if (!isCoreError(e, "group-limit")) throw e;
+          byKey.set(key, null);
+          continue;
+        }
+        groups = next;
+        byKey.set(key, next[next.length - 1]!.id);
+      }
+      for (const entry of accepted) {
+        const clean = entry.name === undefined ? undefined : cleanGroupName(entry.name);
+        if (clean === undefined) continue;
+        const id = byKey.get(groupNameKey(clean));
+        if (id) entry.account.groupId = id;
+        else ungrouped++;
+      }
+    }
+
+    for (const { account } of accepted) {
       items[accountKey(account.id)] = await encryptRecord(
         this.dek,
         accountKey(account.id),
@@ -497,18 +571,16 @@ export class Vault {
       );
       added.push(account);
     }
-    if (added.length === 0) return { added, duplicates };
-
-    const index = await this.readIndex({ strict: true });
     await this.writeIndex(
       {
         ...index,
+        ...(grouping ? { groups } : {}),
         order: [...index.order, ...added.map((a) => a.id)],
         updatedAt: this.nextUpdatedAt(index.updatedAt),
       },
       items,
     );
-    return { added, duplicates };
+    return { added, duplicates, ungrouped };
   }
 
   async addAccount(input: AccountInput): Promise<Account> {

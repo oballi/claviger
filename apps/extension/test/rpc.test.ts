@@ -375,6 +375,7 @@ describe("client", () => {
         {
           added: 0,
           duplicates: 2,
+          ungrouped: 0,
         },
       );
     }

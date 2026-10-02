@@ -66,6 +66,26 @@ describe("ImportScreen", () => {
     expect(screen.queryByRole("checkbox", { name: "Acme (bob) hesabını seç" })).toBeNull();
   });
 
+  it("reports accounts that were added without a group", async () => {
+    const h = await harness();
+    for (const [ungrouped, text] of [
+      [1, "1 hesap grupsuz eklendi."],
+      [3, "3 hesap grupsuz eklendi."],
+    ] as const) {
+      const rpc: typeof h.ui.rpc = async (type, payload) =>
+        type === "importCommit"
+          ? ({ added: 0, duplicates: 0, ungrouped } as never)
+          : h.ui.rpc(type, payload);
+      const view = renderUi(
+        <ImportScreen source={{ text: ACME, name: null }} onDone={vi.fn()} onCancel={vi.fn()} />,
+        { ...h.ui, rpc },
+      );
+      await userEvent.click(await screen.findByRole("button", { name: "1 hesabı ekle" }));
+      expect(await screen.findByText(new RegExp(text))).toBeTruthy();
+      view.unmount();
+    }
+  });
+
   it("marks accounts that are already in the vault", async () => {
     const h = await harness();
     await h.ui.rpc("addAccountUri", { uri: ACME });

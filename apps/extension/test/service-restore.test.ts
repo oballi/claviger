@@ -286,3 +286,29 @@ describe("purge marker", () => {
     expect((await keysOf(p, "snapshot:")).length).toBeGreaterThan(0);
   });
 });
+
+describe("restoreSnapshot groups", () => {
+  it("keeps groups when restoring into another vault", async () => {
+    const h = await unlockedService();
+    const { id: a } = await h.service.addAccount({ uri: A });
+    const g = await h.service.createGroup("Work");
+    await h.service.setAccountGroup(a, g.id);
+    h.p.clock.advance(1000);
+    await h.service.deleteAccount(a);
+    const snap = (await h.service.listSnapshots()).find((s) => s.reason === "before-delete")!;
+    await h.p.local.set({ "vault:header": { format: 1, nope: true } });
+    await h.service.quarantineVault();
+    const fresh = new VaultService(h.p);
+    await fresh.setup({
+      password: NEW_PASSWORD,
+      createRecoveryCode: false,
+      lockPolicy: { kind: "browser-close" },
+      storageArea: "local",
+    });
+    const { token } = await fresh.reauth(NEW_PASSWORD);
+    await fresh.restoreSnapshot(token, snap.id, PASSWORD);
+    const listing = await fresh.listAccounts();
+    expect(listing.groups.map((x) => x.name)).toEqual(["Work"]);
+    expect(listing.accounts[0]!.groupId).toBe(listing.groups[0]!.id);
+  });
+});

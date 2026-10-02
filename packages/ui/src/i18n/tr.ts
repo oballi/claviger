@@ -429,6 +429,8 @@ export const tr = {
   "import.issue.malformed-entry": "Kayıt okunamadı",
   "import.duplicatesNote": "Zaten kayıtlı olan hesaplar kopyalanmaz.",
   "import.commit": "{count} hesabı ekle",
+  "import.ungrouped": "{count} hesap grupsuz eklendi.",
+  "import.ungroupedOne": "1 hesap grupsuz eklendi.",
   "import.result": "{added} hesap eklendi, {duplicates} kopya atlandı.",
   "import.toAccounts": "Hesaplara git",
   "format.otpauth": "otpauth:// listesi",

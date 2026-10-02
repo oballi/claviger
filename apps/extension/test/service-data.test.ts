@@ -36,6 +36,7 @@ describe("import", () => {
     expect(await service.importCommit(preview.previewId, [1, 1, 7, -1])).toEqual({
       added: 1,
       duplicates: 0,
+      ungrouped: 0,
     });
     expect((await service.listAccounts()).accounts.map((a) => a.issuer)).toEqual(["", "Bank"]);
     expect(await codeOf(service.importCommit(preview.previewId, [1]))).toBe("preview-expired");
@@ -306,7 +307,11 @@ describe("races (fix round 1)", () => {
     const second = await service.importPreview(text);
     if (first.status !== "ok" || second.status !== "ok") throw new Error("unexpected");
     expect(await codeOf(service.importCommit(first.previewId, [0]))).toBe("preview-expired");
-    expect(await service.importCommit(second.previewId, [1])).toEqual({ added: 1, duplicates: 0 });
+    expect(await service.importCommit(second.previewId, [1])).toEqual({
+      added: 1,
+      duplicates: 0,
+      ungrouped: 0,
+    });
   });
 
   it("rejects clock samples while the check is off or when the offset is implausible", async () => {
@@ -337,5 +342,47 @@ describe("races (fix round 1)", () => {
     expect([...p.sync.data.keys()].some((k) => k.startsWith("vault:"))).toBe(false);
     expect((await service.listAccounts()).accounts.map((a) => a.issuer)).toEqual(["A"]);
     await service.addAccount({ draft: { secret: OTHER } });
+  });
+});
+
+describe("groups in backups", () => {
+  it("round-trips group names, order and membership through an .otpvault file", async () => {
+    const a = await unlockedService();
+    const x = await a.service.addAccount({ draft: { secret: SECRET, issuer: "GitHub" } });
+    await a.service.addAccount({ draft: { secret: "GEZDGNBVGY3TQOJQ", issuer: "Bank" } });
+    await a.service.createGroup("Work");
+    const home = await a.service.createGroup("Home");
+    await a.service.setAccountGroup(x.id, home.id);
+    await a.service.createGroup("Empty");
+    const exported = await a.service.exportVault(
+      (await a.service.reauth(PASSWORD)).token,
+      "otpvault",
+      "export password",
+    );
+    const b = await unlockedService();
+    await b.service.createGroup("home");
+    const preview = await b.service.importPreview(exported.content, "export password");
+    if (preview.status !== "ok") throw new Error("unexpected");
+    expect(preview.items.map((i) => i.groupName)).toEqual(["Home", undefined]);
+    expect(await b.service.importCommit(preview.previewId, [0, 1])).toEqual({
+      added: 2,
+      duplicates: 0,
+      ungrouped: 0,
+    });
+    const listing = await b.service.listAccounts();
+    expect(listing.groups.map((g) => g.name)).toEqual(["home"]);
+    expect(listing.accounts.find((i) => i.issuer === "GitHub")!.groupId).toBe(
+      listing.groups[0]!.id,
+    );
+    expect(listing.accounts.find((i) => i.issuer === "Bank")!.groupId).toBeNull();
+  });
+
+  it("leaves the plaintext otpauth export without groups", async () => {
+    const { service } = await unlockedService();
+    const g = await service.createGroup("Work");
+    const { id } = await service.addAccount({ draft: { secret: SECRET, issuer: "GitHub" } });
+    await service.setAccountGroup(id, g.id);
+    const out = await service.exportVault((await service.reauth(PASSWORD)).token, "otpauth");
+    expect(out.content).not.toContain("Work");
   });
 });
