@@ -459,6 +459,16 @@ describe("recently deleted list in the popup", () => {
     expect(screen.getByRole("heading", { name: "Son silinenler." })).toBeTruthy();
   });
 
+  it("names an account without issuer or label in the restored toast", async () => {
+    const h = await seeded();
+    const { id } = await h.ui.rpc("addAccountManual", { draft: { secret: "JBSWY3DPEHPK3PXC" } });
+    await h.ui.rpc("deleteAccount", { id });
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await userEvent.click(await screen.findByRole("button", { name: "Son silinenler · 1" }));
+    await userEvent.click(await restoreBtn("Hesap"));
+    expect(await screen.findByText("Hesap geri yüklendi")).toBeTruthy();
+  });
+
   it("does not steal '/' inside the list view", async () => {
     const h = await seeded();
     await h.ui.rpc("deleteAccount", { id: h.ids.Beta! });

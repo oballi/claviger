@@ -420,7 +420,7 @@ export function CodesScreen({
     setActionError(null);
     try {
       const restored = await rpc("restoreTrash", { id: item.id });
-      setToast(t("trash.restored", { name: restored.name }));
+      setToast(t("trash.restored", { name: restored.name || t("add.unnamed") }));
       await Promise.all([reload(), trash.reload()]);
     } catch (e) {
       setActionError(errorMessage(t, e));

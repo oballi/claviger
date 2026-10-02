@@ -102,7 +102,7 @@ Deleted accounts are kept for 30 days in `storage.local` under `trash:<uuid>` so
 
 Each value is a record like any other (`{ "v": 1, "iv": "...", "ct": "...", "updatedAt": <deletedAt ms> }`), sealed with the vault's data key and AAD `otp-vault/v1/trash:<uuid>`. The plaintext is `{ "account": <account plaintext>, "deletedAt": <ms> }`; the inner `deletedAt` (authenticated) decides expiry, the outer `updatedAt` is used only to age out entries this key cannot open.
 
-Restoring creates a new account with a fresh id (the old id keeps its tombstone, so sync cannot resurrect it elsewhere). At most 100 entries and about 200 KB are kept; the oldest go first. Because the data key is unchanged by a password change, entries stay readable; a future data-key rotation must re-seal them. Removing an entry from the list does not touch the automatic vault copies (`snapshot:*`), which may still contain the account until they rotate out.
+Restoring creates a new account with a fresh id (the old id keeps its tombstone, so sync cannot resurrect it elsewhere). At most 100 entries and about 200 KB are kept; the oldest go first. Because the data key is unchanged by a password change, entries stay readable; a future data-key rotation must re-seal them. Removing an entry from the list does not touch the automatic vault copies (`snapshot:*`), which may still contain the account until they rotate out. Anyone with write access to `storage.local` can put back an older `trash:<uuid>` value; it decrypts and shows up again until its authenticated `deletedAt` expires, so the bin is a convenience, not a record of what was removed.
 
 ## Versioning rules
 
