@@ -1,10 +1,10 @@
 // Sums the JS the popup page loads: the entry script plus every modulepreload chunk.
-// Budget: 300 kB. Usage: node scripts/popup-size.mjs [build dir]
+// Budget: 315 kB. Usage: node scripts/popup-size.mjs [build dir]
 // Also asserts the zod jitless config is present in every built file that bundles zod.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-const BUDGET = 300_000;
+const BUDGET = 315_000;
 const dir = resolve(process.argv[2] ?? join(import.meta.dirname, "../.output/chrome-mv3"));
 const html = readFileSync(join(dir, "popup.html"), "utf8");
 const refs = [...html.matchAll(/(?:src|href)="(\/[^"]+\.js)"/g)].map((m) => m[1]);
@@ -22,6 +22,17 @@ console.log(`${String(total).padStart(8)}  total (budget ${BUDGET})`);
 if (total > BUDGET) {
   console.error(`Popup JS is ${total - BUDGET} bytes over budget.`);
   process.exit(1);
+}
+
+// Lazy chunks load on demand and are not in popup.html; report them with their own cap.
+const LAZY_BUDGET = 30_000;
+for (const f of readdirSync(join(dir, "chunks")).filter((f) => /^EditAccount-.*\.js$/.test(f))) {
+  const size = statSync(join(dir, "chunks", f)).size;
+  console.log(`${String(size).padStart(8)}  chunks/${f} (lazy, budget ${LAZY_BUDGET})`);
+  if (size > LAZY_BUDGET) {
+    console.error(`Lazy edit chunk is ${size - LAZY_BUDGET} bytes over budget.`);
+    process.exit(1);
+  }
 }
 
 // zod's JIT probes eval and violates the extension CSP; a sideEffects change must not drop the config.

@@ -20,6 +20,7 @@ export * from "./components/TextField";
 export * from "./components/Toast";
 export * from "./errors";
 export * from "./format";
+export * from "./groups";
 export * from "./hooks";
 export * from "./i18n/en";
 export * from "./i18n/i18n";

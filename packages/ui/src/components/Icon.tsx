@@ -13,7 +13,10 @@ export type IconName =
   | "download"
   | "print"
   | "close"
-  | "grip";
+  | "grip"
+  | "settings"
+  | "chevron-down"
+  | "more";
 
 const PATHS: Record<IconName, ReactElement> = {
   grip: (
@@ -24,6 +27,20 @@ const PATHS: Record<IconName, ReactElement> = {
       <circle cx="15" cy="12" r="1" />
       <circle cx="9" cy="18" r="1" />
       <circle cx="15" cy="18" r="1" />
+    </>
+  ),
+  settings: (
+    <>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" />
+    </>
+  ),
+  "chevron-down": <path d="M6 9l6 6 6-6" />,
+  more: (
+    <>
+      <circle cx="5" cy="12" r="1.2" />
+      <circle cx="12" cy="12" r="1.2" />
+      <circle cx="19" cy="12" r="1.2" />
     </>
   ),
   plus: <path d="M12 5v14M5 12h14" />,

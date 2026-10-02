@@ -25,6 +25,7 @@ export function AccountRow({
   large = false,
   suggested = false,
   remembered = false,
+  pinnedMark = false,
   fill,
   mode,
   onCopy,
@@ -35,6 +36,8 @@ export function AccountRow({
   large?: boolean;
   suggested?: boolean;
   remembered?: boolean;
+  /** Shown in the grouped layout, where pinned rows are not in their own section. */
+  pinnedMark?: boolean;
   /** Present only on "This site" rows of a popup that knows its tab. */
   fill?: FillControls;
   mode: ViewMode;
@@ -160,7 +163,12 @@ export function AccountRow({
       className="ov-row -mx-3 flex cursor-pointer items-center gap-3 rounded-xl px-3 py-1"
     >
       <div className="min-w-0 flex-1">
-        <div className="truncate text-[13px]">{name}</div>
+        <div className="truncate text-[13px]">
+          {name}
+          {pinnedMark && account.pinned ? (
+            <span className="text-muted"> · {t("codes.pinnedMark")}</span>
+          ) : null}
+        </div>
         {!compact && account.issuer && account.label ? (
           <div className="truncate text-xs text-muted">{account.label}</div>
         ) : null}

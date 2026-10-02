@@ -17,6 +17,9 @@ import { useLocale, useT } from "../i18n/i18n";
 import { useUi } from "../platform";
 import { AccountRow, type FillPrompt } from "./AccountRow";
 import { AddAccount } from "./AddAccount";
+import { GroupSection } from "./GroupSection";
+import { useCollapsed } from "./useCollapsed";
+import { NO_GROUP_KEY, sectionsOf } from "../groups";
 
 function Section({
   title,
@@ -71,6 +74,7 @@ export function CodesScreen({
   const [adding, setAdding] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [usage, setUsage] = useState<StorageUsageView | null>(null);
+  const { collapsed, toggle } = useCollapsed();
   const searchRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const clearToast = useCallback(() => setToast(null), []);
@@ -263,6 +267,7 @@ export function CodesScreen({
       large={large}
       suggested={suggested.has(account.id)}
       remembered={remembered.has(account.id)}
+      pinnedMark={grouped}
       fill={
         large && tab && capabilities.autofill
           ? {
@@ -283,6 +288,7 @@ export function CodesScreen({
     />
   );
 
+  const grouped = (list?.groups.length ?? 0) > 0;
   const siteRows = accounts.filter(onSite);
   const pinnedRows = accounts.filter((a) => a.pinned && !onSite(a));
   const otherRows = accounts.filter((a) => !a.pinned && !onSite(a));
@@ -291,6 +297,14 @@ export function CodesScreen({
     <div className="relative flex min-h-0 flex-1 flex-col" onKeyDown={onListKeyDown}>
       <header className="flex items-center pt-2 pr-3 pl-7">
         <div className="flex-1 font-mono text-xs tracking-wide">{t("app.name")}</div>
+        <button
+          type="button"
+          aria-label={t("codes.manage")}
+          className={iconButton}
+          onClick={() => openManage()}
+        >
+          <Icon name="settings" size={17} />
+        </button>
         <button
           type="button"
           aria-label={t("codes.add")}
@@ -395,12 +409,34 @@ export function CodesScreen({
                 {siteRows.map((a) => row(a, true))}
               </Section>
             ) : null}
-            {pinnedRows.length > 0 ? (
-              <Section title={t("codes.pinned")}>{pinnedRows.map((a) => row(a))}</Section>
-            ) : null}
-            {otherRows.length > 0 ? (
-              <Section title={t("codes.all")}>{otherRows.map((a) => row(a))}</Section>
-            ) : null}
+            {list && grouped ? (
+              sectionsOf(
+                accounts.filter((a) => !onSite(a)),
+                list.groups,
+              ).map((s) => {
+                const key = s.group?.id ?? NO_GROUP_KEY;
+                return (
+                  <GroupSection
+                    key={key}
+                    title={s.group?.name ?? t("group.none")}
+                    count={s.rows.length}
+                    open={!collapsed.has(key)}
+                    onToggle={() => toggle(key)}
+                  >
+                    {s.rows.map((a) => row(a))}
+                  </GroupSection>
+                );
+              })
+            ) : (
+              <>
+                {pinnedRows.length > 0 ? (
+                  <Section title={t("codes.pinned")}>{pinnedRows.map((a) => row(a))}</Section>
+                ) : null}
+                {otherRows.length > 0 ? (
+                  <Section title={t("codes.all")}>{otherRows.map((a) => row(a))}</Section>
+                ) : null}
+              </>
+            )}
           </>
         )}
       </div>
