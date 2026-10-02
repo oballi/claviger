@@ -46,20 +46,19 @@ export const MAX_GROUP_NAME = 40;
 // The index is one sync item (8 KiB quota) that already costs ~54 B per account (+~52 B per pin), and sealing grows JSON ~1.33x.
 export const MAX_GROUPS_BYTES = 1200;
 
+// Read bounds are deliberately loose: a future version may raise the write limits without bumping the
+// index version, and this one must not call that index damaged (a rebuild would wipe the groups).
+// The real limits are enforced on write (normalizeGroupName, assertFits).
 export const groupSchema = z.object({
-  id: z.string().min(1).max(64),
-  // UTF-16 bound; the real 40 code point rule lives in normalizeGroupName.
-  name: z
-    .string()
-    .min(1)
-    .max(MAX_GROUP_NAME * 2),
+  id: z.string().min(1).max(200),
+  name: z.string().min(1).max(1000),
 });
 
 export const indexSchema = z.object({
   order: z.array(z.string()),
   pinned: z.array(z.string()),
   updatedAt: z.number(),
-  groups: z.array(groupSchema).max(MAX_GROUPS).optional(),
+  groups: z.array(groupSchema).max(1000).optional(),
 });
 
 export type VaultGroup = z.infer<typeof groupSchema>;

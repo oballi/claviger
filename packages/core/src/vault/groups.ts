@@ -3,12 +3,15 @@ import type { RandomPort } from "../ports";
 import { MAX_GROUP_NAME, MAX_GROUPS, MAX_GROUPS_BYTES, type VaultGroup } from "./format";
 
 const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
-// Control characters and bidi overrides could make one name look like another.
-const FORBIDDEN = /[\p{Cc}‪-‮⁦-⁩]/u;
+// Control and format characters (bidi overrides, zero-width marks) can disguise names; ZWJ/ZWNJ stay for emoji and Persian.
+const FORBIDDEN = /(?![\u200C\u200D])[\p{Cc}\p{Cf}]/u;
 
 /** Comparison key: NFC + case fold; strips the combining dot that Turkish "İ" leaves after lower-casing. */
 export const groupNameKey = (name: string) =>
-  name.normalize("NFC").toLocaleLowerCase("en").replace(/̇/g, "");
+  name
+    .normalize("NFC")
+    .toLocaleLowerCase("en")
+    .replace(/\u0307/g, "");
 
 export function normalizeGroupName(raw: string): string {
   const name = raw.trim().normalize("NFC");

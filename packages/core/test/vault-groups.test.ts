@@ -34,10 +34,20 @@ describe("group list", () => {
 
   it("rejects control and bidi characters but allows ZWJ/ZWNJ", async () => {
     const { vault } = await setup();
-    for (const bad of ["a\u0000b", "a\u0007b", "a‮b", "a⁦b", "a⁩b", "a‪b"])
+    for (const bad of [
+      "a\u0000b",
+      "a\u0007b",
+      "a\u202Eb",
+      "a\u2066b",
+      "a\u2069b",
+      "a\u202Ab",
+      "a\u200Bb",
+      "a\u200Eb",
+      "a\uFEFFb",
+    ])
       expect(await asyncCodeOf(vault.createGroup(bad))).toBe("invalid-group-name");
-    await expect(vault.createGroup("a‍b")).resolves.toBeTruthy();
-    await expect(vault.createGroup("a‌b")).resolves.toBeTruthy();
+    await expect(vault.createGroup("a\u200Db")).resolves.toBeTruthy();
+    await expect(vault.createGroup("a\u200Cb")).resolves.toBeTruthy();
   });
 
   it("counts code points, not UTF-16 units", async () => {
@@ -51,7 +61,7 @@ describe("group list", () => {
     await vault.createGroup("Work");
     expect(await asyncCodeOf(vault.createGroup("wORK"))).toBe("duplicate-group");
     await vault.createGroup("café");
-    expect(await asyncCodeOf(vault.createGroup("café"))).toBe("duplicate-group");
+    expect(await asyncCodeOf(vault.createGroup("cafe\u0301"))).toBe("duplicate-group");
   });
 
   it("folds the Turkish dotted capital I", async () => {
@@ -101,7 +111,7 @@ describe("group list", () => {
     const c = await vault.createGroup("C");
     await vault.reorderGroups([c.id, "nope", a.id, c.id]);
     expect((await vault.listAccounts()).groups.map((g) => g.name)).toEqual(["C", "A", "B"]);
-    expect(b.id).toBeTruthy();
+    expect((await vault.listAccounts()).groups.map((g) => g.id)).toEqual([c.id, a.id, b.id]);
   });
 });
 
@@ -162,7 +172,7 @@ describe("account membership", () => {
       ["C", undefined],
     ]);
     expect((await vault.getAccount(a.id)).groupId).toBeUndefined();
-    expect(c.id).toBeTruthy();
+    expect(listing.accounts.map((x) => x.id)).toEqual([a.id, b.id, c.id]);
     expect(await asyncCodeOf(vault.deleteGroup(work.id))).toBe("group-not-found");
   });
 
@@ -222,5 +232,55 @@ describe("older shapes", () => {
     const listing = await vault.listAccounts();
     expect(listing.groups).toEqual([]);
     expect(listing.accounts[0]!.groupId).toBeUndefined();
+  });
+});
+
+describe("read tolerance and tombstones", () => {
+  it("reads an index with limits beyond this version's write limits", async () => {
+    const { vault, deps } = await setup();
+    const g = await vault.createGroup("Work");
+    const a = await vault.addAccount(input("A"));
+    await vault.updateAccount(a.id, { groupId: g.id });
+    const { encryptRecord } = await import("../src/vault/records");
+    const { INDEX_KEY } = await import("../src/vault/format");
+    const dek = (vault as unknown as { dek: Uint8Array }).dek;
+    const groups = Array.from({ length: 31 }, (_, i) => ({
+      id: i === 0 ? g.id : `id${i}`,
+      name: i === 0 ? "x".repeat(100) : `n${i}`,
+    }));
+    const index = { order: [a.id], pinned: [], updatedAt: 1e12, groups };
+    await deps.storage.set({
+      [INDEX_KEY]: await encryptRecord(dek, INDEX_KEY, index, index.updatedAt, deps.random),
+    });
+    const listing = await vault.listAccounts();
+    expect(listing.indexDamaged).toBe(false);
+    expect(listing.groups).toHaveLength(31);
+    expect(listing.accounts[0]!.groupId).toBe(g.id);
+  });
+
+  it("keeps a dangling groupId ungrouped over an update without groupId", async () => {
+    const { vault } = await setup();
+    const g = await vault.createGroup("Work");
+    const a = await vault.addAccount(input("A"));
+    await vault.updateAccount(a.id, { groupId: g.id });
+    await vault.rebuildIndex();
+    await vault.updateAccount(a.id, { label: "x" });
+    expect((await vault.listAccounts()).accounts[0]!.groupId).toBeUndefined();
+  });
+
+  it("refuses to update or increment an account whose tombstone is newer", async () => {
+    const { vault, deps } = await setup();
+    const a = await vault.addAccount(input("A"));
+    const h = await vault.addAccount(
+      normalizeAccountInput({ secret: "JBSWY3DPEHPK3PXP", type: "hotp", issuer: "H" }),
+    );
+    for (const id of [a.id, h.id])
+      await deps.storage.set({ [`vault:tomb:${id}`]: { deletedAt: 9e15 } });
+    const before = JSON.stringify(await deps.storage.get());
+    expect(await asyncCodeOf(vault.updateAccount(a.id, { groupId: null }))).toBe(
+      "account-not-found",
+    );
+    expect(await asyncCodeOf(vault.incrementHotp(h.id))).toBe("account-not-found");
+    expect(JSON.stringify(await deps.storage.get())).toBe(before);
   });
 });

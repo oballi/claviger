@@ -539,9 +539,18 @@ export class Vault {
     });
   }
 
+  // A tombstone newer than the record means the account was deleted; a stale copy must not be re-sealed over it.
+  private async getLiveAccount(id: string): Promise<Account> {
+    const current = await this.getAccount(id);
+    const tomb = tombSchema.safeParse((await this.deps.storage.get([tombKey(id)]))[tombKey(id)]);
+    if (tomb.success && current.updatedAt <= tomb.data.deletedAt)
+      throw new CoreError("account-not-found", `Account ${id} not found`);
+    return current;
+  }
+
   updateAccount(id: string, patch: AccountPatch): Promise<Account> {
     return this.exclusive(async () => {
-      const current = await this.getAccount(id);
+      const current = await this.getLiveAccount(id);
       const { groupId: patchGroup, ...fields } = patch;
       let groupId = current.groupId;
       if (patchGroup === null) groupId = undefined;
@@ -572,7 +581,7 @@ export class Vault {
 
   incrementHotp(id: string): Promise<Account> {
     return this.exclusive(async () => {
-      const current = await this.getAccount(id);
+      const current = await this.getLiveAccount(id);
       if (current.type !== "hotp") throw new CoreError("invalid-otp-params", "Not an HOTP account");
       const updated: Account = {
         ...current,
