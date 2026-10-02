@@ -776,6 +776,12 @@ export class VaultService {
     });
   }
 
+  moveAccount(id: string, groupId: string | null, beforeId: string | null): Promise<void> {
+    return this.exclusive(async () => {
+      await (await this.requireVault()).moveAccount(id, groupId, beforeId);
+    });
+  }
+
   deleteAccount(id: string): Promise<void> {
     return this.exclusive(async () => {
       const vault = await this.requireVault();

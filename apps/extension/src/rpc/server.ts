@@ -112,6 +112,9 @@ async function dispatch(
       return null;
     case "emptyTrash":
       return service.emptyTrash();
+    case "moveAccount":
+      await service.moveAccount(req.id, req.groupId, req.beforeId);
+      return null;
     case "reorder":
       await service.reorder(req.order);
       return null;

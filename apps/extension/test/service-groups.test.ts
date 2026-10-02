@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { codeOf, unlockedService } from "./helpers/service";
+import { describe, expect, it, vi } from "vitest";
+import { VaultService } from "../src/background/vaultService";
+import { memoryPlatform } from "./helpers/platform";
+import { codeOf, PASSWORD, unlockedService } from "./helpers/service";
 
 const SECRET = "JBSWY3DPEHPK3PXP";
 const add = (
@@ -86,5 +88,57 @@ describe("groups in the service", () => {
     );
     await service.lock();
     expect(await codeOf(service.createGroup("Other"))).toBe("locked");
+  });
+});
+
+describe("moveAccount in the service", () => {
+  it("changes group and position together", async () => {
+    const { service } = await unlockedService();
+    const a = await add(service, "A", "JBSWY3DPEHPK3PXA");
+    const b = await add(service, "B", "JBSWY3DPEHPK3PXB");
+    const c = await add(service, "C", "JBSWY3DPEHPK3PXC");
+    const g = await service.createGroup("Work");
+    await service.setAccountGroup(a.id, g.id);
+    await service.setAccountGroup(b.id, g.id);
+    await service.moveAccount(c.id, g.id, b.id);
+    const view = await service.listAccounts();
+    expect(view.accounts.map((x) => x.id)).toEqual([a.id, c.id, b.id]);
+    expect(view.accounts.map((x) => x.groupId)).toEqual([g.id, g.id, g.id]);
+  });
+
+  it("rejects with locked while locked", async () => {
+    const { service } = await unlockedService();
+    const a = await add(service, "A");
+    await service.lock();
+    expect(await codeOf(service.moveAccount(a.id, null, null))).toBe("locked");
+  });
+
+  it("rejects an unknown group and leaves the list unchanged", async () => {
+    const { service } = await unlockedService();
+    const a = await add(service, "A", "JBSWY3DPEHPK3PXA");
+    const g = await service.createGroup("Work");
+    await service.deleteGroup(g.id);
+    const before = await service.listAccounts();
+    expect(await codeOf(service.moveAccount(a.id, g.id, null))).toBe("group-not-found");
+    expect(await service.listAccounts()).toEqual(before);
+  });
+
+  it("does one write on the sync port when the vault lives in sync", async () => {
+    const p = memoryPlatform();
+    const service = new VaultService(p);
+    await service.setup({
+      password: PASSWORD,
+      createRecoveryCode: false,
+      lockPolicy: { kind: "browser-close" },
+      storageArea: "sync",
+    });
+    const a = await add(service, "A", "JBSWY3DPEHPK3PXA");
+    const g = await service.createGroup("Work");
+    const spy = vi.spyOn(p.sync, "set");
+    const localSpy = vi.spyOn(p.local, "set");
+    await service.moveAccount(a.id, g.id, null);
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(localSpy).not.toHaveBeenCalled();
+    expect((await service.listAccounts()).accounts[0]!.groupId).toBe(g.id);
   });
 });
