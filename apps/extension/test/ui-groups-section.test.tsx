@@ -253,7 +253,7 @@ describe("groups section", () => {
     expect(first.className).toContain("gap-1");
     for (const el of [
       within(row).getByTestId("drag-handle"),
-      within(row).getByRole("button", { name: /^İş\s?\d+$/, expanded: false }),
+      within(row).getByRole("button", { name: /^İş, \d+ hesap$/, expanded: false }),
       within(row).getByRole("button", { name: "İş grubunu yukarı taşı" }),
       within(row).getByRole("button", { name: "İş grubunu aşağı taşı" }),
       within(row).getByRole("button", { name: "İş grubunu yeniden adlandır" }),
@@ -266,7 +266,7 @@ describe("groups section", () => {
     const rename = within(row).getByRole("button", { name: "İş grubunu yeniden adlandır" });
     expect(rename.className).toContain("text-xs");
     expect(rename.className).toContain("font-normal");
-    const toggle = within(row).getByRole("button", { name: /^İş\s?\d+$/ });
+    const toggle = within(row).getByRole("button", { name: /^İş, \d+ hesap$/ });
     expect(toggle.className).toContain("min-w-0");
     expect(toggle.className).toContain("flex-1");
     expect(within(toggle).getByText("İş").className).toContain("truncate");
@@ -275,7 +275,7 @@ describe("groups section", () => {
 
   it("expands a group on name click and lists its accounts with aria-expanded", async () => {
     const h = await open();
-    const toggle = within(h.section).getByRole("button", { name: /^İş\s?\d+$/ });
+    const toggle = within(h.section).getByRole("button", { name: /^İş, \d+ hesap$/ });
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
     expect(within(h.section).queryByText("Alpha")).toBeNull();
     await userEvent.click(toggle);
@@ -291,7 +291,7 @@ describe("groups section", () => {
 
   it("shows the empty hint for a group without accounts", async () => {
     const h = await open();
-    await userEvent.click(within(h.section).getByRole("button", { name: /^Kişisel\s?\d+$/ }));
+    await userEvent.click(within(h.section).getByRole("button", { name: /^Kişisel, \d+ hesap$/ }));
     expect(within(h.section).getByText("Boş. Soldan bir hesabı buraya sürükle.")).toBeTruthy();
   });
 
@@ -306,7 +306,7 @@ describe("groups section", () => {
     cleanup();
     renderUi(<GroupsSection groups={groups} accounts={accounts} onChanged={onChanged} />, h.ui);
     const section = await screen.findByRole("region", { name: "Gruplar" });
-    await userEvent.click(within(section).getByRole("button", { name: /^İş\s?\d+$/ }));
+    await userEvent.click(within(section).getByRole("button", { name: /^İş, \d+ hesap$/ }));
     await userEvent.click(
       within(section).getByRole("button", { name: "Alpha hesabını gruptan çıkar" }),
     );
@@ -335,7 +335,7 @@ describe("groups section", () => {
     cleanup();
     renderUi(<GroupsSection groups={groups} accounts={accounts} onChanged={() => {}} />, ui);
     const section = await screen.findByRole("region", { name: "Gruplar" });
-    await userEvent.click(within(section).getByRole("button", { name: /^İş\s?\d+$/ }));
+    await userEvent.click(within(section).getByRole("button", { name: /^İş, \d+ hesap$/ }));
     await userEvent.click(
       within(section).getByRole("button", { name: "Alpha hesabını gruptan çıkar" }),
     );
@@ -345,7 +345,7 @@ describe("groups section", () => {
 
   it("collapsing and re-expanding keeps members in sync after a reload", async () => {
     const h = await open();
-    const toggle = within(h.section).getByRole("button", { name: /^İş\s?\d+$/ });
+    const toggle = within(h.section).getByRole("button", { name: /^İş, \d+ hesap$/ });
     await userEvent.click(toggle);
     expect(within(h.section).getByText("Alpha")).toBeTruthy();
     await userEvent.click(toggle);
@@ -354,7 +354,7 @@ describe("groups section", () => {
     const { groups, accounts } = await h.ui.rpc("listAccounts", {});
     renderUi(<GroupsSection groups={groups} accounts={accounts} onChanged={() => {}} />, h.ui);
     const section = await screen.findByRole("region", { name: "Gruplar" });
-    await userEvent.click(within(section).getByRole("button", { name: /^İş\s?\d+$/ }));
+    await userEvent.click(within(section).getByRole("button", { name: /^İş, \d+ hesap$/ }));
     expect(within(section).queryByText("Alpha")).toBeNull();
     expect(within(section).getByText("Boş. Soldan bir hesabı buraya sürükle.")).toBeTruthy();
   });

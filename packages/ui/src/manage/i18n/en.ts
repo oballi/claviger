@@ -16,7 +16,7 @@ export const manageEn: Record<ManageKey, string> = {
   "groups.deleteCount": "({count} accounts)",
   "groups.deleteCountOne": "(1 account)",
   "groups.hint":
-    "Deleting a group does not delete accounts; they become \u201CUngrouped\u201D. Drag groups to reorder them.",
+    "Deleting a group does not delete accounts; they become \u201CUngrouped\u201D. Drag groups to reorder them; drag accounts to move them between groups.",
   "groups.up": "Move group {name} up",
   "groups.down": "Move group {name} down",
   "groups.dragHandle": "Drag group {name}",
@@ -27,6 +27,9 @@ export const manageEn: Record<ManageKey, string> = {
   "groups.emptyDrop": "Empty. Drag an account here from the left.",
   "accounts.leftGroup": "{name} removed from its group",
   "accounts.joinedGroup": "{name} \u2192 {group}",
+  "groups.toggleAria": "{name}, {count} accounts",
+  "groups.toggleAriaOne": "{name}, 1 account",
+  "accounts.ungroupedDrop": "No group \u00b7 drop here to remove from its group",
   "groups.reordered": "Groups reordered.",
   "manage.nav.label": "Sections",
   "manage.nav.accounts": "Accounts",

@@ -14,7 +14,7 @@ export const manageTr = {
   "groups.deleteCount": "({count} hesap)",
   "groups.deleteCountOne": "(1 hesap)",
   "groups.hint":
-    "Grubu silmek hesapları silmez; hesaplar \u201CGrupsuz\u201D\u2019a geçer. Gruplar sürüklenerek sıralanır.",
+    "Grubu silmek hesapları silmez; hesaplar \u201CGrupsuz\u201D\u2019a geçer. Gruplar sürüklenerek sıralanır; hesaplar da sürüklenerek gruplara taşınır.",
   "groups.up": "{name} grubunu yukarı taşı",
   "groups.down": "{name} grubunu aşağı taşı",
   "groups.dragHandle": "{name} grubunu sürükle",
@@ -25,6 +25,9 @@ export const manageTr = {
   "groups.emptyDrop": "Boş. Soldan bir hesabı buraya sürükle.",
   "accounts.leftGroup": "{name} gruptan çıkarıldı",
   "accounts.joinedGroup": "{name} \u2192 {group}",
+  "groups.toggleAria": "{name}, {count} hesap",
+  "groups.toggleAriaOne": "{name}, 1 hesap",
+  "accounts.ungroupedDrop": "Grupsuz \u00b7 buraya bırakınca hesap gruptan çıkar",
   "groups.reordered": "Gruplar sıralandı.",
   "manage.nav.label": "Bölümler",
   "manage.nav.accounts": "Hesaplar",

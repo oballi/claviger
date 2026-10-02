@@ -244,12 +244,15 @@ describe("AccountsScreen", () => {
     });
   });
 
-  it("hides drag handles while searching", async () => {
+  it("keeps the drag handle while searching but never reorders rows", async () => {
     const h = await seeded();
     await open(h);
     expect(screen.getAllByTestId("drag-handle")).toHaveLength(3);
     await userEvent.type(screen.getByRole("searchbox", { name: "Hesap ara" }), "bank");
-    expect(screen.queryAllByTestId("drag-handle")).toHaveLength(0);
+    const handles = screen.getAllByTestId("drag-handle");
+    expect(handles).toHaveLength(1);
+    fireEvent.dragStart(handles[0]!);
+    expect(fireEvent.dragOver(screen.getByText("Bank").closest("tr")!)).toBe(true);
   });
 
   it("keeps the edit dialog open after pinning and moving", async () => {
