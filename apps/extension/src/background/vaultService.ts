@@ -51,6 +51,9 @@ export const CLIPBOARD_ALARM = "clipboard-clear";
 export const MIN_PASSWORD_LENGTH = 8;
 export const TOKEN_TTL_MS = 60_000;
 export const PREVIEW_TTL_MS = 10 * 60_000;
+export const CAPTURE_TTL_MS = 60_000;
+export const CAPTURE_MAX_CHARS = 32_000_000;
+const CAPTURE_PREFIX = "data:image/png;base64,";
 /** A slower round trip makes the midpoint too uncertain. */
 export const MAX_CLOCK_SAMPLE_MS = 10_000;
 export const MAX_CLOCK_OFFSET_SEC = 12 * 3600;
@@ -186,6 +189,9 @@ export class VaultService {
   private lockEpoch = 0;
   private loading: Promise<Vault | null> | null = null;
   private readonly tokens = new Map<string, number>();
+  // Screen captures hold QR secrets: memory only, one at a time, never written to storage.
+  private capture: { id: string; dataUrl: string; tabUrl: string; expiresAt: number } | null = null;
+  private captureTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly previews = new Map<string, { accounts: AccountInput[]; expiresAt: number }>();
 
   constructor(protected readonly p: Platform) {
@@ -574,6 +580,48 @@ export class VaultService {
   protected onLock(): void {
     this.tokens.clear();
     this.previews.clear();
+    this.dropCapture();
+  }
+
+  private dropCapture(): void {
+    clearTimeout(this.captureTimer);
+    this.captureTimer = undefined;
+    this.capture = null;
+  }
+
+  async storeCapture(input: { dataUrl: string; tabUrl: string }): Promise<{ id: string }> {
+    const epoch = this.lockEpoch;
+    await this.requireVault();
+    if (epoch !== this.lockEpoch)
+      throw new ServiceError("locked", "The vault was locked meanwhile");
+    if (!input.dataUrl.startsWith(CAPTURE_PREFIX) || input.dataUrl.length > CAPTURE_MAX_CHARS) {
+      throw new ServiceError("invalid-request", "Unsupported capture");
+    }
+    this.dropCapture();
+    const id = this.p.random.uuid();
+    this.capture = {
+      id,
+      dataUrl: input.dataUrl,
+      tabUrl: input.tabUrl,
+      expiresAt: this.p.clock.now() + CAPTURE_TTL_MS,
+    };
+    // Frees the memory on time even if nobody takes the capture.
+    this.captureTimer = setTimeout(() => {
+      if (this.capture?.id === id) this.dropCapture();
+    }, CAPTURE_TTL_MS);
+    return { id };
+  }
+
+  takeCapture(id: string): Promise<{ dataUrl: string; tabUrl: string }> {
+    const capture = this.capture;
+    if (!capture || capture.id !== id) {
+      return Promise.reject(new ServiceError("not-found", "No such capture"));
+    }
+    // Deleted before returning so a second take can never see it.
+    const expired = capture.expiresAt < this.p.clock.now();
+    this.dropCapture();
+    if (expired) return Promise.reject(new ServiceError("not-found", "The capture expired"));
+    return Promise.resolve({ dataUrl: capture.dataUrl, tabUrl: capture.tabUrl });
   }
 
   async handleAlarm(name: string): Promise<void> {

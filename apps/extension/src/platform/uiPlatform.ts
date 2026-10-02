@@ -38,7 +38,7 @@ async function openOrFocusManage(hash: string): Promise<void> {
 
 /** The popup opens the manage page in a new tab; the manage page itself only changes its hash. */
 export function createBrowserUiPlatform(
-  context: "popup" | "manage",
+  context: "popup" | "manage" | "scan",
   extra: Partial<UiPlatform> = {},
 ): UiPlatform {
   return {
@@ -55,9 +55,25 @@ export function createBrowserUiPlatform(
       void openOrFocusManage(hash).then(() => window.close());
     },
     async activeTab() {
-      if (context === "manage") return undefined;
+      if (context !== "popup") return undefined;
       const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
       return tab?.id === undefined || !tab.url ? undefined : { id: tab.id, url: tab.url };
+    },
+    async captureTab() {
+      if (context !== "popup") return null;
+      try {
+        const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+        if (!tab?.url) return null;
+        const dataUrl = await browser.tabs.captureVisibleTab({ format: "png" });
+        return { dataUrl, tabUrl: tab.url };
+      } catch {
+        return null;
+      }
+    },
+    openScan(id) {
+      void browser.tabs
+        .create({ url: `${browser.runtime.getURL("/scan.html")}#${id}` })
+        .then(() => window.close());
     },
     requestClockPermission: () => browser.permissions.request({ origins: [CLOCK_ORIGIN] }),
     async removeClockPermission() {

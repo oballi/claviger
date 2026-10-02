@@ -111,6 +111,18 @@ describe("SetupWizard", () => {
     expect(screen.getByLabelText("Ana parola")).toHaveProperty("value", `${NEW_PASSWORD}!`);
   });
 
+  it("points to the extension icon and the image import instead of scanning here", async () => {
+    const { onFinished } = await start();
+    await enterPassword();
+    await userEvent.click(screen.getByRole("button", { name: "Şimdilik atla" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Devam" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Devam" }));
+    expect(await screen.findByText(/eklenti simgesine tıklayıp tara/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Ekrandan QR tara/ })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "QR görselini içe aktar" }));
+    expect(onFinished).toHaveBeenCalledWith("backup");
+  });
+
   it("adds a first account manually and finishes", async () => {
     const { ui, onFinished } = await start();
     await enterPassword();

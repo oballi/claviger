@@ -66,7 +66,6 @@ export const tr = {
   "add.body": "Kurulum anahtarını nereden alacağını seç.",
   "add.qr": "Ekrandan QR tara",
   "add.qrHint": "Sayfadaki QR kod otomatik bulunur.",
-  "add.soon": "yakında",
   "add.manual": "Elle gir",
   "add.manualHint": "Kurulum anahtarını veya bir otpauth:// bağlantısını yapıştır.",
   "add.import": "İçe aktar",
@@ -459,6 +458,32 @@ export const tr = {
   "clock.remove": "Düzeltmeyi kaldır",
   "clock.popupNote": "Saat farkı düzeltiliyor ({offset} sn)",
   "error.snapshot-password-required": "Bu kopya başka bir kasaya ait; parolasını gir.",
+  "add.qrRestricted":
+    "Bu sayfada tarama yapılamaz; QR'ın ekran görüntüsünü dosya olarak içe aktar.",
+  "setup.account.qrHint":
+    "QR'ın olduğu sekmede eklenti simgesine tıklayıp tara ya da QR görselini içe aktar.",
+  "setup.account.qrImport": "QR görselini içe aktar",
+  "scan.title": "QR tara.",
+  "scan.expired": "Görüntünün süresi doldu; taramayı tekrar başlat.",
+  "scan.scanning": "Görüntü taranıyor…",
+  "scan.failed": "Görüntü taranamadı.",
+  "scan.cropNone": "Bu alanda QR bulunamadı.",
+  "scan.frame": "Yakalanan ekran görüntüsü, QR seçim alanı",
+  "scan.imageAlt": "Yakalanan ekran görüntüsü",
+  "scan.draw": "QR'ın çevresine bir kutu çiz.",
+  "scan.drawHint":
+    "Fareyle ya da dokunarak çiz. Klavyede görüntüye odaklanıp ok tuşlarıyla kutuyu taşı, Shift ile boyutlandır.",
+  "scan.scanSelection": "Seçili alanı tara",
+  "scan.rescanAll": "Bütün görüntüyü tekrar tara",
+  "scan.selectArea": "Alan seçerek tara",
+  "scan.found": "Bu görüntüde {count} QR bulundu",
+  "scan.foundOne": "Bir QR bulundu.",
+  "scan.add": "Ekle",
+  "scan.preview": "Önizle ve içe aktar",
+  "scan.added": "{name} eklendi",
+  "scan.migrationName": "Çok hesaplı dışa aktarım",
+  "scan.sourceName": "Ekran görüntüsü",
+  "scan.done": "Eklendi. Bu sekmeyi kapatabilirsin.",
 } as const;
 
 export type MessageKey = keyof typeof tr;

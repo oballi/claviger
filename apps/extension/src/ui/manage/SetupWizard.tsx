@@ -450,12 +450,22 @@ export function SetupWizard({
             />
           ) : (
             <div className="flex flex-col border-b border-hair">
-              <NumberedOption
-                num="01"
-                title={t("add.qr")}
-                hint={t("add.qrHint")}
-                badge={t("add.soon")}
-              />
+              <div className="flex items-start gap-4 border-t border-hair py-5">
+                <span className="pt-0.5 font-mono text-[11px] text-muted">01</span>
+                <span className="flex flex-1 flex-col items-start gap-1">
+                  <span className="text-[15px] font-medium">{t("add.qr")}</span>
+                  <span className="text-[13px] leading-normal text-muted">
+                    {t("setup.account.qrHint")}
+                  </span>
+                  <Button
+                    variant="link"
+                    onClick={() => onFinished("backup")}
+                    className="text-[13px]"
+                  >
+                    {t("setup.account.qrImport")}
+                  </Button>
+                </span>
+              </div>
               <NumberedOption
                 num="02"
                 title={t("add.manual")}

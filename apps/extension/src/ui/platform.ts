@@ -14,6 +14,10 @@ export interface UiPlatform {
   openManage(route?: ManageRoute): void;
   /** The tab the popup was opened on; undefined on the manage page or when the tab has no URL. */
   activeTab(): Promise<{ id: number; url: string } | undefined>;
+  /** Popup only: grabs the visible tab right after the user's click; null on restricted pages and elsewhere. */
+  captureTab(): Promise<{ dataUrl: string; tabUrl: string } | null>;
+  /** Opens the scan page for a stored capture in a new tab. */
+  openScan(id: string): void;
   /** Must be the first await in a click handler so the user gesture still holds. */
   requestClockPermission(): Promise<boolean>;
   removeClockPermission(): Promise<void>;

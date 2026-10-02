@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { AccountForm } from "../components/AccountForm";
 import { Icon } from "../components/Icon";
+import { errorMessage } from "../errors";
 import { useT } from "../i18n/i18n";
 import { useUi } from "../platform";
 
@@ -8,14 +9,12 @@ function Option({
   num,
   title,
   hint,
-  badge,
   onClick,
   last,
 }: {
   num: string;
   title: string;
   hint: string;
-  badge?: string;
   onClick?: () => void;
   last?: boolean;
 }) {
@@ -28,14 +27,7 @@ function Option({
     >
       <span className="pt-0.5 font-mono text-[11px] text-muted">{num}</span>
       <span className="flex flex-1 flex-col gap-1">
-        <span className="flex items-center gap-2 text-sm font-medium">
-          {title}
-          {badge ? (
-            <span className="rounded-full border border-line px-[7px] py-px font-mono text-[10px] font-normal text-muted">
-              {badge}
-            </span>
-          ) : null}
-        </span>
+        <span className="flex items-center gap-2 text-sm font-medium">{title}</span>
         <span className="text-xs leading-normal text-muted">{hint}</span>
       </span>
       <Icon name="next" className="mt-0.5 shrink-0 text-muted" />
@@ -74,9 +66,26 @@ export function AddAccount({
   onBack: () => void;
   onAdded: (name: string) => void;
 }) {
-  const { openManage } = useUi();
+  const { openManage, captureTab, openScan, rpc } = useUi();
   const t = useT();
   const [manual, setManual] = useState(false);
+  const [scanNote, setScanNote] = useState<string | null>(null);
+
+  // Capture first, store second, open third: closing the popup drops anything held in it.
+  async function scan() {
+    setScanNote(null);
+    try {
+      const capture = await captureTab();
+      if (!capture) {
+        setScanNote(t("add.qrRestricted"));
+        return;
+      }
+      const { id } = await rpc("storeCapture", capture);
+      openScan(id);
+    } catch (e) {
+      setScanNote(errorMessage(t, e));
+    }
+  }
 
   if (manual) {
     return (
@@ -98,7 +107,7 @@ export function AddAccount({
         <p className="m-0 text-sm leading-normal text-muted">{t("add.body")}</p>
       </div>
       <div className="flex flex-col pt-7">
-        <Option num="01" title={t("add.qr")} hint={t("add.qrHint")} badge={t("add.soon")} />
+        <Option num="01" title={t("add.qr")} hint={t("add.qrHint")} onClick={() => void scan()} />
         <Option
           num="02"
           title={t("add.manual")}
@@ -113,6 +122,9 @@ export function AddAccount({
           last
         />
       </div>
+      <p role="alert" className="m-0 pt-3 text-xs leading-normal text-warn">
+        {scanNote}
+      </p>
       <p className="m-0 mt-auto pt-4 text-[11px] leading-normal text-muted">{t("add.footer")}</p>
     </Shell>
   );

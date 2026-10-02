@@ -147,6 +147,10 @@ async function dispatch(service: VaultService, req: RpcRequest): Promise<unknown
     case "setSiteMemory":
       await service.setSiteMemory(req.value);
       return null;
+    case "storeCapture":
+      return service.storeCapture({ dataUrl: req.dataUrl, tabUrl: req.tabUrl });
+    case "takeCapture":
+      return service.takeCapture(req.id);
     default: {
       const unreachable: never = req;
       throw new Error(`Unhandled request ${(unreachable as { type: string }).type}`);

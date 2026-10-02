@@ -44,6 +44,8 @@ export async function harness(
     copy: vi.fn(async (_text: string) => {}),
     openManage: vi.fn(),
     activeTab: vi.fn(async () => (opts.tabUrl ? { id: TAB_ID, url: opts.tabUrl } : undefined)),
+    captureTab: vi.fn(async (): Promise<{ dataUrl: string; tabUrl: string } | null> => null),
+    openScan: vi.fn((_id: string) => {}),
     requestClockPermission: vi.fn(async () => true),
     removeClockPermission: vi.fn(async () => {}),
     fetchServerDate: vi.fn(async () => {

@@ -27,12 +27,12 @@ const accounts = async (h: Awaited<ReturnType<typeof open>>) =>
   (await h.ui.rpc("listAccounts", {})).accounts;
 
 describe("AddAccount", () => {
-  it("lists the sources; QR scanning is not available yet", async () => {
+  it("lists the sources", async () => {
     const h = await open();
     expect(screen.getByRole("heading", { name: "Hesap ekle." })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Ekrandan QR tara/ })).toHaveProperty(
       "disabled",
-      true,
+      false,
     );
     await userEvent.click(screen.getByRole("button", { name: /İçe aktar/ }));
     expect(h.ui.openManage).toHaveBeenCalledWith("backup");
