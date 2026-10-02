@@ -117,6 +117,14 @@ describe("restoreSnapshot", () => {
     expect((await p.local.get([SNAPSHOT_ATTEMPTS_KEY]))[SNAPSHOT_ATTEMPTS_KEY]).toBeUndefined();
   });
 
+  it("deleteVault also clears the old-password throttle", async () => {
+    const { fresh, p } = await withForeignSnapshot();
+    await p.local.set({ [SNAPSHOT_ATTEMPTS_KEY]: { failures: 9, lastFailureAt: p.clock.now() } });
+    const { token } = await fresh.reauth(NEW_PASSWORD);
+    await fresh.deleteVault(token);
+    expect((await p.local.get([SNAPSHOT_ATTEMPTS_KEY]))[SNAPSHOT_ATTEMPTS_KEY]).toBeUndefined();
+  });
+
   it("refuses a damaged copy without spending the token", async () => {
     const { service, p, snap } = await withSnapshot();
     const key = `snapshot:${snap.id}`;
