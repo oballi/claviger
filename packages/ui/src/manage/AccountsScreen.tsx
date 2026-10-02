@@ -79,11 +79,11 @@ export function AccountsScreen({
   const groupName = (a: AccountView) => groups.find((g) => g.id === a.groupId)?.name;
   const selected = accounts.find((a) => a.id === editing);
 
-  function changed(text: string) {
+  function changed(text: string): Promise<void> {
     setMessage(text);
     setReorderError(null);
-    void reload();
     onChanged();
+    return reload();
   }
 
   // Reordering swaps with the neighbour in the same group and pin state, so they never mix.

@@ -1,4 +1,4 @@
-import { useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { AccountView, GroupView } from "../contract/views";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
@@ -8,6 +8,8 @@ import { useT } from "../i18n/i18n";
 import { useUi } from "../platform";
 import { dropId, moveId } from "./groupOrder";
 
+type Kind = "rename" | "up" | "down" | "delete";
+
 /** Design board "Yönetim — gruplar", right column. */
 export function GroupsSection({
   groups,
@@ -16,7 +18,7 @@ export function GroupsSection({
 }: {
   groups: readonly GroupView[];
   accounts: readonly AccountView[];
-  onChanged: (message: string) => void;
+  onChanged: (message: string) => void | Promise<void>;
 }) {
   const { rpc } = useUi();
   const t = useT();
@@ -25,8 +27,28 @@ export function GroupsSection({
   const [dragging, setDragging] = useState<string | null>(null);
   const [error, setError] = useState<{ id: string; text: string } | null>(null);
   const busy = useRef(false);
+  const sectionRef = useRef<HTMLElement>(null);
+  const focusReq = useRef<{ id: string; kind: Kind } | null>(null);
+  const [tick, setTick] = useState(0);
   const ids = groups.map((g) => g.id);
   const count = (id: string) => accounts.filter((a) => a.groupId === id).length;
+
+  const requestFocus = (id: string, kind: Kind) => {
+    focusReq.current = { id, kind };
+    setTick((n) => n + 1);
+  };
+
+  // Runs after the render that carries the fresh list; a disabled edge button hands focus to its counterpart.
+  useEffect(() => {
+    const req = focusReq.current;
+    focusReq.current = null;
+    if (!req) return;
+    const find = (kind: Kind) =>
+      sectionRef.current?.querySelector<HTMLButtonElement>(`[data-focus="${req.id}:${kind}"]`);
+    let el = find(req.kind);
+    if (el?.disabled) el = find(req.kind === "up" ? "down" : "up");
+    el?.focus();
+  }, [tick]);
 
   // Serialised so a double click cannot send two overlapping writes.
   async function run(id: string, action: () => Promise<void>) {
@@ -42,11 +64,13 @@ export function GroupsSection({
     }
   }
 
-  const reorder = (id: string, next: string[] | null) =>
+  const reorder = (id: string, next: string[] | null, kind: Kind | null) =>
     next
       ? run(id, async () => {
           await rpc("reorderGroups", { ids: next });
-          onChanged(t("groups.reordered"));
+          // Held until the list reloads so a second click never builds its order from stale data.
+          await onChanged(t("groups.reordered"));
+          if (kind) requestFocus(id, kind);
         })
       : Promise.resolve();
 
@@ -55,14 +79,15 @@ export function GroupsSection({
       if (!renaming) return;
       await rpc("renameGroup", { id: g.id, name: renaming.value });
       setRenaming(null);
-      onChanged(t("groups.renamed", { name: renaming.value.trim() }));
+      requestFocus(g.id, "rename");
+      await onChanged(t("groups.renamed", { name: renaming.value.trim() }));
     });
 
   const remove = (g: GroupView) =>
     run(g.id, async () => {
       await rpc("deleteGroup", { id: g.id });
       setConfirming(null);
-      onChanged(t("groups.deleted", { name: g.name }));
+      await onChanged(t("groups.deleted", { name: g.name }));
     });
 
   function onRenameKey(event: KeyboardEvent, g: GroupView) {
@@ -71,13 +96,14 @@ export function GroupsSection({
       void rename(g);
     } else if (event.key === "Escape") {
       event.stopPropagation();
+      requestFocus(g.id, "rename");
       setRenaming(null);
       setError(null);
     }
   }
 
   return (
-    <section aria-label={t("groups.title")} className="flex flex-col gap-4">
+    <section ref={sectionRef} aria-label={t("groups.title")} className="flex flex-col gap-4">
       <h2 className="m-0 text-[15px] font-medium">{t("groups.title")}</h2>
       <ul className="m-0 flex list-none flex-col p-0">
         {groups.map((g, i) => (
@@ -91,7 +117,7 @@ export function GroupsSection({
               e.preventDefault();
               const dragged = dragging;
               setDragging(null);
-              if (dragged) void reorder(g.id, dropId(ids, dragged, g.id));
+              if (dragged) void reorder(g.id, dropId(ids, dragged, g.id), null);
             }}
           >
             <div className="flex items-center gap-2">
@@ -126,6 +152,7 @@ export function GroupsSection({
                   <Button
                     variant="link"
                     onClick={() => {
+                      requestFocus(g.id, "rename");
                       setRenaming(null);
                       setError(null);
                     }}
@@ -139,6 +166,7 @@ export function GroupsSection({
                   <span className="font-mono text-xs text-muted">{count(g.id)}</span>
                   <Button
                     variant="link"
+                    data-focus={`${g.id}:rename`}
                     aria-label={t("groups.renameAria", { name: g.name })}
                     onClick={() => {
                       setError(null);
@@ -148,46 +176,65 @@ export function GroupsSection({
                   >
                     {t("groups.rename")}
                   </Button>
-                  <Button
-                    variant="link"
-                    aria-label={t("groups.deleteAria", { name: g.name })}
-                    onClick={() => {
-                      setError(null);
-                      setRenaming(null);
-                      setConfirming(g.id);
-                    }}
-                  >
-                    {t("groups.delete")}
-                  </Button>
-                  <Button
-                    variant="link"
-                    aria-label={t("groups.up", { name: g.name })}
-                    disabled={i === 0}
-                    onClick={() => void reorder(g.id, moveId(ids, g.id, -1))}
-                  >
-                    {"↑"}
-                  </Button>
-                  <Button
-                    variant="link"
-                    aria-label={t("groups.down", { name: g.name })}
-                    disabled={i === groups.length - 1}
-                    onClick={() => void reorder(g.id, moveId(ids, g.id, 1))}
-                  >
-                    {"↓"}
-                  </Button>
                 </>
               )}
             </div>
+            {renaming?.id !== g.id ? (
+              <div className="flex items-center gap-1 pl-8 text-xs">
+                <Button
+                  variant="link"
+                  className="px-2 text-xs"
+                  data-focus={`${g.id}:up`}
+                  aria-label={t("groups.up", { name: g.name })}
+                  disabled={i === 0}
+                  onClick={() => void reorder(g.id, moveId(ids, g.id, -1), "up")}
+                >
+                  {"\u2191"}
+                </Button>
+                <Button
+                  variant="link"
+                  className="px-2 text-xs"
+                  data-focus={`${g.id}:down`}
+                  aria-label={t("groups.down", { name: g.name })}
+                  disabled={i === groups.length - 1}
+                  onClick={() => void reorder(g.id, moveId(ids, g.id, 1), "down")}
+                >
+                  {"\u2193"}
+                </Button>
+                <Button
+                  variant="link"
+                  className="px-2 text-xs"
+                  data-focus={`${g.id}:delete`}
+                  aria-label={t("groups.deleteAria", { name: g.name })}
+                  onClick={() => {
+                    setError(null);
+                    setRenaming(null);
+                    setConfirming(g.id);
+                  }}
+                >
+                  {t("groups.delete")}
+                </Button>
+              </div>
+            ) : null}
             {confirming === g.id ? (
               <div className="flex flex-wrap items-center gap-3 pl-8 text-sm">
                 <span>
                   {t("groups.deleteConfirm", { name: g.name })}{" "}
-                  {t("groups.deleteCount", { count: count(g.id) })}
+                  {t(count(g.id) === 1 ? "groups.deleteCountOne" : "groups.deleteCount", {
+                    count: count(g.id),
+                  })}
                 </span>
                 <Button variant="danger" onClick={() => void remove(g)}>
                   {t("groups.delete")}
                 </Button>
-                <Button onClick={() => setConfirming(null)}>{t("common.cancel")}</Button>
+                <Button
+                  onClick={() => {
+                    requestFocus(g.id, "delete");
+                    setConfirming(null);
+                  }}
+                >
+                  {t("common.cancel")}
+                </Button>
               </div>
             ) : null}
             {error?.id === g.id ? (

@@ -5,6 +5,18 @@ import { describe, expect, it, vi } from "vitest";
 import { AccountsScreen } from "@otp-vault/ui/manage";
 import { harness, renderUi } from "./helpers/ui";
 
+expect.extend({
+  toHaveFocus(received: Element) {
+    const pass = document.activeElement === received;
+    return { pass, message: () => `expected element ${pass ? "not " : ""}to have focus` };
+  },
+});
+declare module "vitest" {
+  interface Assertion {
+    toHaveFocus(): void;
+  }
+}
+
 async function open() {
   const h = await harness();
   const a = await h.ui.rpc("createGroup", { name: "İş" });
@@ -99,5 +111,115 @@ describe("groups section", () => {
     fireEvent.dragOver(second);
     fireEvent.drop(second);
     await vi.waitFor(async () => expect(await groupNames(h)).toEqual(["Kişisel", "İş"]));
+  });
+
+  it("moving the first group down to the bottom focuses its up button", async () => {
+    const h = await open();
+    const down = () => within(h.section).getByRole("button", { name: "İş grubunu aşağı taşı" });
+    await userEvent.click(down());
+    await vi.waitFor(() =>
+      expect(
+        within(h.section).getByRole("button", { name: "İş grubunu yukarı taşı" }),
+      ).toHaveFocus(),
+    );
+  });
+
+  it("refocuses the same button when it stays enabled", async () => {
+    const h = await open();
+    await h.ui.rpc("createGroup", { name: "Üçüncü" });
+    renderUi(<AccountsScreen state={await h.ui.rpc("getState", {})} onChanged={() => {}} />, h.ui);
+    const sections = await screen.findAllByRole("region", { name: "Gruplar" });
+    const section = sections[sections.length - 1]!;
+    const btn = await within(section).findByRole("button", { name: "İş grubunu aşağı taşı" });
+    await userEvent.click(btn);
+    await vi.waitFor(() =>
+      expect(within(section).getByRole("button", { name: "İş grubunu aşağı taşı" })).toHaveFocus(),
+    );
+  });
+
+  it("moving the last group up lands at the top and focuses down", async () => {
+    const h = await open();
+    await userEvent.click(
+      within(h.section).getByRole("button", { name: "Kişisel grubunu yukarı taşı" }),
+    );
+    await vi.waitFor(() =>
+      expect(
+        within(h.section).getByRole("button", { name: "Kişisel grubunu aşağı taşı" }),
+      ).toHaveFocus(),
+    );
+  });
+
+  it("ignores a second click while the first move is still in flight", async () => {
+    const h = await open();
+    await h.ui.rpc("createGroup", { name: "Üçüncü" });
+    renderUi(<AccountsScreen state={await h.ui.rpc("getState", {})} onChanged={() => {}} />, h.ui);
+    const sections = await screen.findAllByRole("region", { name: "Gruplar" });
+    const section = sections[sections.length - 1]!;
+    const aDown = await within(section).findByRole("button", { name: "İş grubunu aşağı taşı" });
+    const cUp = within(section).getByRole("button", { name: "Üçüncü grubunu yukarı taşı" });
+    fireEvent.click(aDown);
+    fireEvent.click(cUp);
+    await vi.waitFor(async () => expect(await groupNames(h)).toEqual(["Kişisel", "İş", "Üçüncü"]));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(await groupNames(h)).toEqual(["Kişisel", "İş", "Üçüncü"]);
+  });
+
+  it("returns focus to Yeniden adlandır after save, Escape and Vazgeç", async () => {
+    const h = await open();
+    const rename = () =>
+      within(h.section).getByRole("button", { name: "İş grubunu yeniden adlandır" });
+    await userEvent.click(rename());
+    await userEvent.type(within(h.section).getByLabelText("Grup adı"), "{Escape}");
+    await vi.waitFor(() => expect(rename()).toHaveFocus());
+    await userEvent.click(rename());
+    await userEvent.click(within(h.section).getByRole("button", { name: "Vazgeç" }));
+    await vi.waitFor(() => expect(rename()).toHaveFocus());
+    expect(await groupNames(h)).toEqual(["İş", "Kişisel"]);
+    await userEvent.click(rename());
+    await userEvent.type(within(h.section).getByLabelText("Grup adı"), "2{Enter}");
+    await vi.waitFor(() =>
+      expect(
+        within(h.section).getByRole("button", { name: "İş2 grubunu yeniden adlandır" }),
+      ).toHaveFocus(),
+    );
+  });
+
+  it("returns focus to the delete button after cancelling", async () => {
+    const h = await open();
+    await userEvent.click(within(h.section).getByRole("button", { name: "İş grubunu sil" }));
+    await userEvent.click(within(h.section).getByRole("button", { name: "Vazgeç" }));
+    await vi.waitFor(() =>
+      expect(within(h.section).getByRole("button", { name: "İş grubunu sil" })).toHaveFocus(),
+    );
+  });
+
+  it("names the group in the delete confirmation", async () => {
+    const h = await open();
+    await userEvent.click(within(h.section).getByRole("button", { name: "Kişisel grubunu sil" }));
+    expect(within(h.section).getByText(/\u201CKişisel\u201D silinsin mi/)).toBeTruthy();
+    expect(within(h.section).getByText(/\(0 hesap\)/)).toBeTruthy();
+  });
+
+  it("falls back to Tümü when the selected filter group is deleted", async () => {
+    const h = await open();
+    const chips = await screen.findByRole("group", { name: "Grup süzgeci" });
+    await userEvent.click(within(chips).getByRole("button", { name: "İş · 1" }));
+    await userEvent.click(within(h.section).getByRole("button", { name: "İş grubunu sil" }));
+    await userEvent.click(within(h.section).getByRole("button", { name: "Sil" }));
+    await vi.waitFor(() =>
+      expect(
+        within(chips).getByRole("button", { name: /^Tümü/ }).getAttribute("aria-pressed"),
+      ).toBe("true"),
+    );
+  });
+
+  it("dropping a group on itself changes nothing", async () => {
+    const h = await open();
+    const first = within(h.section).getByText("İş").closest("li")!;
+    fireEvent.dragStart(within(h.section).getAllByTestId("drag-handle")[0]!);
+    fireEvent.dragOver(first);
+    fireEvent.drop(first);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(await groupNames(h)).toEqual(["İş", "Kişisel"]);
   });
 });

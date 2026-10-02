@@ -112,6 +112,7 @@ export const en: Record<MessageKey, string> = {
   "groups.deleteAria": "Delete group {name}",
   "groups.deleteConfirm": "Delete \u201C{name}\u201D? Accounts are kept and become ungrouped.",
   "groups.deleteCount": "({count} accounts)",
+  "groups.deleteCountOne": "(1 account)",
   "groups.hint":
     "Deleting a group does not delete accounts; they become \u201CUngrouped\u201D. Drag groups to reorder them.",
   "groups.up": "Move group {name} up",

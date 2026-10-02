@@ -110,6 +110,7 @@ export const tr = {
   "groups.deleteAria": "{name} grubunu sil",
   "groups.deleteConfirm": "\u201C{name}\u201D silinsin mi? Hesaplar silinmez, Grupsuz'a geçer.",
   "groups.deleteCount": "({count} hesap)",
+  "groups.deleteCountOne": "(1 hesap)",
   "groups.hint":
     "Grubu silmek hesapları silmez; hesaplar \u201CGrupsuz\u201D\u2019a geçer. Gruplar sürüklenerek sıralanır.",
   "groups.up": "{name} grubunu yukarı taşı",
