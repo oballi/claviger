@@ -18,11 +18,14 @@ export function RowMenu({
   label,
   items,
   triggerId,
+  hitClass,
 }: {
   label: string;
   items: MenuItem[];
   /** Lets the owner find this trigger again after the row re-renders elsewhere. */
   triggerId?: string;
+  /** Re-anchors the 44px hit area (small rows); the open ring is then drawn on the icon only. */
+  hitClass?: string;
 }) {
   const t = useT();
   const id = useId();
@@ -103,9 +106,17 @@ export function RowMenu({
             setOpen(true);
           }
         }}
-        className={`-mr-2 flex h-11 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border bg-transparent p-0 text-muted ${open ? "border-line text-text" : "border-transparent"}`}
+        className={`-mr-2 flex w-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-transparent p-0 text-muted ${hitClass ? `${hitClass} border-0 ${open ? "text-text" : ""}` : `h-11 border ${open ? "border-line text-text" : "border-transparent"}`}`}
       >
-        <Icon name="more" size={18} />
+        {hitClass ? (
+          <span
+            className={`flex h-8 w-8 items-center justify-center rounded-full border ${open ? "border-line" : "border-transparent"}`}
+          >
+            <Icon name="more" size={18} />
+          </span>
+        ) : (
+          <Icon name="more" size={18} />
+        )}
       </button>
       {open ? (
         <div

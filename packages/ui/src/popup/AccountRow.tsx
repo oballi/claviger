@@ -43,8 +43,17 @@ export function AccountRow({
       return;
     onCopy(account);
   };
+  const showLabel = !large && !compact && Boolean(account.issuer && account.label);
+  // With a label line the 44px hit areas hang down from the row top (not centred), so they never
+  // reach into the previous row; the label line is pointer-events-none underneath them.
+  const hitDown = "h-11 -mt-[7px] self-start pb-2.5";
   const menuButton = menu ? (
-    <RowMenu label={t("menu.actions", { issuer: name })} items={menu} triggerId={account.id} />
+    <RowMenu
+      label={t("menu.actions", { issuer: name })}
+      items={menu}
+      triggerId={account.id}
+      hitClass={showLabel ? hitDown : undefined}
+    />
   ) : null;
   const deleteConfirm = confirmDelete ? (
     <div
@@ -77,7 +86,7 @@ export function AccountRow({
         hidden ? t("codes.copyHidden", { issuer: name }) : t("codes.copy", { issuer: name, code })
       }
       onClick={() => onCopy(account)}
-      className={`shrink-0 cursor-pointer whitespace-nowrap border-0 bg-transparent p-0 text-left font-mono tracking-wide ${large ? (compact ? "min-h-11 text-2xl leading-tight" : "min-h-11 text-[34px] leading-tight") : compact ? "min-h-11 text-base" : "min-h-11 text-xl"} ${critical ? "text-critical" : urgent ? "text-warn" : "text-text"}`}
+      className={`shrink-0 cursor-pointer whitespace-nowrap border-0 bg-transparent p-0 text-left font-mono tracking-wide ${large ? (compact ? "min-h-11 text-2xl leading-tight" : "min-h-11 text-[34px] leading-tight") : `${showLabel ? hitDown : "min-h-11"} ${compact ? "text-base" : "text-xl"}`} ${critical ? "text-critical" : urgent ? "text-warn" : "text-text"}`}
     >
       {code}
     </button>
@@ -88,7 +97,7 @@ export function AccountRow({
         type="button"
         aria-label={t("codes.next", { issuer: name })}
         onClick={() => onNextHotp(account)}
-        className="-m-[13px] flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-0 text-muted"
+        className={`${showLabel ? `-mx-[13px] w-11 ${hitDown}` : "-m-[13px] h-11 w-11"} flex shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-0 text-muted`}
       >
         <Icon name="refresh" />
       </button>
@@ -118,16 +127,16 @@ export function AccountRow({
       </li>
     );
   }
-  const showLabel = !compact && Boolean(account.issuer && account.label);
   return (
     <li
       onClick={copyFromRow}
       title={
         account.issuer && account.label ? `${account.issuer}: ${account.label}` : name || undefined
       }
-      className="ov-row -mx-3 flex cursor-pointer flex-wrap items-center gap-x-3 rounded-xl px-3 pt-2 pb-1"
+      className={`ov-row -mx-3 flex cursor-pointer flex-col rounded-xl px-3 ${showLabel ? "pt-[7px] pb-[7px]" : "min-h-11 justify-center"}`}
     >
-      <div className="flex w-full items-center gap-3">
+      {/* Fixed-height line: the 44px buttons are taller than it and overflow it evenly (hit areas only). */}
+      <div className="relative z-10 flex h-5 items-center gap-3">
         <div data-row-name="" className="min-w-0 flex-1 truncate text-[13px]">
           {name}
           {pinnedMark && account.pinned ? (
@@ -139,11 +148,10 @@ export function AccountRow({
         {menuButton}
       </div>
       {showLabel ? (
-        // Pulled into the code button's empty min-h-11 padding so the row keeps its old height;
-        // pointer-events-none keeps it from covering the bottom of the code and menu buttons.
+        // pointer-events-none: the buttons' overflowing hit areas reach into this line.
         <div
           data-row-label=""
-          className="pointer-events-none -mt-3.5 w-full basis-full truncate text-xs text-muted"
+          className="pointer-events-none mt-0.5 truncate text-xs leading-4 text-muted"
         >
           {account.label}
         </div>

@@ -54,10 +54,12 @@ describe("view modes", () => {
       expect(large.className).toContain(c);
   });
 
-  it("small rows have top padding too", async () => {
+  it("labelled small rows have equal top and bottom padding", async () => {
     const { container } = await popupWith("normal");
     await screen.findByText("Acme");
-    expect(container.querySelector("li")!.className).toContain("pt-2");
+    const cls = container.querySelector("li")!.className;
+    expect(cls).toContain("pt-[7px]");
+    expect(cls).toContain("pb-[7px]");
   });
 
   it("hidden mode never puts the code in the DOM but still copies it", async () => {
@@ -99,13 +101,32 @@ describe("view modes", () => {
     await popupWith("normal");
     const label = await screen.findByText("a@x");
     const row = label.closest("li")!;
-    for (const c of ["w-full", "basis-full", "truncate", "pointer-events-none"])
-      expect(label.className).toContain(c);
+    for (const c of ["truncate", "pointer-events-none"]) expect(label.className).toContain(c);
+    expect(label.className).not.toMatch(/-m[trblxy]?-/);
     expect(label.parentElement).toBe(row);
     const top = row.querySelector("[data-code-button]")!.parentElement!;
-    expect(top).not.toContain(label);
+    expect(top.contains(label)).toBe(false);
     expect(top.parentElement).toBe(row);
     expect(row.getAttribute("title")).toBe("Acme: a@x");
+  });
+
+  it("labelled rows keep 44px hit areas hanging down from the row top", async () => {
+    await popupWith("normal");
+    const row = (await screen.findByText("a@x")).closest("li")!;
+    const line = row.querySelector("[data-code-button]")!.parentElement!;
+    expect(line.className).toContain("z-10");
+    for (const el of [
+      row.querySelector("[data-code-button]")!,
+      row.querySelector("button[aria-haspopup]")!,
+    ])
+      for (const c of ["h-11", "self-start", "-mt-[7px]"]) expect(el.className).toContain(c);
+  });
+
+  it("rows without a label line stay centred one-liners", async () => {
+    await popupWith("compact");
+    const row = (await screen.findByText("Acme")).closest("li")!;
+    expect(row.className).toContain("min-h-11");
+    expect(row.querySelector("[data-code-button]")!.className).not.toContain("self-start");
   });
 
   it("an account without issuer shows its label on line 1 and no second line", async () => {
