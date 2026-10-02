@@ -10,5 +10,6 @@ export function canonicalJson(value: unknown): string {
               .map((k) => [k, sorted((v as Record<string, unknown>)[k])]),
           )
         : v;
-  return JSON.stringify(sorted(value));
+  // JSON.stringify(undefined) is undefined; a missing value must still compare as a string.
+  return JSON.stringify(sorted(value)) ?? "undefined";
 }

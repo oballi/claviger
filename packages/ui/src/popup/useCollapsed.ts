@@ -6,24 +6,34 @@ const LEGACY_KEY = "otpv.popup.collapsed";
 const MAX_KEYS = 64;
 const MAX_KEY_LENGTH = 64;
 
+function parse(stored: string | null): Set<string> | null {
+  if (stored === null) return null;
+  const raw: unknown = JSON.parse(stored);
+  if (!Array.isArray(raw)) return null;
+  return new Set(
+    raw
+      .slice(0, MAX_KEYS)
+      .filter((x): x is string => typeof x === "string" && x.length <= MAX_KEY_LENGTH),
+  );
+}
+
 function read(): Set<string> {
   try {
-    let stored = localStorage.getItem(KEY);
-    if (stored === null) {
-      const old = localStorage.getItem(LEGACY_KEY);
-      if (old !== null) {
-        localStorage.setItem(KEY, old);
-        stored = old;
-        localStorage.removeItem(LEGACY_KEY);
+    const current = localStorage.getItem(KEY);
+    const old = localStorage.getItem(LEGACY_KEY);
+    if (old !== null) localStorage.removeItem(LEGACY_KEY);
+    if (current === null && old !== null) {
+      // A legacy value is validated before it is copied, never copied verbatim.
+      let migrated: Set<string> | null = null;
+      try {
+        migrated = parse(old);
+      } catch {
+        // Invalid legacy JSON is dropped.
       }
+      if (migrated) localStorage.setItem(KEY, JSON.stringify([...migrated]));
+      return migrated ?? new Set();
     }
-    const raw: unknown = JSON.parse(stored ?? "[]");
-    if (!Array.isArray(raw)) return new Set();
-    return new Set(
-      raw
-        .slice(0, MAX_KEYS)
-        .filter((x): x is string => typeof x === "string" && x.length <= MAX_KEY_LENGTH),
-    );
+    return parse(current) ?? new Set();
   } catch {
     return new Set();
   }

@@ -179,7 +179,7 @@ export async function parseUpstreamBackup(json: unknown, password?: string): Pro
   let position = 0;
 
   for (const [id, value] of Object.entries(data)) {
-    if (id === "key" || keySchema.safeParse(value).success) continue;
+    if ((id === "key" && oldKey.success) || keySchema.safeParse(value).success) continue;
 
     let entry: RawEntry;
     const enc = encEntrySchema.safeParse(value);

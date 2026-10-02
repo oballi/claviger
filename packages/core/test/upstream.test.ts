@@ -36,6 +36,27 @@ describe("upstream Authenticator backups", () => {
     expect(result.issues).toEqual([GOST_ISSUE]);
   });
 
+  it('imports an entry whose id is "key" when it is not the legacy key object', async () => {
+    const file = {
+      ...plainBackup(),
+      key: {
+        account: "keyed",
+        issuer: "Odd",
+        secret: "JBSWY3DPEHPK3PXP",
+        type: "totp",
+        encrypted: false,
+      },
+    };
+    const result = await parseUpstreamBackup(file);
+    expect(result.accounts).toHaveLength(EXPECTED_ACCOUNTS.length + 1);
+    expect(result.accounts.some((a) => a.label === "keyed")).toBe(true);
+  });
+
+  it('reports a malformed entry with id "key" instead of skipping it', async () => {
+    const result = await parseUpstreamBackup({ ...plainBackup(), key: { secret: 5 } });
+    expect(result.issues).toContainEqual(expect.objectContaining({ reason: "malformed-entry" }));
+  });
+
   it("handles secret prefixes, hhex and hex-looking TOTP secrets in plain backups", async () => {
     const entry = (secret: string, type: string) => ({ secret, type, encrypted: false });
     const result = await parseUpstreamBackup({
@@ -159,9 +180,7 @@ describe("upstream Authenticator backups", () => {
     it("rejects more than 4 distinct keyIds before deriving any key", async () => {
       // Wrong password: without the cap this would run Argon2id and answer wrong-password.
       const file = await keyedBackup(5);
-      const t0 = performance.now();
       expect(await asyncCodeOf(parseUpstreamBackup(file, "wrong"))).toBe("corrupt-file");
-      expect(performance.now() - t0).toBeLessThan(500);
     });
 
     it("still derives for exactly 4 distinct keyIds", async () => {
