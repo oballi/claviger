@@ -93,14 +93,12 @@
   transition: opacity 150ms ease;
 }
 
-.ov-row:hover,
-.ov-row:focus-visible {
+.ov-row:hover {
   background: var(--ov-hover);
   box-shadow: inset 0 0 0 1px var(--ov-hair);
 }
 
-.ov-row:hover::after,
-.ov-row:focus-visible::after {
+.ov-row:hover::after {
   opacity: 0;
 }
 

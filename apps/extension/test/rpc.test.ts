@@ -411,5 +411,12 @@ describe("listSnapshots rpc", () => {
       ctx,
     );
     expect(response).toMatchObject({ ok: false, error: { code: "forbidden" } });
+    const theme = await handleRpcMessage(
+      service,
+      { channel: RPC_CHANNEL, request: { type: "setTheme", theme: "dark" } },
+      { id: "ext-id", url: "https://evil.example/" },
+      ctx,
+    );
+    expect(theme).toMatchObject({ ok: false, error: { code: "forbidden" } });
   });
 });
