@@ -1,0 +1,24 @@
+{
+  "format": "otp-vault-export",
+  "version": 1,
+  "exportId": "fec619ae-0ace-4f3b-b7cf-1080113ff9d2",
+  "createdAt": 1700000000000,
+  "keyslots": [
+    {
+      "kind": "password",
+      "kdf": {
+        "alg": "argon2id",
+        "salt": "4D7g4xf1GTQBZjBH5X3YiQ==",
+        "memoryKiB": 1024,
+        "iterations": 1,
+        "parallelism": 1
+      },
+      "iv": "HhcQZOYQ9LZx8CKL",
+      "ct": "mgsqS5uGpjRL/EMNITaX1nVFdblizdPPPd41KF8NygQI3IOc86kAtpARYOyEDiEQ"
+    }
+  ],
+  "payload": {
+    "iv": "rwgEg870OGEk7r4B",
+    "ct": "YxCIHAT8Sl1pQKcLbicD/e98Iy3oqUePV7om4IF2atuTqA1NU7/Kbhte4MoH5sBPm34o0c6yLpbanJo5F71FfxUjsrUvmxbqudmnprZ9ebuUdpWB1eBlAIkZicbvuTQIJnNeImDJP7wSxleg7FnenI4LbXv7hZhVEulrDybtltrsZrxvHt8vGP4kt+48BpkmZfDnxT++sGYOrcI6/4wKYlEhRsR+hIGoiqZxHpQ6I6daYuI5ux7XJTZsxQ0b85x14PyCtAlGu/Pf6z8lvnUbSEbD6PbQuSPQV3vzyjYwVX+D1F6tMSb3Q4/h57pM+cK7hII7koBu1+jb/LbfhpDJMLZauAZKREzaWM/Qmv/X847BrCRR5HWDh+olpX5dhFvTZ+gyb7GHbqxIaSkadTUHdAW3/YIs0thOnbS0S6hAEXvrxvLdniLIQ22OaUjePk7FhdAXWEiHY1K0YaCQNxqdHuWUmquW/soYeTRCUn0zE/KaYz9oElGUW+siq+UTmu8eHoJ+44lNEK/IZ6ZW+per4RZUHHFrfmZU6mLJyIObUAr5cewPT9sPsz4XcA+2x0fcdkPqHK/N0cMUf/5NZBtJTqkmtUMqc5GJiAlzs2gBNUnv/hbxQCWRgF1cLnLwt5I0ROXa42pKCSEQC8ny1A2UHFXBX+5Rqvs="
+  }
+}
