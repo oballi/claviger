@@ -4,7 +4,7 @@
 
 [English](README.md)
 
-> **Durum: erken geliştirme (0.x).** otp-vault henüz hiçbir tarayıcı mağazasında yayınlanmadı. 1.0.0'a kadar yalnızca kaynak koddan kurulabilir. Uyumsuz değişiklikler olabilir; her zaman dışa aktarılmış bir yedeğin olsun.
+> **Durum: erken geliştirme (0.x).** otp-vault henüz hiçbir tarayıcı mağazasında yayınlanmadı. 0.1.0 etiketlendi, ancak 1.0.0'a kadar yalnızca kaynak koddan kurulabilir. Uyumsuz değişiklikler olabilir; her zaman dışa aktarılmış bir yedeğin olsun.
 
 ## Özellikler
 
@@ -18,12 +18,28 @@
   Dışa aktarmak ve güvenlik ayarlarını değiştirmek her zaman parolayı yeniden ister; gizli anahtarı göstermek de, sen bunu kapatmadıkça parola ister.
 
 - **Önce yerel.** Kasa varsayılan olarak tarayıcının yerel deposunda durur. Tarayıcı eşitlemesi isteğe bağlıdır ve oraya yalnızca şifreli veri yazılır.
-- **Siteyi tanır.** Hesaplar ait oldukları sitelere bağlanabilir; doğru kod en üstte görünür.
+- **Siteyi tanır.** Hesaplar ait oldukları sitelere bağlanabilir; doğru kod en üstte görünür. Açılır pencere, her sitede hangi hesabı kullandığını hatırlar ve ona göre sıralar.
+- **İstek üzerine doldurma.** Açılır penceredeki _Doldur_ düğmesi, Alt+Shift+O kısayolu veya sağ tık "Insert 2FA code" menüsü kodu açık sayfaya yazar. Yalnızca o siteye bağlı hesapları, yalnızca https sayfalarında doldurur; yazmadan hemen önce sayfayı yeniden denetler ve gizli anahtarı sayfaya vermez.
+- **QR kodlar.** Ekrandan QR kod tara (dondurulmuş görüntü, otomatik algılama veya alan seçimi) ya da bir resim dosyasından içe aktar. Çözme işlemi yerelde yapılır.
+- **Otomatik yerel kopyalar.** Bu cihazda her gün ve riskli değişikliklerden önce şifreli kopya alınır; son 7 tanesi saklanır. Geri yükleme yalnızca eksik hesapları ekler. Kasa boşsa geri yükleme önerilir; bozuk kasa silinmeden kenara alınabilir. Parola veya kurtarma kodu değişince bu kopyalar da yeniden anahtarlanır.
+- **Görünüm ve pano.** Normal, Kompakt ve Gizli görünüm modları. İstersen kod kopyalandıktan 30 sn veya 1 dk sonra pano temizlenir. Kurtarma kodunun saklandığı hiç onaylanmadıysa hatırlatma çıkar.
+- **Düzenleme.** Hesapları sürükle-bırak ile sırala; aynı adlı hesap eklerken uyarı gösterilir.
+- **İsteğe bağlı saat kontrolü.** Saatini tek bir HTTPS kaynağıyla (`www.google.com`) karşılaştırır. Varsayılan olarak kapalıdır; tarayıcı bu izni yalnızca o istek için sorar.
 - **İçe aktarma.** Google Authenticator, Authenticator eklentisi, Aegis, 2FAS ve düz `otpauth://` bağlantıları desteklenir. Neyin ekleneceği önce önizlemede gösterilir; zaten kayıtlı hesaplar kopyalanmaz.
 - **Yedekleme.** Önerilen yol şifreli `.otpvault` dosyasıdır. Başka bir uygulamaya geçmek için düz `otpauth://` listesi de alınabilir.
-- **Chrome ve Firefox** (Manifest V3). Yalnızca gereken izinler istenir; uzaktan kod, yazı tipi ya da analitik yoktur.
+- **Chrome ve Firefox** (Manifest V3; Chrome 116+, Firefox 140+). Yalnızca gereken izinler istenir; uzaktan kod, yazı tipi ya da analitik yoktur.
 
-Sonraki 0.x sürümleri için planlananlar: ekrandan QR tarama, istek üzerine otomatik doldurma, saat kayması kontrolü ve otomatik yerel yedekler. Sürüm politikası: [docs/versioning.md](docs/versioning.md).
+İsteğe bağlı saat kontrolü dışında (`www.google.com`'a bağlanır) hiçbir şey cihazından çıkmaz. Sürüm politikası: [docs/versioning.md](docs/versioning.md).
+
+## İzinler
+
+- `storage`: şifreli kasayı, kopyaları ve ayarları saklamak.
+- `alarms` ve `idle`: kilit zamanlayıcıları ve günlük yerel kopyalar.
+- `activeTab` ve `scripting`: kodu açık sayfaya yazmak; yalnızca sen istediğinde.
+- `clipboardWrite`: kodları kopyalamak.
+- `contextMenus`: sağ tık "Insert 2FA code" girişi.
+- `offscreen` (yalnızca Chrome): belge bağlamı gerektiren pano yazma ve temizleme.
+- İsteğe bağlı `www.google.com`: yalnızca saat kontrolü için istenir.
 
 ## Kaynak koddan derleme
 

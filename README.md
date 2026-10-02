@@ -4,19 +4,35 @@
 
 [Türkçe](README.tr.md)
 
-> **Status: early development (0.x).** otp-vault is not yet published in any browser store. Until 1.0.0 it can only be installed from source. Expect breaking changes; always keep an exported backup.
+> **Status: early development (0.x).** otp-vault is not yet published in any browser store. 0.1.0 is tagged, but until 1.0.0 it can only be installed from source. Expect breaking changes; always keep an exported backup.
 
 ## Features
 
 - **Encrypted vault.** Every account is encrypted with AES-256-GCM. The key is protected by your master password (Argon2id) and, optionally, a recovery code. See [docs/vault-format.md](docs/vault-format.md).
 - **You choose when it locks.** Lock when the browser closes, also when the screen locks, after 15 min / 1 h / 4 h of inactivity, or never. Exporting and changing security settings always ask for the password again; so does showing a secret key, unless you turn that off.
 - **Local first.** The vault lives in the browser's local storage by default. Browser sync is opt-in and only ever stores encrypted data.
-- **Site-aware.** Accounts can be linked to the sites they belong to, so the right code is shown first.
+- **Site-aware.** Accounts can be linked to the sites they belong to, so the right code is shown first. The popup remembers which account you use per site and orders by it.
+- **Fill on request.** The _Doldur_ (fill) button in the popup, the Alt+Shift+O shortcut or the right-click "Insert 2FA code" menu types the code into the current page. It only fills accounts linked to that site, only on https pages, re-checks the page right before writing, and never hands the secret to the page.
+- **QR codes.** Scan a QR code from the screen (frozen capture, automatic detection or area selection) or import one from an image file. Decoding happens locally.
+- **Automatic local copies.** Encrypted copies are made on this device daily and before risky changes; the last 7 are kept. Restoring only adds accounts that are missing. An empty vault offers a restore, and a corrupt vault can be moved aside without deleting it. Changing the password or recovery code re-keys these copies too.
+- **Display and clipboard.** Display modes Normal, Compact and Hidden. Optionally clear the clipboard 30 s or 1 min after copying a code. A reminder appears if a recovery code was never confirmed as saved.
+- **Organizing.** Reorder accounts by drag and drop; adding an account with an existing name shows a warning.
+- **Optional clock check.** Compares your clock with one HTTPS source (`www.google.com`). It is off by default and the browser asks for that permission only for the request.
 - **Imports** from Google Authenticator, the Authenticator extension, Aegis, 2FAS and plain `otpauth://` links. A preview shows exactly what will be added; duplicates are skipped.
 - **Backups.** Encrypted `.otpvault` export (recommended) or a plain `otpauth://` list for moving to another app.
-- **Chrome and Firefox** (Manifest V3), with minimal permissions and no remote code, fonts or analytics.
+- **Chrome and Firefox** (Manifest V3; Chrome 116+, Firefox 140+), with minimal permissions and no remote code, fonts or analytics.
 
-Planned for later 0.x releases: scanning QR codes from the screen, on-demand autofill, clock-drift check and automatic local snapshots. See [docs/versioning.md](docs/versioning.md) for the release policy.
+Nothing leaves your device, except the opt-in clock check, which contacts `www.google.com`. See [docs/versioning.md](docs/versioning.md) for the release policy.
+
+## Permissions
+
+- `storage`: keep the encrypted vault, copies and settings.
+- `alarms` and `idle`: lock timers and daily local copies.
+- `activeTab` and `scripting`: fill a code into the current page, only when you ask.
+- `clipboardWrite`: copy codes.
+- `contextMenus`: the right-click "Insert 2FA code" entry.
+- `offscreen` (Chrome only): clipboard writes and clearing, which need a document context.
+- Optional `www.google.com`: requested only for the clock check.
 
 ## Building from source
 
