@@ -104,6 +104,19 @@ Each value is a record like any other (`{ "v": 1, "iv": "...", "ct": "...", "upd
 
 Restoring creates a new account with a fresh id (the old id keeps its tombstone, so sync cannot resurrect it elsewhere). At most 100 entries and about 200 KB are kept; the oldest go first. Because the data key is unchanged by a password change, entries stay readable; a future data-key rotation must re-seal them. Removing an entry from the list does not touch the automatic vault copies (`snapshot:*`), which may still contain the account until they rotate out. Anyone with write access to `storage.local` can put back an older `trash:<uuid>` value; it decrypts and shows up again until its authenticated `deletedAt` expires, so the bin is a convenience, not a record of what was removed.
 
+## Device-local security record
+
+The lock policy and the "ask for the password to reveal a secret" setting are sealed under the data key in `storage.local` under the key `lock:policy`. The key is never written to `sync`, and because it has no `vault:` prefix it is not part of snapshots, exports or storage moves.
+
+The value is a record like any other (`{ "v": 1, "iv": "...", "ct": "...", "updatedAt": <ms> }`) with AAD `otp-vault/v1/lock:policy`. The plaintext is `{ "vaultId": "<id>", "lockPolicy": <policy>, "revealRequiresPassword": <boolean> }`. A record that is missing, does not open or names another vault is replaced by the safe default (lock when the browser closes, ask for the password to reveal). A future data-key rotation must re-seal this record.
+
+A plaintext copy of the policy is kept in the settings as a mirror. It may only tighten behaviour (trigger a lock), never relax the sealed value.
+
+## Accepted limitations
+
+- **L1: tombstones are not authenticated.** `vault:tomb:<uuid>` holds plain JSON. Someone who can write storage can delete one and replay an older account record, or roll an account back to an earlier authenticated version. They cannot read or forge records.
+- **L2: the data key is not rotated.** Changing the password or recovery code re-wraps the same data key. An old header copy plus the old password still opens data protected by that key. Rotation is planned after 1.0 and must also re-seal `trash:<uuid>` and `lock:policy`.
+
 ## Versioning rules
 
 - Any incompatible change to the header, records, index or tombstones increases `format`; the backup file has its own `version`.

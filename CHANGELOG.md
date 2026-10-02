@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+### Security
+
+- The lock policy and the "ask for the password to reveal" setting are now sealed under the data key. Preview users: they are re-sealed on first unlock, so "Never lock" and "do not ask for the password to reveal" must be chosen once again.
+- Upstream Authenticator imports cap the number of distinct keys, report malformed encrypted entries, and skip Aegis key slots with unreasonable scrypt parameters.
+- Moving the vault between storage areas verifies a canonical form of every record.
+- Copying a secret key clears the clipboard as configured.
+
+### Changed
+
+- The `fillCode` message was removed; filling goes through the shortcut and context menu only.
+- Legacy local keys (collapsed groups, theme cache) are validated, then removed even when the new key exists.
+
+### Fixed
+
+- An entry with the id `key` in an upstream backup is skipped only when it is the legacy key object; otherwise it is imported or reported.
+
 ## 0.1.0 — 2026-10-02
 
 ### Features
