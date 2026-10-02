@@ -3,12 +3,13 @@ import { fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { AddAccount } from "@claviger/ui/popup";
+import { QrImageTooLargeError } from "@claviger/ui/qr-limits";
 import { harness, renderUi } from "./helpers/ui";
 
 const SECRET = "JBSWY3DPEHPK3PXP";
 
-async function open(tabUrl?: string) {
-  const h = await harness({ tabUrl });
+async function open(tabUrl?: string, capabilities?: { qrScan: boolean }) {
+  const h = await harness({ tabUrl, capabilities });
   const onBack = vi.fn();
   const onAdded = vi.fn();
   renderUi(
@@ -180,5 +181,47 @@ describe("AddAccount", () => {
     await screen.findByText("Hane veya süre değeri geçersiz.");
     await vi.waitFor(() => expect(document.activeElement).toBe(period));
     expect(await accounts(h)).toHaveLength(0);
+  });
+
+  describe("pasted QR image", () => {
+    const png = () => new File(["x"], "qr.png", { type: "image/png" });
+    const paste = (files: File[]) =>
+      fireEvent.paste(document.body, { clipboardData: { files, types: ["Files"] } });
+
+    it("stores the capture without a site and opens the scan page", async () => {
+      const h = await open("https://github.com/");
+      paste([png()]);
+      await vi.waitFor(() => expect(h.ui.openScan).toHaveBeenCalledTimes(1));
+      expect(h.ui.imageToCapture).toHaveBeenCalledTimes(1);
+      const id = h.ui.openScan.mock.calls[0]![0];
+      expect(await h.ui.rpc("takeCapture", { id })).toEqual({
+        dataUrl: "data:image/png;base64,AAAA",
+        tabUrl: "",
+      });
+      expect(screen.getByText("Veya bir QR görselini buraya yapıştırın (Ctrl+V).")).toBeTruthy();
+    });
+
+    it("warns when the image is too large and stores nothing", async () => {
+      const h = await open();
+      h.ui.imageToCapture.mockRejectedValue(new QrImageTooLargeError());
+      paste([png()]);
+      expect(await screen.findByText("Görsel çok büyük.")).toBeTruthy();
+      expect(h.ui.openScan).not.toHaveBeenCalled();
+    });
+
+    it("ignores non-image pastes and the manual form", async () => {
+      const h = await open();
+      paste([new File(["x"], "a.txt", { type: "text/plain" })]);
+      await userEvent.click(screen.getByRole("button", { name: /Elle gir/ }));
+      paste([png()]);
+      expect(h.ui.imageToCapture).not.toHaveBeenCalled();
+    });
+
+    it("installs no listener and no hint without QR scanning", async () => {
+      const h = await open(undefined, { qrScan: false });
+      paste([png()]);
+      expect(h.ui.imageToCapture).not.toHaveBeenCalled();
+      expect(screen.queryByText(/Ctrl\+V/)).toBeNull();
+    });
   });
 });

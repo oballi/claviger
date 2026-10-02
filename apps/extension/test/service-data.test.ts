@@ -385,4 +385,43 @@ describe("groups in backups", () => {
     const out = await service.exportVault((await service.reauth(PASSWORD)).token, "otpauth");
     expect(out.content).not.toContain("Work");
   });
+
+  it("exports Aegis files that our importer reads, counting as a backup", async () => {
+    const { p, service } = await unlockedService();
+    const g = await service.createGroup("Work");
+    const { id } = await service.addAccount({ draft: { secret: SECRET, issuer: "GitHub" } });
+    await service.setAccountGroup(id, g.id);
+    await service.setPinned(id, true);
+
+    const plain = await service.exportVault((await service.reauth(PASSWORD)).token, "aegis-plain");
+    expect(plain.filename).toMatch(/^claviger-\d{4}-\d{2}-\d{2}\.aegis\.json$/);
+    expect(plain.count).toBe(1);
+    const plainJson = JSON.parse(plain.content);
+    expect(plainJson.db.groups[0].name).toBe("Work");
+    expect(plainJson.db.entries[0]).toMatchObject({ favorite: true, issuer: "GitHub" });
+    expect((await service.getState()).lastBackupAt).toBe(p.clock.now());
+
+    const enc = await service.exportVault(
+      (await service.reauth(PASSWORD)).token,
+      "aegis",
+      "aegis password",
+    );
+    expect(enc.content).not.toContain(SECRET);
+    const preview = await service.importPreview(enc.content, "aegis password");
+    expect(preview).toMatchObject({ status: "ok", format: "aegis" });
+  }, 30_000);
+
+  it("refuses the vault password for the encrypted Aegis export", async () => {
+    const { service } = await unlockedService();
+    const token = (await service.reauth(PASSWORD)).token;
+    const err = await service.exportVault(token, "aegis", PASSWORD).catch((e: unknown) => e);
+    expect((err as { code: string }).code).toBe("invalid-request");
+    expect((err as Error).message).not.toContain(PASSWORD);
+  });
+
+  it("requires a password for the encrypted Aegis export", async () => {
+    const { service } = await unlockedService();
+    const token = (await service.reauth(PASSWORD)).token;
+    expect(await codeOf(service.exportVault(token, "aegis"))).toBe("invalid-request");
+  });
 });

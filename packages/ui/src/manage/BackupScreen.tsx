@@ -7,20 +7,24 @@ import {
   type DragEvent,
   type ReactNode,
 } from "react";
+import { encodeBinaryImport } from "@claviger/core";
 import type { ServiceState, StorageUsageView } from "../contract/views";
-import { QrImageTooLargeError } from "../contract/qrLimits";
+import { MAX_IMAGE_BYTES, QrImageTooLargeError } from "../contract/qrLimits";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
+import { useImagePaste } from "../components/useImagePaste";
 import { NewPasswordFields, newPasswordProblem } from "../components/NewPasswordFields";
 import { ReauthForm } from "../components/ReauthForm";
 import { formatDate, isoDate } from "../format";
 import { useLocale, useT } from "../i18n/i18n";
 import { useUi } from "../platform";
 import { PageTitle, SettingsRow, SettingsSection } from "./ManageFrame";
+import { PhoneTransfer } from "./PhoneTransfer";
 import { SnapshotsSection } from "./SnapshotsSection";
 
 export const MAX_IMPORT_CHARS = 5_000_000;
-const MAX_IMAGE_BYTES = 20_000_000;
+// Base64 inflates by 4/3; keeps the transport text under MAX_IMPORT_CHARS.
+const MAX_BINARY_BYTES = 3_700_000;
 const MAX_IMPORT_FILES = 20;
 const OTP_TEXT = /^otpauth(-migration)?:/i;
 
@@ -35,7 +39,19 @@ export interface ImportSource {
   skippedImages?: string[];
 }
 
-const SOURCES = ["Google Authenticator", "Authenticator", "Aegis", "2FAS", "claviger"];
+const SOURCES = [
+  "Google Authenticator",
+  "Authenticator",
+  "Aegis",
+  "2FAS",
+  "Proton",
+  "Bitwarden",
+  "andOTP",
+  "FreeOTP+",
+  "Stratum",
+  "Raivo",
+  "claviger",
+];
 
 function Radio({
   name,
@@ -81,6 +97,16 @@ function Radio({
   );
 }
 
+type ExportFormat = "claviger" | "otpauth" | "aegis" | "aegis-plain";
+
+function GroupLabel({ children }: { children: ReactNode }) {
+  return (
+    <p className="m-0 mb-2 mt-5 font-mono text-[11px] uppercase tracking-wider text-muted first:mt-0">
+      {children}
+    </p>
+  );
+}
+
 /** Design board "Yönetim — yedekleme", plus the storage-area move (spec §7). */
 export function BackupScreen({
   state,
@@ -94,7 +120,7 @@ export function BackupScreen({
   const { rpc, download, decodeQr, capabilities } = useUi();
   const t = useT();
   const locale = useLocale();
-  const [format, setFormat] = useState<"claviger" | "otpauth">("claviger");
+  const [format, setFormat] = useState<ExportFormat>("claviger");
   const [custom, setCustom] = useState(false);
   const [exportPassword, setExportPassword] = useState("");
   const [exportConfirm, setExportConfirm] = useState("");
@@ -103,19 +129,21 @@ export function BackupScreen({
   const [exportResult, setExportResult] = useState<{ count: number; skipped: number } | null>(null);
   const [pasted, setPasted] = useState("");
   const [importError, setImportError] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
   const [usage, setUsage] = useState<StorageUsageView | null>(null);
   const [moving, setMoving] = useState(false);
   const [message, setMessage] = useState("");
+  const [transferring, setTransferring] = useState(false);
 
   const root = useRef<HTMLDivElement>(null);
   const focusAfter = useRef<string | null>(null);
 
   // Closing a panel hides its button; focus would otherwise fall to <body>.
   useEffect(() => {
-    if (moving || confirming || !focusAfter.current) return;
+    if (moving || confirming || transferring || !focusAfter.current) return;
     root.current?.querySelector<HTMLElement>(`[data-action="${focusAfter.current}"]`)?.focus();
     focusAfter.current = null;
-  }, [moving, confirming]);
+  }, [moving, confirming, transferring]);
 
   const loadUsage = useCallback(async () => {
     try {
@@ -129,9 +157,18 @@ export function BackupScreen({
     void loadUsage();
   }, [loadUsage]);
 
-  const customProblem = custom ? newPasswordProblem(t, exportPassword, exportConfirm) : null;
-  const ready = format === "claviger" ? !customProblem : plainAck;
-  const filename = `claviger-${isoDate(Date.now())}.${format === "claviger" ? "claviger" : "txt"}`;
+  const encrypted = format === "claviger" || format === "aegis";
+  // Aegis uses scrypt N=2^15, weaker than the vault's Argon2id, so it never reuses the vault password.
+  const useCustom = format === "aegis" || custom;
+  const customProblem = useCustom ? newPasswordProblem(t, exportPassword, exportConfirm) : null;
+  const ready = encrypted ? !customProblem : plainAck;
+  const extension = {
+    claviger: "claviger",
+    otpauth: "txt",
+    aegis: "aegis.json",
+    "aegis-plain": "aegis.json",
+  }[format];
+  const filename = `claviger-${isoDate(Date.now())}.${extension}`;
   const target = state.storageArea === "local" ? "sync" : "local";
 
   // Losing readiness (e.g. unticking the acknowledgement) must not strand the open panel.
@@ -148,7 +185,7 @@ export function BackupScreen({
     setExportConfirm("");
   }
 
-  function chooseFormat(next: "claviger" | "otpauth") {
+  function chooseFormat(next: ExportFormat) {
     setFormat(next);
     setConfirming(false);
     setPlainAck(false);
@@ -200,7 +237,25 @@ export function BackupScreen({
         return;
       }
       try {
-        parts.push(await file.text());
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        let text: string | null = null;
+        try {
+          text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+        } catch {
+          text = null;
+        }
+        if (text === null) {
+          // Binary backups (andOTP) travel as base64 text and must be chosen alone.
+          if (files.length > 1) {
+            setImportError(t("import.binarySingle"));
+            return;
+          }
+          if (bytes.length > MAX_BINARY_BYTES) {
+            setImportError(t("import.tooLarge"));
+            return;
+          }
+          parts.push(encodeBinaryImport(bytes));
+        } else parts.push(text);
       } catch {
         setImportError(t("import.unreadable"));
         return;
@@ -219,8 +274,14 @@ export function BackupScreen({
 
   function onDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
-    void readFiles(Array.from(event.dataTransfer.files));
+    setDragging(false);
+    const files = Array.from(event.dataTransfer.files);
+    // Dragging an image from a web page yields a URL, not a file; we have no network access to fetch it.
+    if (files.length === 0) setImportError(t("backup.dropNoFile"));
+    else void readFiles(files);
   }
+
+  useImagePaste((files) => void readFiles(files));
 
   const status =
     state.lastBackupAt === null ? (
@@ -252,6 +313,7 @@ export function BackupScreen({
       <SettingsSection num="01" title={t("backup.export")}>
         <fieldset className="m-0 flex flex-col border-0 p-0">
           <legend className="sr-only">{t("backup.format")}</legend>
+          <GroupLabel>{t("backup.groupEncrypted")}</GroupLabel>
           <Radio
             name="export-format"
             checked={format === "claviger"}
@@ -260,6 +322,14 @@ export function BackupScreen({
             hint={t("backup.encryptedHint")}
             badge={t("common.recommended")}
           />
+          <Radio
+            name="export-format"
+            checked={format === "aegis"}
+            onSelect={() => chooseFormat("aegis")}
+            title={t("backup.aegis")}
+            hint={t("backup.aegisHint")}
+          />
+          <GroupLabel>{t("backup.groupPlain")}</GroupLabel>
           <Radio
             name="export-format"
             checked={format === "otpauth"}
@@ -272,35 +342,49 @@ export function BackupScreen({
               </>
             }
           />
+          <Radio
+            name="export-format"
+            checked={format === "aegis-plain"}
+            onSelect={() => chooseFormat("aegis-plain")}
+            title={t("backup.aegisPlain")}
+            hint={
+              <>
+                <span className="text-warn">{t("backup.plainWarning")}</span>{" "}
+                {t("backup.aegisPlainHint")}
+              </>
+            }
+          />
         </fieldset>
 
         <div className="flex max-w-md flex-col gap-5 border-t border-hair py-5">
-          {format === "claviger" ? (
+          {encrypted ? (
             <>
-              <fieldset className="m-0 flex flex-col gap-1 border-0 p-0">
-                <legend className="sr-only">{t("backup.passwordChoice")}</legend>
-                <label className="flex min-h-11 items-center gap-2.5 text-sm">
-                  <input
-                    type="radio"
-                    name="export-password"
-                    checked={!custom}
-                    onChange={() => setCustom(false)}
-                    className="h-4 w-4 accent-[var(--ov-text)]"
-                  />
-                  {t("backup.useVault")}
-                </label>
-                <label className="flex min-h-11 items-center gap-2.5 text-sm">
-                  <input
-                    type="radio"
-                    name="export-password"
-                    checked={custom}
-                    onChange={() => setCustom(true)}
-                    className="h-4 w-4 accent-[var(--ov-text)]"
-                  />
-                  {t("backup.useCustom")}
-                </label>
-              </fieldset>
-              {custom ? (
+              {format === "claviger" ? (
+                <fieldset className="m-0 flex flex-col gap-1 border-0 p-0">
+                  <legend className="sr-only">{t("backup.passwordChoice")}</legend>
+                  <label className="flex min-h-11 items-center gap-2.5 text-sm">
+                    <input
+                      type="radio"
+                      name="export-password"
+                      checked={!custom}
+                      onChange={() => setCustom(false)}
+                      className="h-4 w-4 accent-[var(--ov-text)]"
+                    />
+                    {t("backup.useVault")}
+                  </label>
+                  <label className="flex min-h-11 items-center gap-2.5 text-sm">
+                    <input
+                      type="radio"
+                      name="export-password"
+                      checked={custom}
+                      onChange={() => setCustom(true)}
+                      className="h-4 w-4 accent-[var(--ov-text)]"
+                    />
+                    {t("backup.useCustom")}
+                  </label>
+                </fieldset>
+              ) : null}
+              {useCustom ? (
                 <NewPasswordFields
                   password={exportPassword}
                   confirm={exportConfirm}
@@ -350,11 +434,12 @@ export function BackupScreen({
             <div className="flex max-w-md flex-col gap-3">
               <ReauthForm
                 submitLabel={t("backup.downloadConfirm")}
+                errorKeys={{ "invalid-request": "backup.samePassword" }}
                 onConfirmed={async (token, password) => {
                   const file = await rpc(
                     "exportVault",
-                    format === "claviger"
-                      ? { token, format, exportPassword: custom ? exportPassword : password }
+                    encrypted
+                      ? { token, format, exportPassword: useCustom ? exportPassword : password }
                       : { token, format },
                   );
                   download(file.filename, file.content);
@@ -389,9 +474,13 @@ export function BackupScreen({
 
       <SettingsSection num="02" title={t("backup.import")}>
         <div
-          onDragOver={(e) => e.preventDefault()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
           onDrop={onDrop}
-          className="mt-5 flex flex-wrap items-center justify-center gap-4 border border-dashed border-line px-6 py-10 text-sm text-muted"
+          className={`mt-5 flex flex-wrap items-center justify-center gap-4 border border-dashed px-6 py-10 text-sm text-muted ${dragging ? "border-text bg-hair" : "border-line"}`}
         >
           <span>{t("backup.drop")}</span>
           <span>{t("backup.or")}</span>
@@ -402,7 +491,7 @@ export function BackupScreen({
               className="sr-only"
               multiple
               // .otpvault: files written by earlier previews
-              accept=".json,.txt,.2fas,.claviger,.otpvault,application/json,text/plain,image/png,image/jpeg,image/webp,image/gif"
+              accept=".json,.txt,.2fas,.claviger,.otpvault,.aes,.bin,application/json,text/plain,image/png,image/jpeg,image/webp,image/gif"
               onChange={(e) => {
                 const input = e.currentTarget;
                 void readFiles(Array.from(input.files ?? [])).finally(() => {
@@ -411,6 +500,7 @@ export function BackupScreen({
               }}
             />
           </label>
+          <span className="basis-full text-center text-xs">{t("backup.pasteImageHint")}</span>
         </div>
         <div className="flex flex-wrap items-center gap-2 py-5">
           <span className="text-xs text-muted">{t("backup.sources")}</span>
@@ -460,8 +550,37 @@ export function BackupScreen({
         </p>
       </SettingsSection>
 
+      <SettingsSection num="03" title={t("transfer.title")}>
+        <SettingsRow
+          title="Google Authenticator"
+          description={t("transfer.hint")}
+          action={
+            transferring ? null : (
+              <Button
+                data-action="transfer"
+                onClick={() => {
+                  setMessage("");
+                  setTransferring(true);
+                }}
+              >
+                {t("transfer.choose")}
+              </Button>
+            )
+          }
+        >
+          {transferring ? (
+            <PhoneTransfer
+              onClose={() => {
+                focusAfter.current = "transfer";
+                setTransferring(false);
+              }}
+            />
+          ) : null}
+        </SettingsRow>
+      </SettingsSection>
+
       {capabilities.storageArea ? (
-        <SettingsSection num="03" title={t("backup.storage")}>
+        <SettingsSection num="04" title={t("backup.storage")}>
           <SettingsRow
             title={state.storageArea === "sync" ? t("storage.sync") : t("storage.local")}
             description={usageText}
@@ -518,7 +637,7 @@ export function BackupScreen({
         </SettingsSection>
       ) : null}
 
-      <SnapshotsSection num={capabilities.storageArea ? "04" : "03"} onChanged={onChanged} />
+      <SnapshotsSection num={capabilities.storageArea ? "05" : "04"} onChanged={onChanged} />
     </div>
   );
 }

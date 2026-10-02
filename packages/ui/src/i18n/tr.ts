@@ -68,7 +68,8 @@ export const tr = {
   "add.manual": "Elle gir",
   "add.manualHint": "Kurulum anahtarını veya bir otpauth:// bağlantısını yapıştır.",
   "add.import": "İçe aktar",
-  "add.importHint": "Google Authenticator, Authenticator eklentisi, Aegis veya 2FAS yedeğinden.",
+  "add.importHint":
+    "Google Authenticator, Aegis, 2FAS, Bitwarden ve diğer uygulamaların yedeğinden.",
   "add.footer": 'Hesabı bağladığın sitede kod en üstte, "Bu site" altında görünür.',
   "add.manualTitle": "Elle gir.",
   "add.secret": "Kurulum anahtarı veya otpauth:// bağlantısı",
@@ -183,6 +184,7 @@ export const tr = {
   "snapshots.reason.before-restore": "Geri yüklemeden önce",
   "snapshots.reason.before-rebuild": "Onarmadan önce",
   "snapshots.reason.before-recovery": "Kurtarmadan önce",
+  "snapshots.reason.before-merge": "Yinelenenleri birleştirmeden önce",
   "error.not-found": "Bu kopya artık yok.",
   "error.not-linked": "Bu hesap bu siteye bağlı değil.",
   "error.invalid-group-name": "Grup adı 1–40 karakter olmalı.",
@@ -193,6 +195,8 @@ export const tr = {
   "error.snapshot-password-required": "Bu kopya başka bir kasaya ait; parolasını gir.",
   "add.qrRestricted":
     "Bu sayfada tarama yapılamaz; QR'ın ekran görüntüsünü dosya olarak içe aktar.",
+  "add.pasteHint": "Veya bir QR görselini buraya yapıştırın (Ctrl+V).",
+  "add.imageTooLarge": "Görsel çok büyük.",
   "trash.deleted": "{name} silindi",
   "trash.undo": "Geri al",
   "trash.restored": "{name} geri yüklendi",

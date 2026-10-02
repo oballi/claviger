@@ -38,5 +38,6 @@ describe("shared setting schemas", () => {
 
   it("keeps the snapshot reasons in one place", () => {
     expect(SNAPSHOT_REASONS).toContain("before-recovery");
+    expect(SNAPSHOT_REASONS).toContain("before-merge");
   });
 });

@@ -93,6 +93,18 @@ describe("parseOtpauthUri", () => {
 });
 
 describe("toOtpauthUri", () => {
+  it("writes Steam with the steam host and round-trips", () => {
+    const steam = normalizeAccountInput({
+      type: "steam",
+      secret: "JRZCL47CMXVOQMNPZR2F7J4RGI",
+      issuer: "Steam",
+      label: "gaben",
+    });
+    const uri = toOtpauthUri(steam);
+    expect(uri.startsWith("otpauth://steam/")).toBe(true);
+    expect(parseOtpauthUri(uri)).toEqual(steam);
+  });
+
   it("round-trips through parseOtpauthUri", () => {
     const text = fc.string({ maxLength: 20 }).map((s) => s.trim());
     fc.assert(

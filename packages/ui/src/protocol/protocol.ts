@@ -1,6 +1,8 @@
 import "./zodConfig";
 import { z } from "zod";
+import { MAX_CAPTURE_CHARS } from "../contract/qrLimits";
 import type {
+  DuplicateGroupView,
   AccountListView,
   ImportPreviewView,
   ServiceState,
@@ -66,7 +68,11 @@ export const rpcRequestSchema = z.discriminatedUnion("type", [
     password: password.optional(),
   }),
   z.object({ type: z.literal("quarantineVault") }),
-  z.object({ type: z.literal("listAccounts"), pageUrl: url.optional() }),
+  z.object({
+    type: z.literal("listAccounts"),
+    pageUrl: url.optional(),
+    passive: z.boolean().optional(),
+  }),
   z.object({
     type: z.literal("addAccountUri"),
     uri: url,
@@ -83,6 +89,13 @@ export const rpcRequestSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("deleteAccount"), id }),
   z.object({ type: z.literal("listTrash") }),
   z.object({ type: z.literal("restoreTrash"), id }),
+  z.object({ type: z.literal("listDuplicates") }),
+  z.object({
+    type: z.literal("mergeAccounts"),
+    keepId: id,
+    removeIds: z.array(id).min(1).max(50),
+  }),
+  z.object({ type: z.literal("undoMerge"), undoId: id }),
   z.object({ type: z.literal("purgeTrash"), id }),
   z.object({ type: z.literal("emptyTrash") }),
   // Core does the real name validation; these caps only bound the message.
@@ -118,9 +131,10 @@ export const rpcRequestSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("exportVault"),
     token,
-    format: z.enum(["claviger", "otpauth"]),
+    format: z.enum(["claviger", "otpauth", "aegis", "aegis-plain"]),
     exportPassword: password.optional(),
   }),
+  z.object({ type: z.literal("exportMigration"), token, ids: z.array(id).min(1).max(10_000) }),
   z.object({ type: z.literal("changePassword"), token, newPassword: password }),
   z.object({ type: z.literal("createRecoveryCode"), token }),
   z.object({ type: z.literal("setLockPolicy"), token, policy: lockPolicySchema }),
@@ -145,7 +159,11 @@ export const rpcRequestSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("setClockCheckEnabled"), enabled: z.boolean() }),
   // The service re-checks the prefix; this cap only bounds the message before it gets there.
-  z.object({ type: z.literal("storeCapture"), dataUrl: z.string().max(32_000_000), tabUrl: url }),
+  z.object({
+    type: z.literal("storeCapture"),
+    dataUrl: z.string().max(MAX_CAPTURE_CHARS),
+    tabUrl: url,
+  }),
   z.object({ type: z.literal("takeCapture"), id: z.string().min(1).max(64) }),
 ]);
 
@@ -169,6 +187,9 @@ export interface RpcResults {
   deleteAccount: null;
   listTrash: TrashItemView[];
   restoreTrash: { id: string; name: string };
+  listDuplicates: { groups: DuplicateGroupView[] };
+  mergeAccounts: { removed: string[]; undoId: string };
+  undoMerge: { restored: number };
   purgeTrash: null;
   emptyTrash: { removed: number };
   createGroup: { id: string; name: string };
@@ -190,6 +211,7 @@ export interface RpcResults {
   confirmRecoveryCode: null;
   clipboardCopied: null;
   exportVault: { filename: string; content: string; count: number; skipped: number };
+  exportMigration: { uris: string[]; skipped: { name: string; reason: string }[] };
   changePassword: null;
   createRecoveryCode: { recoveryCode: string };
   setLockPolicy: null;

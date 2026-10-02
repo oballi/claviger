@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { BackupScreen, type ImportSource, ImportScreen } from "@claviger/ui/manage";
+import { encodeBinaryImport } from "@claviger/core";
 import { harness, renderUi, type Harness } from "./helpers/ui";
 import { PASSWORD } from "./helpers/service";
 import { migrationUri } from "./helpers/qr";
@@ -156,6 +157,27 @@ describe("BackupScreen import", () => {
     );
   });
 
+  it("sends a non-UTF-8 file as claviger-binary base64", async () => {
+    const { onImport } = await open();
+    const bytes = Uint8Array.from([0, 0, 3, 232, 0xff, 0xfe, 0x80, 0x90]);
+    await userEvent.upload(screen.getByLabelText("Dosya seç"), new File([bytes], "b.json.aes"));
+    await vi.waitFor(() => expect(onImport).toHaveBeenCalled());
+    expect(onImport.mock.calls[0]![0]).toEqual({
+      text: encodeBinaryImport(bytes),
+      name: "b.json.aes",
+    });
+  });
+
+  it("refuses a binary file picked together with others", async () => {
+    const { onImport } = await open();
+    await userEvent.upload(screen.getByLabelText("Dosya seç"), [
+      new File([Uint8Array.from([0xff, 0xfe])], "b.aes"),
+      new File([ACME], "codes.txt"),
+    ]);
+    expect(await screen.findByText("İkili yedekleri (andOTP) tek tek seçin.")).toBeTruthy();
+    expect(onImport).not.toHaveBeenCalled();
+  });
+
   it("accepts a dropped file and pasted text", async () => {
     const { onImport } = await open();
     const file = new File([ACME], "drop.txt", { type: "text/plain" });
@@ -286,6 +308,49 @@ describe("BackupScreen QR images", () => {
   });
 });
 
+describe("BackupScreen pasted and dropped images", () => {
+  const png = (name = "qr.png", size?: number) => {
+    const file = new File(["x"], name, { type: "image/png" });
+    if (size) Object.defineProperty(file, "size", { value: size });
+    return file;
+  };
+  const paste = (files: File[], target: Element = document.body) =>
+    fireEvent.paste(target, { clipboardData: { files, types: ["Files"] } });
+
+  it("decodes an image pasted anywhere on the page", async () => {
+    const hh = await harness();
+    hh.ui.decodeQr.mockResolvedValue([ACME]);
+    const { onImport } = await open(hh);
+    paste([png()]);
+    await vi.waitFor(() => expect(onImport).toHaveBeenCalledWith({ text: ACME, name: "qr.png" }));
+    expect(hh.ui.decodeQr).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves pastes into the text box alone", async () => {
+    const { ui, onImport } = await open();
+    await userEvent.click(screen.getByText("Metin yapıştır"));
+    paste([png()], screen.getByLabelText("Yedek metni veya otpauth:// bağlantıları"));
+    expect(ui.decodeQr).not.toHaveBeenCalled();
+    expect(onImport).not.toHaveBeenCalled();
+  });
+
+  it("reports pasted images over the size limit", async () => {
+    const { ui } = await open();
+    paste([png("big.png", 20_000_001)]);
+    expect(await screen.findByText("Görsel çok büyük.")).toBeTruthy();
+    expect(ui.decodeQr).not.toHaveBeenCalled();
+  });
+
+  it("warns when a link is dropped instead of a file", async () => {
+    const { onImport } = await open();
+    fireEvent.drop(screen.getByText("Yedek dosyasını buraya bırak").parentElement!, {
+      dataTransfer: { files: [] },
+    });
+    expect(await screen.findByText("Bağlantı değil, bir görsel dosyası bırakın.")).toBeTruthy();
+    expect(onImport).not.toHaveBeenCalled();
+  });
+});
+
 describe("BackupScreen storage", () => {
   it("moves the vault to browser sync after the password and shows the quota", async () => {
     const { ui, onChanged } = await open();
@@ -300,6 +365,76 @@ describe("BackupScreen storage", () => {
     expect(await within(storage).findByText(/KB \/ 100 KB kullanılıyor/)).toBeTruthy();
     expect((await ui.rpc("getState", {})).storageArea).toBe("sync");
     expect(onChanged).toHaveBeenCalled();
+  });
+});
+
+describe("BackupScreen Aegis export", () => {
+  it("groups the formats and offers both Aegis variants", async () => {
+    await open();
+    const exporting = region("Dışa aktar");
+    expect(within(exporting).getByText("Şifreli")).toBeTruthy();
+    expect(within(exporting).getByText("Düz (şifresiz)")).toBeTruthy();
+    expect(within(exporting).getByRole("radio", { name: "Aegis (şifreli)" })).toBeTruthy();
+    expect(within(exporting).getByRole("radio", { name: "Aegis (düz JSON)" })).toBeTruthy();
+  });
+
+  it("forces a custom password for the encrypted Aegis export", async () => {
+    const { ui } = await open();
+    const exporting = region("Dışa aktar");
+    await userEvent.click(within(exporting).getByRole("radio", { name: "Aegis (şifreli)" }));
+    expect(within(exporting).getByText(/^claviger-.*\.aegis\.json$/)).toBeTruthy();
+    expect(within(exporting).queryByRole("radio", { name: "Kasa parolasını kullan" })).toBeNull();
+    const download = within(exporting).getByRole("button", { name: "Yedeği indir" });
+    expect(download).toHaveProperty("disabled", true);
+    await userEvent.type(within(exporting).getByLabelText("Yedek parolası"), "aegis long pass");
+    await userEvent.type(
+      within(exporting).getByLabelText("Yedek parolasını tekrar gir"),
+      "aegis long pass",
+    );
+    await userEvent.click(download);
+    await confirmPassword(exporting, "İndir");
+    await screen.findByText("Yedek indirildi: 1 hesap.");
+    const [filename, content] = ui.download.mock.calls[0]!;
+    expect(filename).toMatch(/\.aegis\.json$/);
+    expect(
+      await ui.rpc("importPreview", { text: content, password: "aegis long pass" }),
+    ).toMatchObject({ status: "ok", format: "aegis" });
+  }, 30_000);
+
+  it("tells the user to pick a password different from the vault password", async () => {
+    const { ui } = await open();
+    const exporting = region("Dışa aktar");
+    await userEvent.click(within(exporting).getByRole("radio", { name: "Aegis (şifreli)" }));
+    await userEvent.type(within(exporting).getByLabelText("Yedek parolası"), PASSWORD);
+    await userEvent.type(within(exporting).getByLabelText("Yedek parolasını tekrar gir"), PASSWORD);
+    await userEvent.click(within(exporting).getByRole("button", { name: "Yedeği indir" }));
+    await confirmPassword(exporting, "İndir");
+    expect(
+      await within(exporting).findByText(
+        "Bu dışa aktarma için kasa parolasından farklı bir parola kullan.",
+      ),
+    ).toBeTruthy();
+    expect(ui.download).not.toHaveBeenCalled();
+  }, 30_000);
+
+  it("needs the acknowledgement for the plain Aegis export", async () => {
+    const { ui } = await open();
+    const exporting = region("Dışa aktar");
+    await userEvent.click(within(exporting).getByRole("radio", { name: "Aegis (düz JSON)" }));
+    const download = within(exporting).getByRole("button", { name: "Yedeği indir" });
+    expect(download).toHaveProperty("disabled", true);
+    expect(within(exporting).queryByLabelText("Yedek parolası")).toBeNull();
+    await userEvent.click(
+      within(exporting).getByRole("checkbox", {
+        name: "Gizli anahtarların açıkta olacağını anlıyorum",
+      }),
+    );
+    await userEvent.click(download);
+    await confirmPassword(exporting, "İndir");
+    await screen.findByText("Yedek indirildi: 1 hesap.");
+    const [filename, content] = ui.download.mock.calls[0]!;
+    expect(filename).toMatch(/\.aegis\.json$/);
+    expect(JSON.parse(content).header.slots).toBeNull();
   });
 });
 
@@ -612,7 +747,7 @@ describe("BackupScreen fix round 1", () => {
   it("shows an alert when the file cannot be read", async () => {
     const { onImport } = await open();
     const file = new File([ACME], "codes.txt");
-    Object.defineProperty(file, "text", { value: () => Promise.reject(new Error("boom")) });
+    Object.defineProperty(file, "arrayBuffer", { value: () => Promise.reject(new Error("boom")) });
     await userEvent.upload(screen.getByLabelText("Dosya seç"), file);
     expect(await screen.findByText("Dosya okunamadı.")).toBeTruthy();
     expect(onImport).not.toHaveBeenCalled();
@@ -656,7 +791,7 @@ describe("BackupScreen without a storage area", () => {
     );
     expect(screen.queryByRole("region", { name: "Depolama" })).toBeNull();
     const copies = region("Otomatik kopyalar");
-    expect(within(copies).getByText("03")).toBeTruthy();
-    expect(within(copies).queryByText("04")).toBeNull();
+    expect(within(copies).getByText("04")).toBeTruthy();
+    expect(within(copies).queryByText("05")).toBeNull();
   });
 });

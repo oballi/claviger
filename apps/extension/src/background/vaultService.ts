@@ -1,10 +1,16 @@
 import {
   buildImportPreview,
+  buildMigrationUris,
   canonicalJson,
   CLOCK_OFFSET_THRESHOLD_SEC,
   computeClockOffset,
+  eligibleKeepers,
+  findDuplicateGroups,
+  isExactDuplicate,
+  pickKeeper,
   exportOtpauthText,
   exportClaviger,
+  exportAegis,
   generateCode,
   HEADER_KEY,
   isVaultKey,
@@ -26,6 +32,7 @@ import {
 } from "@claviger/core";
 import type {
   AccountListView,
+  DuplicateGroupView,
   AccountView,
   FillOutcome,
   GroupView,
@@ -38,6 +45,7 @@ import type {
   TrashItemView,
 } from "@claviger/ui/views";
 import { TRASH_RETENTION_DAYS } from "@claviger/ui/views";
+import { MAX_CAPTURE_CHARS } from "@claviger/ui/qr-limits";
 import type { Platform, StorageAreaName } from "../platform/ports";
 import { ServiceError } from "./errors";
 import {
@@ -81,7 +89,7 @@ export const MIN_PASSWORD_LENGTH = 8;
 export const TOKEN_TTL_MS = 60_000;
 export const PREVIEW_TTL_MS = 10 * 60_000;
 export const CAPTURE_TTL_MS = 60_000;
-export const CAPTURE_MAX_CHARS = 32_000_000;
+export const MERGE_UNDO_MS = 60_000;
 const CAPTURE_PREFIX = "data:image/png;base64,";
 /** A slower round trip makes the midpoint too uncertain. */
 export const MAX_CLOCK_SAMPLE_MS = 10_000;
@@ -141,6 +149,8 @@ export class VaultService {
   // Screen captures hold QR secrets: memory only, one at a time, never written to storage.
   private capture: { id: string; dataUrl: string; tabUrl: string; expiresAt: number } | null = null;
   private captureTimer: ReturnType<typeof setTimeout> | undefined;
+  // Merge undo offers: memory only, short-lived, dropped on lock.
+  private readonly mergeUndos = new Map<string, { ids: string[]; expiresAt: number }>();
   private readonly previews = new Map<
     string,
     {
@@ -334,10 +344,11 @@ export class VaultService {
     }
   }
 
-  protected async requireVault(): Promise<Vault> {
+  /** `touch: false` is for background polling, which is not user activity. */
+  protected async requireVault(opts: { touch?: boolean } = {}): Promise<Vault> {
     const vault = await this.ensureLoaded();
     if (!vault) throw new ServiceError("locked", "The vault is locked");
-    await this.touch();
+    if (opts.touch !== false) await this.touch();
     return vault;
   }
 
@@ -612,6 +623,7 @@ export class VaultService {
   protected onLock(): void {
     this.tokens.clear();
     this.previews.clear();
+    this.mergeUndos.clear();
     this.dropCapture();
   }
 
@@ -626,7 +638,7 @@ export class VaultService {
     await this.requireVault();
     if (epoch !== this.lockEpoch)
       throw new ServiceError("locked", "The vault was locked meanwhile");
-    if (!input.dataUrl.startsWith(CAPTURE_PREFIX) || input.dataUrl.length > CAPTURE_MAX_CHARS) {
+    if (!input.dataUrl.startsWith(CAPTURE_PREFIX) || input.dataUrl.length > MAX_CAPTURE_CHARS) {
       throw new ServiceError("invalid-request", "Unsupported capture");
     }
     this.dropCapture();
@@ -725,8 +737,8 @@ export class VaultService {
       await this.lock();
   }
 
-  async listAccounts(opts: { pageUrl?: string } = {}): Promise<AccountListView> {
-    const vault = await this.requireVault();
+  async listAccounts(opts: { pageUrl?: string; passive?: boolean } = {}): Promise<AccountListView> {
+    const vault = await this.requireVault({ touch: !opts.passive });
     const { clockOffsetSec } = await this.settings();
     const listing = await vault.listAccounts();
     const now = this.p.clock.now();
@@ -867,6 +879,102 @@ export class VaultService {
     return this.exclusive(async () => {
       const restored = await (await this.requireVault()).restoreFromTrash(id);
       return { id: restored.id, name: restored.issuer || restored.label };
+    });
+  }
+
+  listDuplicates(): Promise<{ groups: DuplicateGroupView[] }> {
+    return this.exclusive(async () => {
+      const { accounts, pinned } = await (await this.requireVault()).listAccounts();
+      const byId = new Map(accounts.map((a) => [a.id, a]));
+      const pins = new Set(pinned);
+      const groups = findDuplicateGroups(accounts).map((g): DuplicateGroupView => {
+        if (g.kind !== "exact") return { ...g, keepId: null, ineligible: [] };
+        const members = g.ids.map((id) => byId.get(id)!);
+        const ok = new Set(eligibleKeepers(members).map((a) => a.id));
+        return {
+          ...g,
+          keepId: pickKeeper(members, pins).id,
+          ineligible: g.ids.filter((id) => !ok.has(id)),
+        };
+      });
+      return { groups };
+    });
+  }
+
+  /** Only exact copies merge. The removed ones land in Recently deleted; the keeper's edits are not undone by undoMerge. */
+  mergeAccounts(
+    keepId: string,
+    removeIds: string[],
+  ): Promise<{ removed: string[]; undoId: string }> {
+    return this.exclusive(async () => {
+      const vault = await this.requireVault();
+      const { accounts, pinned } = await vault.listAccounts();
+      const byId = new Map(accounts.map((a) => [a.id, a]));
+      const keeper = byId.get(keepId);
+      const ids = [...new Set(removeIds)];
+      const copies = ids.map((id) => byId.get(id));
+      const refuse = () => new ServiceError("invalid-request", "These accounts cannot be merged");
+      if (!keeper || ids.length === 0 || ids.length > 50) throw refuse();
+      const found: Account[] = [];
+      for (const c of copies) {
+        if (!c || c.id === keepId || !isExactDuplicate(keeper, c)) throw refuse();
+        found.push(c);
+      }
+      // An HOTP counter must never move backwards.
+      if (!eligibleKeepers([keeper, ...found]).some((a) => a.id === keepId)) throw refuse();
+
+      await this.snapshot("before-merge");
+      const first = <K extends "issuer" | "label" | "groupId">(k: K) =>
+        keeper[k] || found.find((c) => c[k])?.[k];
+      const groupId = first("groupId");
+      await vault.updateAccount(keepId, {
+        domains: [...new Set([...keeper.domains, ...found.flatMap((c) => c.domains)])],
+        issuer: first("issuer") ?? "",
+        label: first("label") ?? "",
+        ...(groupId && groupId !== keeper.groupId ? { groupId } : {}),
+      });
+      if (!pinned.includes(keepId) && found.some((c) => pinned.includes(c.id)))
+        await vault.setPinned(keepId, true);
+
+      const removed: string[] = [];
+      for (const copy of found) {
+        await vault.deleteAccount(copy.id);
+        removed.push(copy.id);
+      }
+      const undoId = this.p.random.uuid();
+      this.pruneMergeUndos();
+      this.mergeUndos.set(undoId, {
+        ids: removed,
+        expiresAt: this.p.clock.now() + MERGE_UNDO_MS,
+      });
+      return { removed, undoId };
+    });
+  }
+
+  private pruneMergeUndos(): void {
+    const now = this.p.clock.now();
+    for (const [key, offer] of this.mergeUndos)
+      if (offer.expiresAt < now) this.mergeUndos.delete(key);
+  }
+
+  undoMerge(undoId: string): Promise<{ restored: number }> {
+    return this.exclusive(async () => {
+      const vault = await this.requireVault();
+      this.pruneMergeUndos();
+      const offer = this.mergeUndos.get(undoId);
+      if (!offer) throw new ServiceError("not-found", "This merge can no longer be undone");
+      this.mergeUndos.delete(undoId);
+      let restored = 0;
+      for (const id of offer.ids) {
+        try {
+          await vault.restoreFromTrash(id, { allowDuplicate: true });
+          restored++;
+        } catch (e) {
+          // A copy purged or expired meanwhile must not block the others.
+          if (!isCoreError(e) || e.code !== "trash-entry-not-found") throw e;
+        }
+      }
+      return { restored };
     });
   }
 
@@ -1076,20 +1184,24 @@ export class VaultService {
 
   async exportVault(
     token: string,
-    format: "claviger" | "otpauth",
+    format: "claviger" | "otpauth" | "aegis" | "aegis-plain",
     exportPassword?: string,
   ): Promise<{ filename: string; content: string; count: number; skipped: number }> {
-    if (format === "claviger") assertPassword(exportPassword ?? "");
+    if (format === "claviger" || format === "aegis") assertPassword(exportPassword ?? "");
     return this.exclusive(async () => {
       const vault = await this.spendToken(token);
-      const { accounts, unreadable, groups } = await vault.listAccounts();
+      // An export under the vault password would hand its key material to a file that leaves the vault.
+      if (format === "aegis" && (await vault.verifyPassword(exportPassword ?? "")))
+        throw new ServiceError("invalid-request", "Use a different password for this export");
+      const { accounts, unreadable, groups, pinned } = await vault.listAccounts();
       // The user's calendar day: a UTC date would name an evening export after tomorrow (or yesterday).
       const now = new Date(this.p.clock.now());
       const pad = (n: number) => String(n).padStart(2, "0");
       const date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-      const result =
-        format === "claviger"
-          ? {
+      const result = await (async () => {
+        switch (format) {
+          case "claviger":
+            return {
               filename: `claviger-${date}.claviger`,
               content: await exportClaviger(
                 accounts,
@@ -1097,10 +1209,47 @@ export class VaultService {
                 { random: this.p.random, clock: this.p.clock, kdf: this.p.kdf },
                 groups,
               ),
-            }
-          : { filename: `claviger-${date}.txt`, content: exportOtpauthText(accounts) };
+            };
+          case "aegis":
+          case "aegis-plain":
+            return {
+              filename: `claviger-${date}.aegis.json`,
+              content: await exportAegis(
+                accounts,
+                groups,
+                {
+                  pinned: new Set(pinned),
+                  ...(format === "aegis" ? { password: exportPassword } : {}),
+                },
+                { random: this.p.random },
+              ),
+            };
+          default:
+            return { filename: `claviger-${date}.txt`, content: exportOtpauthText(accounts) };
+        }
+      })();
       await saveSettings(this.p.local, { lastBackupAt: this.p.clock.now() });
       return { ...result, count: accounts.length, skipped: unreadable.length };
+    });
+  }
+
+  // Not a backup: lastBackupAt stays untouched, and nothing is persisted.
+  exportMigration(
+    token: string,
+    ids: string[],
+  ): Promise<{ uris: string[]; skipped: { name: string; reason: string }[] }> {
+    return this.exclusive(async () => {
+      const vault = await this.spendToken(token);
+      const { accounts } = await vault.listAccounts();
+      const byId = new Map(accounts.map((a) => [a.id, a]));
+      const selected = [...new Set(ids)].map((id) => {
+        const account = byId.get(id);
+        if (!account) throw new ServiceError("not-found", "No such account");
+        return account;
+      });
+      const batchId = new DataView(this.p.random.bytes(4).buffer).getUint32(0) & 0x7fffffff || 1;
+      const { uris, skipped } = buildMigrationUris(selected, { batchId });
+      return { uris, skipped: skipped.map(({ name, reason }) => ({ name, reason })) };
     });
   }
 

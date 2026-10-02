@@ -188,6 +188,17 @@ describe("restore", () => {
     expect((await vault.listAccounts()).accounts).toHaveLength(1);
   });
 
+  it("allowDuplicate restores next to a live copy under a new id", async () => {
+    const { vault } = await setup();
+    const a = await add(vault, "A");
+    await vault.deleteAccount(a.id);
+    const live = await add(vault, "A again", SECRET);
+    const restored = await vault.restoreFromTrash(a.id, { allowDuplicate: true });
+    expect(restored.id).not.toBe(a.id);
+    expect((await vault.listAccounts()).accounts.map((x) => x.id)).toEqual([live.id, restored.id]);
+    expect(await vault.listTrash()).toEqual([]);
+  });
+
   it("two simultaneous restores yield exactly one account", async () => {
     const { vault } = await setup();
     const a = await add(vault, "A");

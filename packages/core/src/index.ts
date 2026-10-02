@@ -20,6 +20,14 @@ export {
   type AccountDraft,
   type AccountInput,
 } from "./account/account";
+export {
+  eligibleKeepers,
+  findDuplicateGroups,
+  isExactDuplicate,
+  pickKeeper,
+  type DuplicateGroup,
+  type DuplicateKind,
+} from "./account/duplicates";
 export { parseOtpauthUri, toOtpauthUri } from "./uri/otpauth";
 
 export { DEFAULT_ARGON2, type Argon2Params } from "./crypto/kdf";
@@ -45,9 +53,16 @@ export { canonicalJson } from "./vault/canonical";
 
 export type { ImportIssue, ImportIssueReason, ImportResult } from "./importers/types";
 export { parseImport, type ImportFormat, type ImportParseOutcome } from "./importers";
+export { encodeBinaryImport } from "./importers/binary";
 export { buildImportPreview, type PreviewItem } from "./importers/preview";
 export { parseGoogleMigrationUri, type MigrationBatch } from "./importers/googleMigration";
 export { parseOtpauthText } from "./importers/otpauthText";
 
 export { EXPORT_FORMAT, exportClaviger } from "./exporters/claviger";
 export { exportOtpauthText } from "./exporters/otpauthText";
+export { exportAegis } from "./exporters/aegis";
+export {
+  buildMigrationUris,
+  type MigrationOptions,
+  type MigrationSkip,
+} from "./exporters/googleMigration";

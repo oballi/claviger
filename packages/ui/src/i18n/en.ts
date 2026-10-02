@@ -70,7 +70,8 @@ export const en: Record<PopupKey, string> = {
   "add.manual": "Enter manually",
   "add.manualHint": "Paste the setup key or an otpauth:// link.",
   "add.import": "Import",
-  "add.importHint": "From a Google Authenticator, Authenticator extension, Aegis or 2FAS backup.",
+  "add.importHint":
+    "From the backup of Google Authenticator, Aegis, 2FAS, Bitwarden and other apps.",
   "add.footer": 'Codes for the site an account is linked to appear first, under "This site".',
   "add.manualTitle": "Enter manually.",
   "add.secret": "Setup key or otpauth:// link",
@@ -186,6 +187,7 @@ export const en: Record<PopupKey, string> = {
   "snapshots.reason.before-restore": "Before restore",
   "snapshots.reason.before-rebuild": "Before repair",
   "snapshots.reason.before-recovery": "Before recovery",
+  "snapshots.reason.before-merge": "Before merging duplicates",
   "error.not-found": "This copy no longer exists.",
   "error.not-linked": "This account is not linked to this site.",
   "error.invalid-group-name": "A group name needs 1–40 characters.",
@@ -196,6 +198,8 @@ export const en: Record<PopupKey, string> = {
   "error.snapshot-password-required": "This copy belongs to another vault; enter its password.",
   "add.qrRestricted":
     "This page can't be scanned; import a screenshot of the QR code as a file instead.",
+  "add.pasteHint": "Or paste a QR image here (Ctrl+V).",
+  "add.imageTooLarge": "The image is too large.",
   "trash.deleted": "{name} deleted",
   "trash.undo": "Undo",
   "trash.restored": "{name} restored",

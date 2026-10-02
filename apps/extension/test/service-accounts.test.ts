@@ -152,6 +152,35 @@ describe("listing", () => {
     expect(p.alarms.scheduled.get(AUTOLOCK_ALARM)).toBe(p.clock.now() + 15 * 60_000);
   });
 
+  it("does not postpone the auto-lock for passive polling, but does for real calls", async () => {
+    const { p, service } = await unlockedService(memoryPlatform(), {
+      kind: "timeout",
+      minutes: 15,
+    });
+    const due = p.alarms.scheduled.get(AUTOLOCK_ALARM)!;
+    for (let i = 0; i < 16; i++) {
+      p.clock.advance(60_000);
+      await service.listAccounts({ passive: true });
+    }
+    expect(p.alarms.scheduled.get(AUTOLOCK_ALARM)).toBe(due);
+    expect(p.clock.now()).toBeGreaterThanOrEqual(due);
+    await service.handleAlarm(AUTOLOCK_ALARM);
+    expect(await codeOf(service.listAccounts({ passive: true }))).toBe("locked");
+  });
+
+  it("keeps the vault unlocked while non-passive calls arrive", async () => {
+    const { p, service } = await unlockedService(memoryPlatform(), {
+      kind: "timeout",
+      minutes: 15,
+    });
+    for (let i = 0; i < 16; i++) {
+      p.clock.advance(60_000);
+      await service.listAccounts();
+    }
+    expect(p.alarms.scheduled.get(AUTOLOCK_ALARM)).toBe(p.clock.now() + 15 * 60_000);
+    expect(p.alarms.scheduled.get(AUTOLOCK_ALARM)!).toBeGreaterThan(p.clock.now());
+  });
+
   it("clears the timeout alarm on lock", async () => {
     const { p, service } = await unlockedService(memoryPlatform(), {
       kind: "timeout",

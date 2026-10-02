@@ -127,3 +127,5 @@ A plaintext copy of the policy is kept in the settings as a mirror. It may only 
 
 The project was called otp-vault before it became claviger. These identifiers are bound into existing ciphertexts and are frozen: `otp-vault/v1/<storage key>`, `otp-vault/v1/keyslot/<kind>/<scope>`, `otp-vault/recovery/v1`, `otp-vault/v1/export/<exportId>`, `otp-vault/v1/trash:<uuid>`.
 Backups: new files use `"format": "claviger-export"` and the extension `.claviger`; readers also accept `"otp-vault-export"` and `.otpvault`. The encryption is identical.
+
+Aegis export: a claviger backup is not an Aegis file. The Aegis export (`exporters/aegis.ts`) follows Aegis's own vault schema: plain JSON (`header.slots: null`) or one scrypt password slot (N=2^15, r=8, p=1) wrapping a random master key, with the database as AES-256-GCM (tag kept in `header.params`, no AAD). It always uses a password chosen for the export, never the vault password.

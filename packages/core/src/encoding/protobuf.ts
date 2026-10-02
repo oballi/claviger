@@ -1,4 +1,5 @@
 import { CoreError } from "../errors";
+import { concatBytes } from "./bytes";
 
 export type ProtoField =
   { field: number; wire: 0; value: bigint } | { field: number; wire: 1 | 2 | 5; value: Uint8Array };
@@ -58,3 +59,20 @@ export function readFields(buf: Uint8Array): ProtoField[] {
   }
   return fields;
 }
+
+export function writeVarint(value: bigint | number): Uint8Array {
+  let v = BigInt.asUintN(64, BigInt(value));
+  const out: number[] = [];
+  do {
+    const byte = Number(v & 0x7fn);
+    v >>= 7n;
+    out.push(v === 0n ? byte : byte | 0x80);
+  } while (v !== 0n);
+  return Uint8Array.from(out);
+}
+
+export const fieldVarint = (field: number, value: bigint | number): Uint8Array =>
+  concatBytes(writeVarint(BigInt(field) << 3n), writeVarint(value));
+
+export const fieldBytes = (field: number, value: Uint8Array): Uint8Array =>
+  concatBytes(writeVarint((BigInt(field) << 3n) | 2n), writeVarint(value.length), value);

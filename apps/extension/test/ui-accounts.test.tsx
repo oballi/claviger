@@ -3,6 +3,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { AccountEditor, AccountsScreen } from "@claviger/ui/manage";
+import type { UiPlatform } from "@claviger/ui";
 import { harness, renderUi, type Harness } from "./helpers/ui";
 import { PASSWORD } from "./helpers/service";
 
@@ -33,6 +34,33 @@ const handleOf = async (issuer: string) =>
 
 const names = async (h: Harness) =>
   (await h.ui.rpc("listAccounts", {})).accounts.map((a) => a.issuer);
+
+describe("AccountsScreen polling", () => {
+  it("sends passive polls, and a non-passive one after real input", async () => {
+    const h = await seeded();
+    const sent: unknown[] = [];
+    const ui: UiPlatform = {
+      ...h.ui,
+      rpc: (async (type: string, payload: unknown) => {
+        if (type === "listAccounts") sent.push(payload);
+        return (h.ui.rpc as (t: string, p: unknown) => Promise<unknown>)(type, payload);
+      }) as UiPlatform["rpc"],
+    };
+    renderUi(
+      <AccountsScreen state={await h.ui.rpc("getState", {})} onChanged={vi.fn()} pollMs={20} />,
+      ui,
+    );
+    await screen.findByText("GitHub");
+    expect(sent[0]).toEqual({});
+    await vi.waitFor(() => expect(sent.length).toBeGreaterThanOrEqual(3));
+    expect(sent.slice(1).every((p) => (p as { passive?: boolean }).passive === true)).toBe(true);
+    const before = sent.length;
+    fireEvent.keyDown(document.body, { key: "a" });
+    await vi.waitFor(() => expect(sent.length).toBeGreaterThan(before));
+    expect(sent[before]).toEqual({});
+    await vi.waitFor(() => expect((sent.at(-1) as { passive?: boolean }).passive).toBe(true));
+  });
+});
 
 describe("AccountsScreen", () => {
   it("lays out the accounts table without a minimum width or horizontal scroll class", async () => {

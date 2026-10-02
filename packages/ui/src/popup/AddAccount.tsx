@@ -1,4 +1,6 @@
 import { useState, type ReactNode } from "react";
+import { QrImageTooLargeError } from "../contract/qrLimits";
+import { useImagePaste } from "../components/useImagePaste";
 import { AccountForm } from "../components/AccountForm";
 import { Icon } from "../components/Icon";
 import { RpcError } from "../rpc/client";
@@ -67,7 +69,7 @@ export function AddAccount({
   onBack: () => void;
   onAdded: (name: string) => void;
 }) {
-  const { openManage, captureTab, openScan, rpc, capabilities } = useUi();
+  const { openManage, captureTab, openScan, rpc, capabilities, imageToCapture } = useUi();
   const first = capabilities.qrScan ? 1 : 0;
   const t = useT();
   const [manual, setManual] = useState(false);
@@ -92,6 +94,21 @@ export function AddAccount({
       );
     }
   }
+
+  async function fromImage(files: File[]) {
+    setScanNote(null);
+    try {
+      // No tab URL: a pasted image says nothing about which site the account belongs to.
+      const dataUrl = await imageToCapture!(files[0]!);
+      const { id } = await rpc("storeCapture", { dataUrl, tabUrl: "" });
+      openScan(id);
+    } catch (e) {
+      setScanNote(e instanceof QrImageTooLargeError ? t("add.imageTooLarge") : errorMessage(t, e));
+    }
+  }
+
+  const canPaste = capabilities.qrScan && !!imageToCapture;
+  useImagePaste((files) => void fromImage(files), canPaste && !manual);
 
   if (manual) {
     return (
@@ -133,7 +150,16 @@ export function AddAccount({
       <p role="alert" className="m-0 pt-3 text-xs leading-normal text-warn">
         {scanNote}
       </p>
-      <p className="m-0 mt-auto pt-4 text-[11px] leading-normal text-muted">{t("add.footer")}</p>
+      {canPaste ? (
+        <p className="m-0 mt-auto pt-4 text-[11px] leading-normal text-muted">
+          {t("add.pasteHint")}
+        </p>
+      ) : null}
+      <p
+        className={`m-0 pt-2 text-[11px] leading-normal text-muted ${canPaste ? "" : "mt-auto pt-4"}`}
+      >
+        {t("add.footer")}
+      </p>
     </Shell>
   );
 }

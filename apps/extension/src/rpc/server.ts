@@ -72,7 +72,7 @@ async function dispatch(
     case "quarantineVault":
       return service.quarantineVault();
     case "listAccounts":
-      return service.listAccounts({ pageUrl: req.pageUrl });
+      return service.listAccounts({ pageUrl: req.pageUrl, passive: req.passive });
     case "addAccountUri":
       return service.addAccount(
         { uri: req.uri },
@@ -107,6 +107,12 @@ async function dispatch(
       return service.listTrash();
     case "restoreTrash":
       return service.restoreTrash(req.id);
+    case "listDuplicates":
+      return service.listDuplicates();
+    case "mergeAccounts":
+      return service.mergeAccounts(req.keepId, req.removeIds);
+    case "undoMerge":
+      return service.undoMerge(req.undoId);
     case "purgeTrash":
       await service.purgeTrash(req.id);
       return null;
@@ -151,6 +157,8 @@ async function dispatch(
       return null;
     case "exportVault":
       return service.exportVault(req.token, req.format, req.exportPassword);
+    case "exportMigration":
+      return service.exportMigration(req.token, req.ids);
     case "changePassword":
       await service.changePassword(req.token, req.newPassword);
       return null;

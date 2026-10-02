@@ -130,6 +130,9 @@ export function ImportScreen({
         <p className="m-0 text-[15px]">
           {t("import.passwordNeeded", { format: formatName(stage.format) })}
         </p>
+        {stage.format === "andotp" ? (
+          <p className="m-0 text-sm text-muted">{t("import.andotpHint")}</p>
+        ) : null}
         <TextField
           id="import-password"
           type="password"

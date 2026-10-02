@@ -70,6 +70,7 @@ export async function harness(
       return { serverDate: new Date(now).toUTCString(), startMs: now, endMs: now };
     }),
     decodeQr: vi.fn(async (_image: Blob | ImageData): Promise<string[]> => []),
+    imageToCapture: vi.fn(async (_image: Blob): Promise<string> => "data:image/png;base64,AAAA"),
     download: vi.fn(),
     print: vi.fn(),
   } satisfies UiPlatform;

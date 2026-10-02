@@ -750,7 +750,7 @@ export class Vault {
   }
 
   /** Restores under a fresh id: the old id keeps its tombstone, so no offline copy can resurrect with it. */
-  restoreFromTrash(id: string): Promise<Account> {
+  restoreFromTrash(id: string, opts?: { allowDuplicate?: boolean }): Promise<Account> {
     return this.exclusive(async () => {
       const store = this.trashStore();
       if (!store) throw new CoreError("trash-entry-not-found", "Not in recently deleted");
@@ -758,7 +758,7 @@ export class Vault {
       const index = await this.readIndex({ strict: true });
       const { accounts } = await this.listAccounts();
       const fingerprint = accountFingerprint(entry.account);
-      if (accounts.some((a) => accountFingerprint(a) === fingerprint))
+      if (!opts?.allowDuplicate && accounts.some((a) => accountFingerprint(a) === fingerprint))
         throw new CoreError("duplicate-account", "This account already exists");
       const keepGroup =
         entry.account.groupId !== undefined &&
