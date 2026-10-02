@@ -21,6 +21,7 @@
   --color-ring: var(--ov-ring);
   --color-dot: var(--ov-dot);
   --color-warn: var(--ov-warn);
+  --color-critical: var(--ov-critical);
   --color-btn: var(--ov-btn);
   --color-btn-text: var(--ov-btn-text);
 }
@@ -35,6 +36,7 @@
   --ov-ring: #dad7d0;
   --ov-dot: #cfccc4;
   --ov-warn: #9a5212;
+  --ov-critical: #b3261e;
   --ov-btn: #19191b;
   --ov-btn-text: #f6f5f2;
   color-scheme: light dark;
@@ -56,6 +58,7 @@
     --ov-ring: #303035;
     --ov-dot: #3a3a40;
     --ov-warn: #e3a867;
+    --ov-critical: #e5736b;
     --ov-btn: #eceae5;
     --ov-btn-text: #121214;
   }
@@ -71,6 +74,7 @@
   --ov-ring: #303035;
   --ov-dot: #3a3a40;
   --ov-warn: #e3a867;
+  --ov-critical: #e5736b;
   --ov-btn: #eceae5;
   --ov-btn-text: #121214;
   color-scheme: dark;

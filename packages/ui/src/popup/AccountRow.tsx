@@ -91,6 +91,7 @@ export function AccountRow({
     </div>
   ) : null;
   const urgent = account.remaining !== null && account.remaining <= 5;
+  const critical = account.remaining !== null && account.remaining <= 1;
   const copyButton = (
     <button
       type="button"
@@ -99,7 +100,7 @@ export function AccountRow({
         hidden ? t("codes.copyHidden", { issuer: name }) : t("codes.copy", { issuer: name, code })
       }
       onClick={() => onCopy(account)}
-      className={`shrink-0 cursor-pointer whitespace-nowrap border-0 bg-transparent p-0 text-left font-mono tracking-wide ${large ? (compact ? "min-h-11 text-2xl leading-tight" : "min-h-11 text-[34px] leading-tight") : compact ? "min-h-11 text-base" : "min-h-11 text-xl"} ${urgent ? "text-warn" : "text-text"}`}
+      className={`shrink-0 cursor-pointer whitespace-nowrap border-0 bg-transparent p-0 text-left font-mono tracking-wide ${large ? (compact ? "min-h-11 text-2xl leading-tight" : "min-h-11 text-[34px] leading-tight") : compact ? "min-h-11 text-base" : "min-h-11 text-xl"} ${critical ? "text-critical" : urgent ? "text-warn" : "text-text"}`}
     >
       {code}
     </button>

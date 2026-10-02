@@ -11,6 +11,7 @@ export function CountdownRing({
   size?: number;
 }) {
   const urgent = remaining <= 5;
+  const critical = remaining <= 1;
   const offset = CIRCUMFERENCE * (1 - Math.min(Math.max(remaining / period, 0), 1));
   return (
     <svg
@@ -19,6 +20,7 @@ export function CountdownRing({
       viewBox="0 0 20 20"
       aria-hidden="true"
       data-urgent={String(urgent)}
+      data-critical={String(critical)}
       className="shrink-0"
     >
       <circle cx={10} cy={10} r={RADIUS} fill="none" stroke="var(--ov-ring)" strokeWidth={1.5} />
@@ -27,7 +29,7 @@ export function CountdownRing({
         cy={10}
         r={RADIUS}
         fill="none"
-        stroke={urgent ? "var(--ov-warn)" : "var(--ov-muted)"}
+        stroke={critical ? "var(--ov-critical)" : urgent ? "var(--ov-warn)" : "var(--ov-muted)"}
         strokeWidth={1.5}
         strokeLinecap="round"
         strokeDasharray={CIRCUMFERENCE}
