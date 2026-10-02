@@ -31,7 +31,7 @@ Nothing leaves your device, except the opt-in clock check, which contacts `www.g
 - `activeTab` and `scripting`: fill a code into the current page, only when you ask.
 - `clipboardWrite`: copy codes.
 - `contextMenus`: the right-click "Insert 2FA code" entry.
-- `offscreen` (Chrome only): clipboard writes and clearing, which need a document context.
+- `offscreen` (Chrome only): a short-lived hidden page that clears the clipboard after the time you chose, because the background service has no clipboard access.
 - Optional `www.google.com`: requested only for the clock check.
 
 ## Building from source

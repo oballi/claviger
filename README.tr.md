@@ -38,7 +38,7 @@
 - `activeTab` ve `scripting`: kodu açık sayfaya yazmak; yalnızca sen istediğinde.
 - `clipboardWrite`: kodları kopyalamak.
 - `contextMenus`: sağ tık "Insert 2FA code" girişi.
-- `offscreen` (yalnızca Chrome): belge bağlamı gerektiren pano yazma ve temizleme.
+- `offscreen` (yalnızca Chrome): seçtiğin süre dolunca panoyu temizleyen kısa ömürlü gizli bir sayfa; arka plan servisinin panoya erişimi yoktur.
 - İsteğe bağlı `www.google.com`: yalnızca saat kontrolü için istenir.
 
 ## Kaynak koddan derleme
