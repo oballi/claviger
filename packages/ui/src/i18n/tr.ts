@@ -102,6 +102,7 @@ export const tr = {
   "group.new": "+ Yeni grup",
   "group.newName": "Yeni grup adı",
   "edit.title": "Hesabı düzenle.",
+  "edit.gone": "Bu hesap artık yok.",
   "edit.group": "Grup",
   "edit.sites": "Bağlı siteler",
   "edit.noSites": "Bağlı site yok",

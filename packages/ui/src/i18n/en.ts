@@ -104,6 +104,7 @@ export const en: Record<MessageKey, string> = {
   "group.new": "+ New group",
   "group.newName": "New group name",
   "edit.title": "Edit account.",
+  "edit.gone": "This account no longer exists.",
   "edit.group": "Group",
   "edit.sites": "Linked sites",
   "edit.noSites": "No linked sites",

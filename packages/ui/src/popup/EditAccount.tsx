@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import type { AccountView, GroupView } from "../contract/views";
 import { Button } from "../components/Button";
 import { GroupSelect } from "../components/GroupSelect";
@@ -30,8 +30,47 @@ export function EditAccount({
   const [newName, setNewName] = useState("");
   const [groupError, setGroupError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  const newGroupButton = useRef<HTMLButtonElement>(null);
 
-  async function createGroup() {
+  useEffect(() => {
+    document.getElementById("edit-issuer")?.focus();
+  }, []);
+
+  // The ref blocks a repeat submit before the disabled state has rendered.
+  async function guarded(action: () => Promise<void>) {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    try {
+      await action();
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  }
+
+  function onKeyDown(event: KeyboardEvent<HTMLFormElement>) {
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    if ((event.target as HTMLElement).id === "edit-new-group") {
+      event.stopPropagation();
+      closeNewGroup();
+      newGroupButton.current?.focus();
+      return;
+    }
+    onBack();
+  }
+
+  function closeNewGroup() {
+    setCreating(false);
+    setNewName("");
+    setGroupError(null);
+  }
+
+  const createGroup = () => guarded(createGroupNow);
+  async function createGroupNow() {
     setGroupError(null);
     try {
       const group = await rpc("createGroup", { name: newName });
@@ -44,8 +83,11 @@ export function EditAccount({
     }
   }
 
-  async function save(event: FormEvent) {
+  const save = (event: FormEvent) => {
     event.preventDefault();
+    return guarded(saveNow);
+  };
+  async function saveNow() {
     setError(null);
     try {
       await rpc("updateAccount", {
@@ -71,7 +113,11 @@ export function EditAccount({
         </button>
         <div className="font-mono text-xs tracking-wide">{t("app.name")}</div>
       </header>
-      <form onSubmit={(e) => void save(e)} className="flex min-h-0 flex-1 flex-col px-7 pb-5">
+      <form
+        onSubmit={(e) => void save(e)}
+        onKeyDown={onKeyDown}
+        className="flex min-h-0 flex-1 flex-col px-7 pb-5"
+      >
         <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-auto">
           <h1 className="m-0 pt-4 text-2xl font-medium tracking-tight">{t("edit.title")}</h1>
           <TextField
@@ -95,7 +141,7 @@ export function EditAccount({
                 groups={known}
                 onChange={setGroupId}
               />
-              <Button onClick={() => setCreating(true)} className="shrink-0">
+              <Button ref={newGroupButton} onClick={() => setCreating(true)} className="shrink-0">
                 {t("group.new")}
               </Button>
             </div>
@@ -114,18 +160,10 @@ export function EditAccount({
                   }}
                 />
                 <div className="flex gap-2">
-                  <Button variant="primary" onClick={() => void createGroup()}>
+                  <Button variant="primary" disabled={busy} onClick={() => void createGroup()}>
                     {t("common.save")}
                   </Button>
-                  <Button
-                    onClick={() => {
-                      setCreating(false);
-                      setNewName("");
-                      setGroupError(null);
-                    }}
-                  >
-                    {t("common.cancel")}
-                  </Button>
+                  <Button onClick={closeNewGroup}>{t("common.cancel")}</Button>
                 </div>
               </div>
             ) : null}
@@ -162,7 +200,7 @@ export function EditAccount({
           ) : null}
         </div>
         <div className="flex gap-2 pt-4">
-          <Button type="submit" variant="primary">
+          <Button type="submit" variant="primary" disabled={busy}>
             {t("common.save")}
           </Button>
           <Button onClick={onBack}>{t("common.cancel")}</Button>

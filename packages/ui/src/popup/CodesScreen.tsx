@@ -21,11 +21,12 @@ import { AccountRow, type FillPrompt } from "./AccountRow";
 import type { MenuItem } from "./RowMenu";
 import { AddAccount } from "./AddAccount";
 
-const EditAccount = lazy(() => import("./EditAccount").then((m) => ({ default: m.EditAccount })));
 import { GroupSection } from "./GroupSection";
 import { useCollapsed } from "./useCollapsed";
 import { NO_GROUP_KEY, sectionsOf } from "../groups";
 import { neighbourOf, swapOrder } from "../reorder";
+
+const EditAccount = lazy(() => import("./EditAccount").then((m) => ({ default: m.EditAccount })));
 
 function Section({
   title,
@@ -121,6 +122,14 @@ export function CodesScreen({
       ?.focus();
     setRefocus(null);
   }, [list, refocus]);
+
+  // An account deleted elsewhere must not leave the edit view blank or silently vanish.
+  const gone = editing !== null && list !== null && !list.accounts.some((a) => a.id === editing);
+  useEffect(() => {
+    if (!gone) return;
+    setEditing(null);
+    setActionError(t("edit.gone"));
+  }, [gone, t]);
 
   if (adding) {
     return (
