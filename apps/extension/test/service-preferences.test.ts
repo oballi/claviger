@@ -139,3 +139,118 @@ describe("recovery code confirmation", () => {
     expect(result.recoveryCode).toBeTruthy();
   });
 });
+
+describe("backup reminder", () => {
+  const DAY = 86_400_000;
+  const add = (service: VaultService) =>
+    service.addAccount({ uri: "otpauth://totp/a?secret=JBSWY3DPEHPK3PXP&issuer=A" });
+  const reminder = async (service: VaultService) => (await service.getState()).backupReminder;
+
+  it("never shows for an empty vault or when off", async () => {
+    const { service, p } = await unlockedService();
+    expect((await service.getState()).backupReminderDays).toBe(30);
+    p.clock.advance(31 * DAY);
+    expect(await reminder(service)).toBeNull();
+    await add(service);
+    await service.getState();
+    await service.setBackupReminder(0);
+    p.clock.advance(60 * DAY);
+    expect(await reminder(service)).toBeNull();
+  });
+
+  it("counts from the first account when never backed up", async () => {
+    const { service, p } = await unlockedService();
+    await add(service);
+    expect(await reminder(service)).toBeNull();
+    p.clock.advance(29 * DAY);
+    expect(await reminder(service)).toBeNull();
+    p.clock.advance(DAY);
+    expect(await reminder(service)).toEqual({ daysSince: null });
+    await service.setBackupReminder(90);
+    expect(await reminder(service)).toBeNull();
+  });
+
+  it("is cleared by a file export and quiet for 7 days after dismissal", async () => {
+    const { service, p } = await unlockedService();
+    await add(service);
+    await service.getState();
+    p.clock.advance(31 * DAY);
+    expect(await reminder(service)).toEqual({ daysSince: null });
+    await service.dismissBackupReminder();
+    expect(await reminder(service)).toBeNull();
+    p.clock.advance(6 * DAY);
+    expect(await reminder(service)).toBeNull();
+    p.clock.advance(DAY);
+    expect(await reminder(service)).toEqual({ daysSince: null });
+    const { token } = await service.reauth(PASSWORD);
+    await service.exportVault(token, "otpauth");
+    expect(await reminder(service)).toBeNull();
+    p.clock.advance(31 * DAY);
+    expect(await reminder(service)).toEqual({ daysSince: 31 });
+  });
+
+  it.each([
+    ["claviger", "other password 123"],
+    ["aegis", "other password 123"],
+    ["aegis-plain", undefined],
+    ["otpauth", undefined],
+  ] as const)("counts a %s export as a backup", async (format, pw) => {
+    const { service } = await unlockedService();
+    await add(service);
+    const { token } = await service.reauth(PASSWORD);
+    await service.exportVault(token, format, pw);
+    expect((await service.getState()).lastBackupAt).not.toBeNull();
+  });
+
+  it("does not count a failed export or a migration export", async () => {
+    const { service } = await unlockedService();
+    await add(service);
+    const { token } = await service.reauth(PASSWORD);
+    await expect(service.exportVault(token, "aegis", PASSWORD)).rejects.toThrow();
+    expect((await service.getState()).lastBackupAt).toBeNull();
+    const t2 = (await service.reauth(PASSWORD)).token;
+    await service.exportMigration(t2, []);
+    expect((await service.getState()).lastBackupAt).toBeNull();
+  });
+
+  it("does not show when the clock moves backwards", async () => {
+    const { service, p } = await unlockedService();
+    await add(service);
+    await service.getState();
+    p.clock.advance(-DAY);
+    expect(await reminder(service)).toBeNull();
+    p.clock.advance(DAY + 29 * DAY);
+    expect(await reminder(service)).toBeNull();
+  });
+
+  it("starts fresh for a new vault after a reset", async () => {
+    const { service, p } = await unlockedService();
+    await add(service);
+    await service.getState();
+    p.clock.advance(31 * DAY);
+    expect(await reminder(service)).not.toBeNull();
+    const { token } = await service.reauth(PASSWORD);
+    await service.deleteVault(token);
+    await service.setup({
+      password: PASSWORD,
+      createRecoveryCode: false,
+      lockPolicy: { kind: "browser-close" },
+      storageArea: "local",
+    });
+    await add(service);
+    expect(await reminder(service)).toBeNull();
+    p.clock.advance(29 * DAY);
+    expect(await reminder(service)).toBeNull();
+    p.clock.advance(DAY);
+    expect(await reminder(service)).toEqual({ daysSince: null });
+  });
+
+  it("is not shown while locked", async () => {
+    const { service, p } = await unlockedService();
+    await add(service);
+    await service.getState();
+    p.clock.advance(40 * DAY);
+    await service.lock();
+    expect(await reminder(service)).toBeNull();
+  });
+});

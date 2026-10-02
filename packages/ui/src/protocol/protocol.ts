@@ -11,6 +11,7 @@ import type {
   TrashItemView,
 } from "../contract/views";
 import {
+  backupReminderDaysSchema,
   clipboardClearSchema,
   languageSchema,
   lockPolicySchema,
@@ -133,6 +134,8 @@ export const rpcRequestSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("setTheme"), theme: themeSchema }),
   z.object({ type: z.literal("setLanguage"), language: languageSchema }),
   z.object({ type: z.literal("setClipboardClear"), seconds: clipboardClearSchema }),
+  z.object({ type: z.literal("setBackupReminder"), days: backupReminderDaysSchema }),
+  z.object({ type: z.literal("dismissBackupReminder") }),
   z.object({ type: z.literal("confirmRecoveryCode") }),
   z.object({ type: z.literal("clipboardCopied") }),
   z.object({
@@ -216,6 +219,8 @@ export interface RpcResults {
   setTheme: null;
   setLanguage: null;
   setClipboardClear: null;
+  setBackupReminder: null;
+  dismissBackupReminder: null;
   confirmRecoveryCode: null;
   clipboardCopied: null;
   exportVault: { filename: string; content: string; count: number; skipped: number };

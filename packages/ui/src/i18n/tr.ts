@@ -196,6 +196,12 @@ export const tr = {
   "error.group-limit": "En fazla 30 grup olabilir.",
   "error.group-not-found": "Bu grup artık yok.",
   "clock.popupNote": "Saat farkı düzeltiliyor ({offset} sn)",
+  "backupNotice.title": "Yedek hatırlatması",
+  "backupNotice.since": "Son yedeğin {days} gün önce alındı.",
+  "backupNotice.never": "Henüz yedek almadın.",
+  "backupNotice.action": "Yedekle",
+  "backupNotice.dismiss": "Şimdi değil",
+  "backupNotice.dismissLabel": "Yedek hatırlatmasını 7 gün gizle",
   "error.snapshot-password-required": "Bu kopya başka bir kasaya ait; parolasını gir.",
   "add.qrRestricted":
     "Bu sayfada tarama yapılamaz; QR'ın ekran görüntüsünü dosya olarak içe aktar.",

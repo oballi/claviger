@@ -199,6 +199,12 @@ export const en: Record<PopupKey, string> = {
   "error.group-limit": "You can have at most 30 groups.",
   "error.group-not-found": "This group no longer exists.",
   "clock.popupNote": "Correcting clock difference ({offset} s)",
+  "backupNotice.title": "Backup reminder",
+  "backupNotice.since": "Your last backup was {days} days ago.",
+  "backupNotice.never": "You have not made a backup yet.",
+  "backupNotice.action": "Back up",
+  "backupNotice.dismiss": "Not now",
+  "backupNotice.dismissLabel": "Hide the backup reminder for 7 days",
   "error.snapshot-password-required": "This copy belongs to another vault; enter its password.",
   "add.qrRestricted":
     "This page can't be scanned; import a screenshot of the QR code as a file instead.",

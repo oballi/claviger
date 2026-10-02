@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { encodeBinaryImport } from "@claviger/core";
-import type { ServiceState, StorageUsageView } from "../contract/views";
+import type { BackupReminderDays, ServiceState, StorageUsageView } from "../contract/views";
 import { MAX_IMAGE_BYTES, QrImageTooLargeError } from "../contract/qrLimits";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
@@ -21,6 +21,8 @@ import { useUi } from "../platform";
 import { PageTitle, SettingsRow, SettingsSection } from "./ManageFrame";
 import { PhoneTransfer } from "./PhoneTransfer";
 import { SnapshotsSection } from "./SnapshotsSection";
+
+const REMINDER_DAYS: BackupReminderDays[] = [0, 14, 30, 90];
 
 export const MAX_IMPORT_CHARS = 5_000_000;
 // Base64 inflates by 4/3; keeps the transport text under MAX_IMPORT_CHARS.
@@ -638,6 +640,36 @@ export function BackupScreen({
       ) : null}
 
       <SnapshotsSection num={capabilities.storageArea ? "05" : "04"} onChanged={onChanged} />
+
+      <SettingsSection
+        num={capabilities.storageArea ? "06" : "05"}
+        title={t("backup.reminder.title")}
+      >
+        <SettingsRow
+          title={t("backup.reminder.title")}
+          description={t("backup.reminder.hint")}
+          action={
+            <select
+              aria-label={t("backup.reminder.title")}
+              className="h-11 rounded-full border border-line bg-bg px-3 font-sans text-[13px] text-text"
+              value={state.backupReminderDays}
+              onChange={(e) =>
+                void rpc("setBackupReminder", {
+                  days: Number(e.target.value) as BackupReminderDays,
+                })
+                  .then(onChanged)
+                  .catch(() => {})
+              }
+            >
+              {REMINDER_DAYS.map((d) => (
+                <option key={d} value={d}>
+                  {d === 0 ? t("backup.reminder.off") : t("backup.reminder.days", { days: d })}
+                </option>
+              ))}
+            </select>
+          }
+        />
+      </SettingsSection>
     </div>
   );
 }

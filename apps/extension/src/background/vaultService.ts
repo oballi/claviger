@@ -62,6 +62,7 @@ import {
   loadSettings,
   MAX_CLOCK_OFFSET_SEC,
   saveSettings,
+  type BackupReminderDays,
   type ClipboardClearSec,
   type Language,
   type LockPolicy,
@@ -69,6 +70,7 @@ import {
   type Theme,
   type ViewMode,
 } from "./settings";
+import { backupReminderFor, SNOOZE_DAYS } from "./backupReminder";
 import { SNAPSHOT_ATTEMPTS_KEY, Throttle } from "./throttle";
 
 export type {
@@ -436,6 +438,8 @@ export class VaultService {
       clockCheckEnabled: settings.clockCheckEnabled,
       revealRequiresPassword: true,
       lastBackupAt: settings.lastBackupAt,
+      backupReminderDays: settings.backupReminderDays,
+      backupReminder: null as ServiceState["backupReminder"],
       viewMode: settings.viewMode,
       theme: settings.theme,
       language: settings.language,
@@ -466,6 +470,7 @@ export class VaultService {
       const sealed = (await this.security.read(vault)) ?? SAFE_SECURITY;
       return {
         ...base,
+        backupReminder: await this.backupReminder(info.accountCount),
         lockPolicy: sealed.lockPolicy,
         revealRequiresPassword: sealed.revealRequiresPassword,
         status: "unlocked",
@@ -482,6 +487,21 @@ export class VaultService {
       accountCount: info.accountCount,
       snapshotOffer: null,
     };
+  }
+
+  private async backupReminder(
+    accountCount: number | null,
+  ): Promise<ServiceState["backupReminder"]> {
+    let settings = await this.settings();
+    // First account seen without any backup: the clock starts here, once (queued against races).
+    if (accountCount && settings.lastBackupAt === null && settings.backupReminderSince === null) {
+      settings = await this.exclusive(async () => {
+        const cur = await this.settings();
+        if (cur.lastBackupAt !== null || cur.backupReminderSince !== null) return cur;
+        return saveSettings(this.p.local, { backupReminderSince: this.p.clock.now() });
+      });
+    }
+    return backupReminderFor(settings, accountCount, this.p.clock.now());
   }
 
   private async snapshotOffer(): Promise<ServiceState["snapshotOffer"]> {
@@ -538,6 +558,10 @@ export class VaultService {
       lockPolicy: opts.lockPolicy,
       storageArea: opts.storageArea,
       recoveryCodeConfirmed: recoveryCode === null,
+      // A new vault starts its own reminder clock; an older vault's backup does not cover it.
+      lastBackupAt: null,
+      backupReminderSince: null,
+      backupReminderSnoozedUntil: null,
     });
     const security = { lockPolicy: opts.lockPolicy, revealRequiresPassword: true };
     try {
@@ -700,6 +724,29 @@ export class VaultService {
     return this.exclusive(async () => {
       await saveSettings(this.p.local, { clipboardClearSec: seconds });
       if (seconds === 0) await this.p.alarms.clear(CLIPBOARD_ALARM);
+    });
+  }
+
+  // Device-local and not secret: allowed while locked, like the theme.
+  setBackupReminder(days: BackupReminderDays): Promise<void> {
+    return this.exclusive(async () => {
+      await saveSettings(this.p.local, { backupReminderDays: days });
+    });
+  }
+
+  dismissBackupReminder(): Promise<void> {
+    return this.exclusive(async () => {
+      await saveSettings(this.p.local, {
+        backupReminderSnoozedUntil: this.p.clock.now() + SNOOZE_DAYS * 86_400_000,
+      });
+    });
+  }
+
+  // Only for file exports that leave the vault; on-screen QR codes are not backups.
+  private async markBackup(): Promise<void> {
+    await saveSettings(this.p.local, {
+      lastBackupAt: this.p.clock.now(),
+      backupReminderSnoozedUntil: null,
     });
   }
 
@@ -1165,6 +1212,10 @@ export class VaultService {
       this.onLock();
       await this.keys.forget();
       await this.p.alarms.clear(AUTOLOCK_ALARM);
+      await saveSettings(this.p.local, {
+        backupReminderSince: null,
+        backupReminderSnoozedUntil: null,
+      });
       return { moved };
     });
   }
@@ -1236,7 +1287,7 @@ export class VaultService {
             return { filename: `claviger-${date}.txt`, content: exportOtpauthText(accounts) };
         }
       })();
-      await saveSettings(this.p.local, { lastBackupAt: this.p.clock.now() });
+      await this.markBackup();
       return { ...result, count: accounts.length, skipped: unreadable.length };
     });
   }

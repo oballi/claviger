@@ -1,6 +1,7 @@
 import type { Language } from "../i18n/locales";
 import type { Account, ImportFormat, ImportIssue } from "@claviger/core";
 import type {
+  BackupReminderDays,
   ClipboardClearSec,
   LockPolicy,
   SnapshotReason,
@@ -9,7 +10,7 @@ import type {
 } from "../protocol/schemas";
 
 export type StorageAreaName = "local" | "sync";
-export type { ClipboardClearSec, LockPolicy, SnapshotReason, Theme, ViewMode };
+export type { BackupReminderDays, ClipboardClearSec, LockPolicy, SnapshotReason, Theme, ViewMode };
 
 export type ServiceStatus = "no-vault" | "locked" | "unlocked" | "unsupported" | "corrupt";
 
@@ -26,6 +27,9 @@ export interface ServiceState {
   clockCheckEnabled: boolean;
   revealRequiresPassword: boolean;
   lastBackupAt: number | null;
+  backupReminderDays: BackupReminderDays;
+  /** Set only while unlocked and a reminder is due; daysSince null = never backed up. Not a secret. */
+  backupReminder: { daysSince: number | null } | null;
   viewMode: ViewMode;
   /** Not a secret: readable while locked so the lock screen is themed too. */
   theme: Theme;

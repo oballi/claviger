@@ -285,6 +285,11 @@ export const manageEn: Record<ManageKey, string> = {
   "backup.toLocal": "Keep on this device only",
   "backup.move": "Move",
   "backup.moved": "Vault moved.",
+  "backup.reminder.title": "Backup reminder",
+  "backup.reminder.hint":
+    "A small notice appears after this time. Snapshots do not count as backups (they live on the same device).",
+  "backup.reminder.off": "Off",
+  "backup.reminder.days": "{days} days",
   "error.target-has-vault": "The target storage already holds a vault. Remove it there first.",
   "backup.syncRemoval":
     "The vault is removed from browser sync and disappears from your other synced devices.",
@@ -369,13 +374,13 @@ export const manageEn: Record<ManageKey, string> = {
   "security.shortcut": "Keyboard shortcut: Alt+Shift+O",
   "security.shortcutHint":
     'Change it at chrome://extensions/shortcuts in Chrome, or in Firefox via Add-ons > gear > "Manage Extension Shortcuts".',
+  "security.lockShortcut": "Lock shortcut",
+  "security.lockShortcutHint":
+    'Not assigned by default. Chrome: assign a key at chrome://extensions/shortcuts; Firefox: Add-ons page, gear icon, "Manage Extension Shortcuts".',
   "clock.title": "Clock check",
   "clock.hint":
     "If codes are rejected, compares your computer's clock once with Google's server. The request goes to Google and only runs when you ask.",
   "clock.check": "Check now",
-  "security.lockShortcut": "Lock shortcut",
-  "security.lockShortcutHint":
-    'Not assigned by default. Chrome: assign a key at chrome://extensions/shortcuts; Firefox: Add-ons page, gear icon, "Manage Extension Shortcuts".',
   "clock.denied": "Permission was not granted; nothing was checked.",
   "clock.ok": "Your clock is right (off by {offset} s). The check is turned off.",
   "clock.applied": "Your clock is off by {offset} s; codes are corrected accordingly.",

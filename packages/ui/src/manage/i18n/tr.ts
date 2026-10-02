@@ -281,6 +281,11 @@ export const manageTr = {
   "backup.toLocal": "Yalnızca bu cihaza taşı",
   "backup.move": "Taşı",
   "backup.moved": "Kasa taşındı.",
+  "backup.reminder.title": "Yedek hatırlatması",
+  "backup.reminder.hint":
+    "Belirlenen süre geçince küçük bir bildirim gösterilir. Anlık görüntüler yedek sayılmaz (aynı cihazdadır).",
+  "backup.reminder.off": "Kapalı",
+  "backup.reminder.days": "{days} gün",
   "error.target-has-vault": "Hedef alanda zaten bir kasa var. Önce oradaki kasayı kaldır.",
   "backup.syncRemoval":
     "Kasa senkronizasyondan kaldırılır; eşitlenen diğer cihazlarında artık görünmez.",
@@ -364,13 +369,13 @@ export const manageTr = {
   "security.shortcut": "Klavye kısayolu: Alt+Shift+O",
   "security.shortcutHint":
     "Chrome'da chrome://extensions/shortcuts adresinden, Firefox'ta eklenti yönetimi > dişli > \"Eklenti kısayollarını yönet\" ile değiştirilir.",
+  "security.lockShortcut": "Kilitleme kısayolu",
+  "security.lockShortcutHint":
+    'Varsayılan olarak atanmamış. Chrome: chrome://extensions/shortcuts adresinden; Firefox: Eklentiler sayfası, dişli simgesi, "Eklenti kısayollarını yönet" ile bir tuş atayın.',
   "clock.title": "Saat kontrolü",
   "clock.hint":
     "Kodlar tutmuyorsa bilgisayarının saatini bir kez Google'ın sunucusuyla karşılaştırır. İstek Google'a gider ve yalnızca sen istediğinde çalışır.",
   "clock.check": "Kontrol et",
-  "security.lockShortcut": "Kilitleme kısayolu",
-  "security.lockShortcutHint":
-    'Varsayılan olarak atanmamış. Chrome: chrome://extensions/shortcuts adresinden; Firefox: Eklentiler sayfası, dişli simgesi, "Eklenti kısayollarını yönet" ile bir tuş atayın.',
   "clock.denied": "İzin verilmedi; kontrol yapılmadı.",
   "clock.ok": "Saatin doğru (fark {offset} sn). Kontrol kapatıldı.",
   "clock.applied": "Saatin {offset} sn farklı; kodlar buna göre düzeltildi.",

@@ -25,6 +25,14 @@ export type Language = z.infer<typeof languageSchema>;
 export const clipboardClearSchema = z.union([z.literal(0), z.literal(30), z.literal(60)]);
 export type ClipboardClearSec = z.infer<typeof clipboardClearSchema>;
 
+export const backupReminderDaysSchema = z.union([
+  z.literal(0),
+  z.literal(14),
+  z.literal(30),
+  z.literal(90),
+]);
+export type BackupReminderDays = z.infer<typeof backupReminderDaysSchema>;
+
 export const SNAPSHOT_REASONS = [
   "daily",
   "before-import",

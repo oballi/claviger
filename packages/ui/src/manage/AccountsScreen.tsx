@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { AccountView, DuplicateGroupView, ServiceState } from "../contract/views";
 import { AccountForm } from "../components/AccountForm";
+import { BackupReminder } from "../components/BackupReminder";
 import { Button } from "../components/Button";
 import { Dialog } from "../components/Dialog";
 import { Icon } from "../components/Icon";
@@ -256,6 +257,9 @@ export function AccountsScreen({
 
   return (
     <div className="flex flex-col gap-12">
+      {state.backupReminder ? (
+        <BackupReminder daysSince={state.backupReminder.daysSince} className="-mb-6" />
+      ) : null}
       <div className="flex flex-wrap items-end justify-between gap-6">
         <PageTitle title={t("accounts.title")} count={accounts.length} />
         <div className="flex flex-wrap items-center gap-4">

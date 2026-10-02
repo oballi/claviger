@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { AccountView, ServiceState, StorageUsageView, TrashItemView } from "../contract/views";
 import { RpcError } from "../rpc/client";
+import { BackupReminder } from "../components/BackupReminder";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { Toast } from "../components/Toast";
@@ -636,6 +637,9 @@ export function CodesScreen({
             {t("clock.popupNote", { offset: state.clockOffsetSec })}
           </Button>
         </div>
+      ) : null}
+      {state.backupReminder && !sorting ? (
+        <BackupReminder daysSince={state.backupReminder.daysSince} className="px-7 pt-1" />
       ) : null}
       {sorting ? null : (
         <div className="px-7 pt-1">

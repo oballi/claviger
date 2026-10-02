@@ -16,6 +16,9 @@ describe("settings", () => {
       clockOffsetSec: 0,
       clockCheckEnabled: false,
       lastBackupAt: null,
+      backupReminderDays: 30,
+      backupReminderSince: null,
+      backupReminderSnoozedUntil: null,
       viewMode: "normal",
       theme: "system",
       language: "system",
@@ -98,6 +101,18 @@ describe("settings", () => {
       clipboardClearSec: 0,
       viewMode: "compact",
       storageArea: "sync",
+    });
+  });
+
+  it("falls back to the default for an invalid backup reminder value without touching other fields", async () => {
+    const local = new MemoryStorage();
+    await local.set({
+      [SETTINGS_KEY]: { backupReminderDays: 7, backupReminderSince: "x", viewMode: "compact" },
+    });
+    expect(await loadSettings(local)).toMatchObject({
+      backupReminderDays: 30,
+      backupReminderSince: null,
+      viewMode: "compact",
     });
   });
 
