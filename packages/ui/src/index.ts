@@ -7,6 +7,7 @@ export * from "./components/Button";
 export * from "./components/CountdownRing";
 export * from "./components/Dialog";
 export * from "./components/ErrorBoundary";
+export * from "./components/GroupSelect";
 export * from "./components/Icon";
 export * from "./components/LockPolicyOptions";
 export * from "./components/LockScreen";

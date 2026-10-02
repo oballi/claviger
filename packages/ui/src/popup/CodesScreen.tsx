@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useRef,
@@ -18,6 +20,8 @@ import { useUi } from "../platform";
 import { AccountRow, type FillPrompt } from "./AccountRow";
 import type { MenuItem } from "./RowMenu";
 import { AddAccount } from "./AddAccount";
+
+const EditAccount = lazy(() => import("./EditAccount").then((m) => ({ default: m.EditAccount })));
 import { GroupSection } from "./GroupSection";
 import { useCollapsed } from "./useCollapsed";
 import { NO_GROUP_KEY, sectionsOf } from "../groups";
@@ -74,6 +78,7 @@ export function CodesScreen({
   const [query, setQuery] = useState("");
   const [toast, setToast] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [refocus, setRefocus] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -96,7 +101,7 @@ export function CodesScreen({
 
   // "/" must work as soon as the popup opens, when focus is still on <body> (spec §6.2).
   useEffect(() => {
-    if (adding) return;
+    if (adding || editing) return;
     function onKey(event: globalThis.KeyboardEvent) {
       const target = event.target as HTMLElement | null;
       if (event.key !== "/" || target?.closest("input, textarea, select")) return;
@@ -106,7 +111,7 @@ export function CodesScreen({
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [adding]);
+  }, [adding, editing]);
 
   // A row can move to another section (and remount), so focus returns to its menu trigger by id.
   useEffect(() => {
@@ -133,6 +138,27 @@ export function CodesScreen({
   }
 
   const accounts = list?.accounts ?? [];
+  const editTarget = editing ? accounts.find((a) => a.id === editing) : undefined;
+  if (editTarget) {
+    const back = () => {
+      setEditing(null);
+      setRefocus(editTarget.id);
+    };
+    return (
+      <Suspense fallback={null}>
+        <EditAccount
+          account={editTarget}
+          groups={list?.groups ?? []}
+          onBack={back}
+          onSaved={(name) => {
+            back();
+            setToast(t("accounts.saved", { name }));
+            void reload();
+          }}
+        />
+      </Suspense>
+    );
+  }
   const exact = new Set(list?.matches.exact ?? []);
   const suggested = new Set(list?.matches.suggested ?? []);
   const remembered = new Set(list?.matches.remembered ?? []);
@@ -338,7 +364,12 @@ export function CodesScreen({
         onSelect: () => down && void swap(down),
       });
     }
-    // Task 5 adds the "Edit…" item here.
+    items.push({
+      key: "edit",
+      label: t("menu.edit"),
+      divider: true,
+      onSelect: () => setEditing(account.id),
+    });
     if (groups.length > 0)
       items.push({
         key: "group",
