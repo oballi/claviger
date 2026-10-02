@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
-import { Vault } from "@otp-vault/core";
+import { Vault } from "@claviger/core";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import type { ServiceState } from "../src/background/vaultService";
 import { describe, expect, it, vi } from "vitest";
-import { SecurityScreen } from "@otp-vault/ui/manage";
+import { SecurityScreen } from "@claviger/ui/manage";
 import { harness, renderUi, type Harness } from "./helpers/ui";
 import { PASSWORD } from "./helpers/service";
 

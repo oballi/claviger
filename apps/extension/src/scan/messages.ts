@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { useLocale, useT, type MessageKey } from "@otp-vault/ui";
+import { useLocale, useT, type MessageKey } from "@claviger/ui";
 
 // Kept out of the shared dictionaries so the popup bundle does not carry the scan page's strings.
 const tr = {

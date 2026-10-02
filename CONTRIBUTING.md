@@ -21,7 +21,7 @@ pnpm coverage    # thresholds: 90% lines/statements/functions, 85% branches
 pnpm format      # run before committing
 ```
 
-Run the tests of one package: `pnpm --filter @otp-vault/core test <pattern>`.
+Run the tests of one package: `pnpm --filter @claviger/core test <pattern>`.
 
 ## Ground rules
 

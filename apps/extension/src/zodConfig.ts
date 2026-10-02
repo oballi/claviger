@@ -1,1 +1,1 @@
-import "@otp-vault/ui/zod-config";
+import "@claviger/ui/zod-config";

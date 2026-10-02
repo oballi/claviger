@@ -3,7 +3,7 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { PopupApp } from "@otp-vault/ui/popup";
+import { PopupApp } from "@claviger/ui/popup";
 import { harness, renderUi } from "./helpers/ui";
 
 async function open(pollMs = 0) {

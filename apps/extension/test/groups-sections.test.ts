@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sectionsOf, sortSectionsOf } from "@otp-vault/ui";
+import { sectionsOf, sortSectionsOf } from "@claviger/ui";
 
 const g = (id: string) => ({ id, name: id.toUpperCase() });
 const row = (id: string, groupId: string | null, pinned = false) => ({ id, groupId, pinned });

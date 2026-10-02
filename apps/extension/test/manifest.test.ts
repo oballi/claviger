@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { CORE_VERSION } from "@otp-vault/core";
+import { CORE_VERSION } from "@claviger/core";
 import config from "../wxt.config";
 
 type ManifestFn = (env: {

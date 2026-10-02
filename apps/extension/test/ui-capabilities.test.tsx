@@ -2,8 +2,8 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { AddAccount, PopupApp } from "@otp-vault/ui/popup";
-import { SecurityScreen, SetupWizard } from "@otp-vault/ui/manage";
+import { AddAccount, PopupApp } from "@claviger/ui/popup";
+import { SecurityScreen, SetupWizard } from "@claviger/ui/manage";
 import { harness, renderUi } from "./helpers/ui";
 
 const NONE = {

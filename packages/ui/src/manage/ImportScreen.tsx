@@ -1,4 +1,4 @@
-import type { ImportFormat } from "@otp-vault/core";
+import type { ImportFormat } from "@claviger/core";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { ImportPreviewView } from "../contract/views";
 import { RpcError } from "../rpc/client";

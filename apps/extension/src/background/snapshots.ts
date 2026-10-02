@@ -7,8 +7,8 @@ import {
   type ClockPort,
   type RandomPort,
   type StoragePort,
-} from "@otp-vault/core";
-import { SNAPSHOT_REASONS, type SnapshotReason } from "@otp-vault/ui/protocol";
+} from "@claviger/core";
+import { SNAPSHOT_REASONS, type SnapshotReason } from "@claviger/ui/protocol";
 import { z } from "zod";
 
 export const SNAPSHOT_PREFIX = "snapshot:";

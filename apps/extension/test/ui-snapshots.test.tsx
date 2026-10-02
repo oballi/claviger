@@ -3,11 +3,11 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { VaultService } from "../src/background/vaultService";
-import { createRpcClient, RpcError } from "@otp-vault/ui/rpc-client";
+import { createRpcClient, RpcError } from "@claviger/ui/rpc-client";
 import { handleRpcMessage } from "../src/rpc/server";
-import type { UiPlatform } from "@otp-vault/ui";
-import { BackupScreen, CorruptScreen } from "@otp-vault/ui/manage";
-import { CodesScreen } from "@otp-vault/ui/popup";
+import type { UiPlatform } from "@claviger/ui";
+import { BackupScreen, CorruptScreen } from "@claviger/ui/manage";
+import { CodesScreen } from "@claviger/ui/popup";
 import { harness, renderUi } from "./helpers/ui";
 import { PASSWORD } from "./helpers/service";
 

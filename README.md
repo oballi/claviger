@@ -40,8 +40,8 @@ Requirements: Node.js 22+ and pnpm 10.
 
 ```sh
 pnpm install
-pnpm --filter @otp-vault/extension build          # Chrome  → apps/extension/.output/chrome-mv3
-pnpm --filter @otp-vault/extension build:firefox  # Firefox → apps/extension/.output/firefox-mv3
+pnpm --filter @claviger/extension build          # Chrome  → apps/extension/.output/chrome-mv3
+pnpm --filter @claviger/extension build:firefox  # Firefox → apps/extension/.output/firefox-mv3
 ```
 
 - **Chrome:** open `chrome://extensions`, enable _Developer mode_, choose _Load unpacked_ and select `apps/extension/.output/chrome-mv3`.

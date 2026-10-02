@@ -3,7 +3,7 @@
 import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { AccountsScreen } from "@otp-vault/ui/manage";
+import { AccountsScreen } from "@claviger/ui/manage";
 import { harness, renderUi } from "./helpers/ui";
 
 async function seeded() {

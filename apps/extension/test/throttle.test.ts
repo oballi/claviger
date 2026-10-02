@@ -1,4 +1,4 @@
-import { FakeClock, MemoryStorage } from "@otp-vault/core/testing";
+import { FakeClock, MemoryStorage } from "@claviger/core/testing";
 import { describe, expect, it } from "vitest";
 import { ATTEMPTS_KEY, delayAfter, Throttle } from "../src/background/throttle";
 

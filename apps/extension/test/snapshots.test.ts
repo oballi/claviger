@@ -1,5 +1,5 @@
-import { normalizeAccountInput, Vault, webRandom } from "@otp-vault/core";
-import { FakeClock, FAST_KDF, MemoryStorage } from "@otp-vault/core/testing";
+import { normalizeAccountInput, Vault, webRandom } from "@claviger/core";
+import { FakeClock, FAST_KDF, MemoryStorage } from "@claviger/core/testing";
 import { describe, expect, it } from "vitest";
 import { DAY_MS, MAX_SNAPSHOTS, recordsStorage, SnapshotStore } from "../src/background/snapshots";
 

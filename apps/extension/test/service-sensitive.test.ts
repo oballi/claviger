@@ -1,4 +1,4 @@
-import { parseImport, parseOtpauthUri } from "@otp-vault/core";
+import { parseImport, parseOtpauthUri } from "@claviger/core";
 import { describe, expect, it } from "vitest";
 import { ATTEMPTS_KEY } from "../src/background/throttle";
 import { PERSISTED_KEY } from "../src/background/keyCache";

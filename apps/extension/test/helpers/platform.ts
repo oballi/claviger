@@ -1,5 +1,5 @@
-import { webRandom, type ClockPort } from "@otp-vault/core";
-import { FakeClock, FAST_KDF, MemoryStorage } from "@otp-vault/core/testing";
+import { webRandom, type ClockPort } from "@claviger/core";
+import { FakeClock, FAST_KDF, MemoryStorage } from "@claviger/core/testing";
 import type { FillResult } from "../../src/inject/fillOtp";
 import type { AlarmPort, ClipboardPort, Platform, TabsPort } from "../../src/platform/ports";
 

@@ -4,21 +4,21 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { LockPolicy } from "../src/background/settings";
-import { Dialog } from "@otp-vault/ui";
-import { LockPolicyOptions } from "@otp-vault/ui";
-import { NewPasswordFields, newPasswordProblem } from "@otp-vault/ui";
-import { QrCode } from "@otp-vault/ui";
-import { ReauthForm } from "@otp-vault/ui";
-import { RecoveryCodeDisplay } from "@otp-vault/ui";
-import { translate } from "@otp-vault/ui";
-import { manageMessages } from "@otp-vault/ui/manage";
+import { Dialog } from "@claviger/ui";
+import { LockPolicyOptions } from "@claviger/ui";
+import { NewPasswordFields, newPasswordProblem } from "@claviger/ui";
+import { QrCode } from "@claviger/ui";
+import { ReauthForm } from "@claviger/ui";
+import { RecoveryCodeDisplay } from "@claviger/ui";
+import { translate } from "@claviger/ui";
+import { manageMessages } from "@claviger/ui/manage";
 import {
   ManageFrame,
   PageTitle,
   SettingsRow,
   SettingsSection,
   WizardFrame,
-} from "@otp-vault/ui/manage";
+} from "@claviger/ui/manage";
 import { harness, renderUi } from "./helpers/ui";
 import { PASSWORD } from "./helpers/service";
 

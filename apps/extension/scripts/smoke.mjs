@@ -1,6 +1,6 @@
 /* global chrome */
 // Loads the built Chrome extension in headless Chromium and walks the first-run flow.
-// Needs the SMOKE=1 build (`pnpm --filter @otp-vault/extension build:smoke`): it adds <all_urls> so fill and capture can be
+// Needs the SMOKE=1 build (`pnpm --filter @claviger/extension build:smoke`): it adds <all_urls> so fill and capture can be
 // driven without a real toolbar click. The real activeTab grants are on the manual checklist.
 // EXTENSION_DIR overrides the build folder. Needs a Chromium binary: set CHROMIUM_PATH, or run `pnpm exec playwright-core install chromium` once.
 import { mkdtempSync, readFileSync } from "node:fs";

@@ -1,4 +1,4 @@
-import { base32Encode, normalizeAccountInput, toBase64, Vault } from "@otp-vault/core";
+import { base32Encode, normalizeAccountInput, toBase64, Vault } from "@claviger/core";
 import { describe, expect, it, vi } from "vitest";
 import { PERSISTED_KEY, SESSION_KEY } from "../src/background/keyCache";
 import { saveSettings } from "../src/background/settings";

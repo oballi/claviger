@@ -2,10 +2,10 @@
 import { cleanup, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { PopupApp } from "@otp-vault/ui/popup";
-import { SecurityScreen } from "@otp-vault/ui/manage";
-import { applyCachedTheme } from "@otp-vault/ui";
-import { resolvedScheme } from "@otp-vault/ui/popup";
+import { PopupApp } from "@claviger/ui/popup";
+import { SecurityScreen } from "@claviger/ui/manage";
+import { applyCachedTheme } from "@claviger/ui";
+import { resolvedScheme } from "@claviger/ui/popup";
 import { harness, renderUi } from "./helpers/ui";
 
 const html = document.documentElement;

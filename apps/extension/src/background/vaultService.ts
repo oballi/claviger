@@ -22,7 +22,7 @@ import {
   type AccountPatch,
   type StoragePort,
   type VaultDeps,
-} from "@otp-vault/core";
+} from "@claviger/core";
 import type {
   AccountListView,
   AccountView,
@@ -35,8 +35,8 @@ import type {
   SnapshotInfo,
   StorageUsageView,
   TrashItemView,
-} from "@otp-vault/ui/views";
-import { TRASH_RETENTION_DAYS } from "@otp-vault/ui/views";
+} from "@claviger/ui/views";
+import { TRASH_RETENTION_DAYS } from "@claviger/ui/views";
 import type { Platform, StorageAreaName } from "../platform/ports";
 import { ServiceError } from "./errors";
 import {

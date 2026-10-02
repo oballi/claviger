@@ -1,5 +1,5 @@
-import { TRASH_TTL_MS } from "@otp-vault/core";
-import { TRASH_RETENTION_DAYS } from "@otp-vault/ui/views";
+import { TRASH_TTL_MS } from "@claviger/core";
+import { TRASH_RETENTION_DAYS } from "@claviger/ui/views";
 import { describe, expect, it } from "vitest";
 import { VaultService } from "../src/background/vaultService";
 import { memoryPlatform } from "./helpers/platform";

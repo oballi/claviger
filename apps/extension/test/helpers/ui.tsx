@@ -1,9 +1,9 @@
 import { vi } from "vitest";
 import type { LockPolicy } from "../../src/background/settings";
 import { VaultService } from "../../src/background/vaultService";
-import { createRpcClient } from "@otp-vault/ui/rpc-client";
+import { createRpcClient } from "@claviger/ui/rpc-client";
 import { handleRpcMessage } from "../../src/rpc/server";
-import type { UiCapabilities, UiPlatform } from "@otp-vault/ui";
+import type { UiCapabilities, UiPlatform } from "@claviger/ui";
 import { memoryPlatform } from "./platform";
 import { PASSWORD } from "./service";
 
@@ -78,4 +78,4 @@ export async function harness(
 
 export type Harness = Awaited<ReturnType<typeof harness>>;
 
-export { renderUi, withStatus } from "@otp-vault/ui/testing";
+export { renderUi, withStatus } from "@claviger/ui/testing";

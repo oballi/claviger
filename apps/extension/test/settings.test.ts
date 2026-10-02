@@ -1,4 +1,4 @@
-import { MemoryStorage } from "@otp-vault/core/testing";
+import { MemoryStorage } from "@claviger/core/testing";
 import { describe, expect, it } from "vitest";
 import { ServiceError } from "../src/background/errors";
 import {

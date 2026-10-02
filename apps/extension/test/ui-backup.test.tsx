@@ -3,11 +3,11 @@ import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { BackupScreen, type ImportSource, ImportScreen } from "@otp-vault/ui/manage";
+import { BackupScreen, type ImportSource, ImportScreen } from "@claviger/ui/manage";
 import { harness, renderUi, type Harness } from "./helpers/ui";
 import { PASSWORD } from "./helpers/service";
 import { migrationUri } from "./helpers/qr";
-import { QrImageTooLargeError } from "@otp-vault/ui/qr-limits";
+import { QrImageTooLargeError } from "@claviger/ui/qr-limits";
 
 const ACME = "otpauth://totp/Acme:bob?secret=JBSWY3DPEHPK3PXP&issuer=Acme";
 

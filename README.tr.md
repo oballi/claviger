@@ -47,8 +47,8 @@ Gerekenler: Node.js 22+ ve pnpm 10.
 
 ```sh
 pnpm install
-pnpm --filter @otp-vault/extension build          # Chrome  → apps/extension/.output/chrome-mv3
-pnpm --filter @otp-vault/extension build:firefox  # Firefox → apps/extension/.output/firefox-mv3
+pnpm --filter @claviger/extension build          # Chrome  → apps/extension/.output/chrome-mv3
+pnpm --filter @claviger/extension build:firefox  # Firefox → apps/extension/.output/firefox-mv3
 ```
 
 - **Chrome:** `chrome://extensions` sayfasında *Geliştirici modu*nu aç, _Paketlenmemiş öğe yükle_'yi seç ve `apps/extension/.output/chrome-mv3` klasörünü göster.

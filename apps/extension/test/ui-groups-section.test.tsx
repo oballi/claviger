@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { AccountsScreen, GroupsSection } from "@otp-vault/ui/manage";
+import { AccountsScreen, GroupsSection } from "@claviger/ui/manage";
 import { harness, renderUi } from "./helpers/ui";
 
 expect.extend({

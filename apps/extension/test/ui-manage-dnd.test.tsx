@@ -2,7 +2,7 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { AccountsScreen } from "@otp-vault/ui/manage";
+import { AccountsScreen } from "@claviger/ui/manage";
 import { harness, renderUi } from "./helpers/ui";
 
 const dt = (types: string[] = []) => ({

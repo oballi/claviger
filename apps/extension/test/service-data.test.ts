@@ -1,4 +1,4 @@
-import { generateCode, Vault } from "@otp-vault/core";
+import { generateCode, Vault } from "@claviger/core";
 import { describe, expect, it } from "vitest";
 import {
   PREVIEW_TTL_MS,

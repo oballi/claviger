@@ -1,5 +1,5 @@
 {
-  "name": "@otp-vault/ui",
+  "name": "@claviger/ui",
   "version": "0.1.0",
   "license": "MIT",
   "private": true,
@@ -29,7 +29,7 @@
   "dependencies": {
     "@fontsource/geist": "5.3.0",
     "@fontsource/geist-mono": "5.3.0",
-    "@otp-vault/core": "workspace:*",
+    "@claviger/core": "workspace:*",
     "qrcode-generator": "2.0.4",
     "react": "19.3.0",
     "react-dom": "19.3.0",

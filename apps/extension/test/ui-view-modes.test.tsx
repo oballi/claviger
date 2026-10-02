@@ -2,9 +2,9 @@
 import { fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { formatCode, maskCode } from "@otp-vault/ui";
-import type { UiPlatform } from "@otp-vault/ui";
-import { CodesScreen } from "@otp-vault/ui/popup";
+import { formatCode, maskCode } from "@claviger/ui";
+import type { UiPlatform } from "@claviger/ui";
+import { CodesScreen } from "@claviger/ui/popup";
 import { harness, renderUi } from "./helpers/ui";
 
 const A = "otpauth://totp/Acme:a@x?secret=JBSWY3DPEHPK3PXP&issuer=Acme";

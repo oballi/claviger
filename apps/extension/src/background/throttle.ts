@@ -1,5 +1,5 @@
 import "../zodConfig";
-import type { ClockPort, StoragePort } from "@otp-vault/core";
+import type { ClockPort, StoragePort } from "@claviger/core";
 import { z } from "zod";
 
 export const ATTEMPTS_KEY = "lock:attempts";

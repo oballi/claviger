@@ -1,4 +1,4 @@
-import { Vault } from "@otp-vault/core";
+import { Vault } from "@claviger/core";
 import { describe, expect, it, vi } from "vitest";
 import { VaultService } from "../src/background/vaultService";
 import { ATTEMPTS_KEY, FREE_ATTEMPTS, SNAPSHOT_ATTEMPTS_KEY } from "../src/background/throttle";

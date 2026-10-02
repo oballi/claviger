@@ -2,7 +2,7 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
-import { PopupApp } from "@otp-vault/ui/popup";
+import { PopupApp } from "@claviger/ui/popup";
 import { harness, renderUi, type Harness } from "./helpers/ui";
 
 const dt = () => ({ setData() {}, getData: () => "", effectAllowed: "" });

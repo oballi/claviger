@@ -1,4 +1,4 @@
-import { isCoreError, isQuotaError } from "@otp-vault/core";
+import { isCoreError, isQuotaError } from "@claviger/core";
 import { ServiceError } from "../background/errors";
 import type { VaultService } from "../background/vaultService";
 import {
@@ -7,7 +7,7 @@ import {
   type RpcErrorBody,
   type RpcRequest,
   type RpcResponse,
-} from "@otp-vault/ui/protocol";
+} from "@claviger/ui/protocol";
 
 export interface RpcSender {
   id?: string;

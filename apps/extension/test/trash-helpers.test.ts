@@ -1,4 +1,4 @@
-import type { TrashItemView } from "@otp-vault/ui/views";
+import type { TrashItemView } from "@claviger/ui/views";
 import { describe, expect, it } from "vitest";
 import { translate } from "../../../packages/ui/src/i18n/i18n";
 import { leftText, popupMeta, trashName } from "../../../packages/ui/src/trash";

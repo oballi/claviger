@@ -2,9 +2,9 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { LocaleProvider } from "@otp-vault/ui";
-import { UiProvider } from "@otp-vault/ui";
-import { ImportScreen, manageMessages } from "@otp-vault/ui/manage";
+import { LocaleProvider } from "@claviger/ui";
+import { UiProvider } from "@claviger/ui";
+import { ImportScreen, manageMessages } from "@claviger/ui/manage";
 import { harness, renderUi, type Harness } from "./helpers/ui";
 import { PASSWORD } from "./helpers/service";
 

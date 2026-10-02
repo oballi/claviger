@@ -2,8 +2,8 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { PopupApp } from "@otp-vault/ui/popup";
-import { SecurityScreen } from "@otp-vault/ui/manage";
+import { PopupApp } from "@claviger/ui/popup";
+import { SecurityScreen } from "@claviger/ui/manage";
 import { harness, renderUi, type Harness } from "./helpers/ui";
 
 async function open(h: Harness) {
