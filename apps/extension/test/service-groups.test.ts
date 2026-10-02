@@ -113,6 +113,15 @@ describe("moveAccount in the service", () => {
     expect(await codeOf(service.moveAccount(a.id, null, null))).toBe("locked");
   });
 
+  it("surfaces account-not-found for an unknown or deleted account", async () => {
+    const { service } = await unlockedService();
+    const a = await add(service, "A", "JBSWY3DPEHPK3PXA");
+    const g = await service.createGroup("Work");
+    expect(await codeOf(service.moveAccount("missing", g.id, null))).toBe("account-not-found");
+    await service.deleteAccount(a.id);
+    expect(await codeOf(service.moveAccount(a.id, g.id, null))).toBe("account-not-found");
+  });
+
   it("rejects an unknown group and leaves the list unchanged", async () => {
     const { service } = await unlockedService();
     const a = await add(service, "A", "JBSWY3DPEHPK3PXA");

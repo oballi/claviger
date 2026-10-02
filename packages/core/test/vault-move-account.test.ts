@@ -161,4 +161,31 @@ describe("moveAccount", () => {
     await vault.moveAccount(a, g.id, null);
     expect(spy).toHaveBeenCalledTimes(1);
   });
+
+  it("serializes concurrent moves and pin changes without losing any", async () => {
+    const { vault, g, add, order } = await setup();
+    const a = await add("A");
+    await add("B", g.id);
+    const c = await add("C");
+    const d = await add("D");
+    await Promise.all([
+      vault.moveAccount(c, g.id, null),
+      vault.moveAccount(d, g.id, null),
+      vault.setPinned(a, true),
+    ]);
+    const { accounts, pinned } = await vault.listAccounts();
+    const byId = new Map(accounts.map((x) => [x.id, x]));
+    expect(byId.get(c)!.groupId).toBe(g.id);
+    expect(byId.get(d)!.groupId).toBe(g.id);
+    expect(pinned).toEqual([a]);
+    expect((await order()).sort()).toEqual(["A", "B", "C", "D"]);
+  });
+
+  it("rejects an unknown or deleted account with account-not-found", async () => {
+    const { vault, g, add } = await setup();
+    const a = await add("A");
+    expect(await asyncCodeOf(vault.moveAccount("missing", g.id, null))).toBe("account-not-found");
+    await vault.deleteAccount(a);
+    expect(await asyncCodeOf(vault.moveAccount(a, g.id, null))).toBe("account-not-found");
+  });
 });
