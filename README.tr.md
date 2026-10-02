@@ -1,10 +1,10 @@
-# otp-vault
+# claviger
 
-**Tarayıcın için açık kaynak iki adımlı doğrulama uygulaması.** otp-vault TOTP, HOTP ve Steam Guard kodlarını şifreli bir kasada üretir. Kasa, tarayıcı eşitlemesini sen açmadıkça cihazından çıkmaz.
+**Tarayıcın için açık kaynak iki adımlı doğrulama uygulaması.** claviger TOTP, HOTP ve Steam Guard kodlarını şifreli bir kasada üretir. Kasa, tarayıcı eşitlemesini sen açmadıkça cihazından çıkmaz.
 
 [English](README.md)
 
-> **Durum: erken geliştirme (0.x).** otp-vault henüz hiçbir tarayıcı mağazasında yayınlanmadı. 0.1.0 etiketlendi, ancak 1.0.0'a kadar yalnızca kaynak koddan kurulabilir. Uyumsuz değişiklikler olabilir; her zaman dışa aktarılmış bir yedeğin olsun.
+> **Durum: erken geliştirme (0.x).** claviger henüz hiçbir tarayıcı mağazasında yayınlanmadı. 0.1.0 etiketlendi, ancak 1.0.0'a kadar yalnızca kaynak koddan kurulabilir. Uyumsuz değişiklikler olabilir; her zaman dışa aktarılmış bir yedeğin olsun.
 
 ## Özellikler
 
@@ -26,7 +26,7 @@
 - **Düzenleme.** Hesapları sürükle-bırak ile sırala; aynı adlı hesap eklerken uyarı gösterilir.
 - **İsteğe bağlı saat kontrolü.** Saatini tek bir HTTPS kaynağıyla (`www.google.com`) karşılaştırır. Varsayılan olarak kapalıdır; tarayıcı bu izni yalnızca o istek için sorar.
 - **İçe aktarma.** Google Authenticator, Authenticator eklentisi, Aegis, 2FAS ve düz `otpauth://` bağlantıları desteklenir. Neyin ekleneceği önce önizlemede gösterilir; zaten kayıtlı hesaplar kopyalanmaz.
-- **Yedekleme.** Önerilen yol şifreli `.otpvault` dosyasıdır. Başka bir uygulamaya geçmek için düz `otpauth://` listesi de alınabilir.
+- **Yedekleme.** Önerilen yol şifreli `.claviger` dosyasıdır. Başka bir uygulamaya geçmek için düz `otpauth://` listesi de alınabilir.
 - **Chrome ve Firefox** (Manifest V3; Chrome 116+, Firefox 140+). Yalnızca gereken izinler istenir; uzaktan kod, yazı tipi ya da analitik yoktur.
 
 İsteğe bağlı saat kontrolü dışında (`www.google.com`'a bağlanır) hiçbir şey cihazından çıkmaz. Sürüm politikası: [docs/versioning.md](docs/versioning.md).
@@ -62,7 +62,7 @@ pnpm --filter @claviger/extension build:firefox  # Firefox → apps/extension/.o
 
 ## Teşekkür
 
-otp-vault, [Authenticator-Extension/Authenticator](https://github.com/Authenticator-Extension/Authenticator) projesinden ilham alır. Ekibine ve katkıda bulunanlara teşekkürler. Üçüncü taraf bileşenler: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+claviger, [Authenticator-Extension/Authenticator](https://github.com/Authenticator-Extension/Authenticator) projesinden ilham alır. Ekibine ve katkıda bulunanlara teşekkürler. Üçüncü taraf bileşenler: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Lisans
 

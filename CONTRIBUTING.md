@@ -1,4 +1,4 @@
-# Contributing to otp-vault
+# Contributing to claviger
 
 Thanks for helping! Bug reports, fixes, translations and ideas are all welcome.
 

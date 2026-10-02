@@ -1,10 +1,10 @@
-# otp-vault
+# claviger
 
-**An open-source two-factor authenticator for your browser.** otp-vault generates TOTP, HOTP and Steam Guard codes inside an encrypted vault that never leaves your device unless you choose browser sync.
+**An open-source two-factor authenticator for your browser.** claviger generates TOTP, HOTP and Steam Guard codes inside an encrypted vault that never leaves your device unless you choose browser sync.
 
 [Türkçe](README.tr.md)
 
-> **Status: early development (0.x).** otp-vault is not yet published in any browser store. 0.1.0 is tagged, but until 1.0.0 it can only be installed from source. Expect breaking changes; always keep an exported backup.
+> **Status: early development (0.x).** claviger is not yet published in any browser store. 0.1.0 is tagged, but until 1.0.0 it can only be installed from source. Expect breaking changes; always keep an exported backup.
 
 ## Features
 
@@ -19,7 +19,7 @@
 - **Organizing.** Reorder accounts by drag and drop; adding an account with an existing name shows a warning.
 - **Optional clock check.** Compares your clock with one HTTPS source (`www.google.com`). It is off by default and the browser asks for that permission only for the request.
 - **Imports** from Google Authenticator, the Authenticator extension, Aegis, 2FAS and plain `otpauth://` links. A preview shows exactly what will be added; duplicates are skipped.
-- **Backups.** Encrypted `.otpvault` export (recommended) or a plain `otpauth://` list for moving to another app.
+- **Backups.** Encrypted `.claviger` export (recommended) or a plain `otpauth://` list for moving to another app.
 - **Chrome and Firefox** (Manifest V3; Chrome 116+, Firefox 140+), with minimal permissions and no remote code, fonts or analytics.
 
 Nothing leaves your device, except the opt-in clock check, which contacts `www.google.com`. See [docs/versioning.md](docs/versioning.md) for the release policy.
@@ -62,7 +62,7 @@ pnpm --filter @claviger/extension build:firefox  # Firefox → apps/extension/.o
 
 ## Acknowledgements
 
-otp-vault is inspired by [Authenticator-Extension/Authenticator](https://github.com/Authenticator-Extension/Authenticator). Thanks to its maintainers and contributors. Third-party components are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+claviger is inspired by [Authenticator-Extension/Authenticator](https://github.com/Authenticator-Extension/Authenticator). Thanks to its maintainers and contributors. Third-party components are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## License
 

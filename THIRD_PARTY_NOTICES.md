@@ -1,6 +1,6 @@
 # Third-party notices
 
-otp-vault ships the following third-party components in its built extension. Their licenses are reproduced or linked below; full license texts are also included in each package under `node_modules/<package>/`.
+claviger ships the following third-party components in its built extension. Their licenses are reproduced or linked below; full license texts are also included in each package under `node_modules/<package>/`.
 
 | Component                                                                                                          | Used for                            | License                   |
 | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------- | ------------------------- |
