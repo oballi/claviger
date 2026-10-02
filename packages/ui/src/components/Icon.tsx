@@ -18,9 +18,11 @@ export type IconName =
   | "chevron-down"
   | "sun"
   | "moon"
+  | "sort"
   | "more";
 
 const PATHS: Record<IconName, ReactElement> = {
+  sort: <path d="M7 4v16M3 8l4-4 4 4M17 20V4M13 16l4 4 4-4" />,
   grip: (
     <>
       <circle cx="9" cy="6" r="1" />
