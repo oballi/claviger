@@ -6,7 +6,9 @@ export const INDEX_KEY = "vault:index";
 export const ACCOUNT_PREFIX = "vault:acct:";
 export const TOMB_PREFIX = "vault:tomb:";
 export const SITEMEM_KEY = "vault:sitemem";
-export const MAX_SITE_MEMORY = 500;
+export const MAX_SITE_MEMORY = 100;
+// storage.sync allows 8 KiB per item; stay well below it.
+export const MAX_SITE_MEMORY_BYTES = 6000;
 export const TOMBSTONE_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 
 /**

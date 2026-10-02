@@ -20,6 +20,7 @@ import {
   indexSchema,
   isNewerVersion,
   MAX_SITE_MEMORY,
+  MAX_SITE_MEMORY_BYTES,
   SITEMEM_KEY,
   siteMemorySchema,
   TOMB_PREFIX,
@@ -643,23 +644,35 @@ export class Vault {
   }
 
   rememberSite(domain: string, accountId: string): Promise<void> {
+    // Invalid input must never reach the record: one bad entry would make the whole record unreadable.
+    if (domain.length < 1 || domain.length > 253 || accountId.length < 1) return Promise.resolve();
     return this.exclusive(async () => {
       const { entries: stored, newer } = await this.readSiteMemory();
-      // A newer client's record must not be overwritten by this version.
+      // Covers only the envelope `v`; inner-schema changes in a future v1 record would be overwritten (fine for ordering hints).
       if (newer) return;
       const live = new Set((await this.listAccounts()).accounts.map((a) => a.id));
-      const entries = stored.filter(([d, id]) => d !== domain && live.has(id));
+      if (!live.has(accountId)) return;
+      let entries = stored.filter(([d, id]) => d !== domain && live.has(id));
       entries.push([domain, accountId]);
+      entries = entries.slice(-MAX_SITE_MEMORY);
       const now = this.deps.clock.now();
-      await this.deps.storage.set({
-        [SITEMEM_KEY]: await encryptRecord(
+      for (;;) {
+        const sealed = await encryptRecord(
           this.dek,
           SITEMEM_KEY,
-          { entries: entries.slice(-MAX_SITE_MEMORY), updatedAt: now },
+          { entries, updatedAt: now },
           now,
           this.deps.random,
-        ),
-      });
+        );
+        if (
+          entries.length <= 1 ||
+          SITEMEM_KEY.length + JSON.stringify(sealed).length <= MAX_SITE_MEMORY_BYTES
+        ) {
+          await this.deps.storage.set({ [SITEMEM_KEY]: sealed });
+          return;
+        }
+        entries = entries.slice(1);
+      }
     });
   }
 

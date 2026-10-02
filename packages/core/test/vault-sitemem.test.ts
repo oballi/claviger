@@ -62,14 +62,35 @@ describe("site memory", () => {
     expect(await vault.getSiteMemory()).toEqual({});
   });
 
-  it("caps the memory at 500 entries, dropping the oldest", async () => {
+  it("caps the entry count, dropping the oldest", async () => {
     const { vault, a } = await setup();
-    for (let i = 0; i < 501; i++) await vault.rememberSite(`d${i}.example`, a.id);
+    for (let i = 0; i < 101; i++) await vault.rememberSite(`d${i}.example`, a.id);
     const memory = await vault.getSiteMemory();
-    expect(Object.keys(memory)).toHaveLength(500);
+    expect(Object.keys(memory).length).toBeLessThanOrEqual(100);
     expect(memory["d0.example"]).toBeUndefined();
-    expect(memory["d500.example"]).toBe(a.id);
-  }, 60_000);
+    expect(memory["d100.example"]).toBe(a.id);
+  });
+
+  it("keeps the sealed record under the sync item quota, dropping the oldest", async () => {
+    const { vault, deps, a } = await setup();
+    for (let i = 0; i < 60; i++) await vault.rememberSite(`${"x".repeat(200)}${i}.example`, a.id);
+    const raw = (await deps.storage.get(["vault:sitemem"]))["vault:sitemem"];
+    expect("vault:sitemem".length + JSON.stringify(raw).length).toBeLessThanOrEqual(6000);
+    const memory = await vault.getSiteMemory();
+    expect(memory[`${"x".repeat(200)}59.example`]).toBe(a.id);
+    expect(memory[`${"x".repeat(200)}0.example`]).toBeUndefined();
+  });
+
+  it("ignores invalid input without writing", async () => {
+    const { vault, deps, a } = await setup();
+    await vault.rememberSite("example.com", a.id);
+    const before = await deps.storage.get(["vault:sitemem"]);
+    await vault.rememberSite("", a.id);
+    await vault.rememberSite("x".repeat(254), a.id);
+    await vault.rememberSite("ok.example", "no-such-account");
+    expect(await deps.storage.get(["vault:sitemem"])).toEqual(before);
+    expect(await vault.getSiteMemory()).toEqual({ "example.com": a.id });
+  });
 
   it("re-remembering a domain moves it to the newest slot", async () => {
     const { vault, a } = await setup();

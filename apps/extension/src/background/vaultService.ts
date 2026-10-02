@@ -954,8 +954,7 @@ export class VaultService {
       await this.p.local.set({ [PURGE_PENDING_KEY]: true });
       await this.keys.forget();
       await this.p.session.remove([MANUAL_LOCK_KEY]);
-      await this.throttle.reset();
-      await this.oldPasswordThrottle.reset();
+      await Promise.all([this.throttle.reset(), this.oldPasswordThrottle.reset()]);
       await this.p.alarms.clear(AUTOLOCK_ALARM);
       await saveSettings(this.p.local, DEFAULT_SETTINGS);
       // Last, so a failure here can never leave the key cached.
