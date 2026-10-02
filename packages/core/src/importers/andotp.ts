@@ -3,7 +3,7 @@ import { gcmDecrypt } from "../crypto/aes";
 import { pbkdf2Sha1 } from "../crypto/kdf";
 import { utf8Decode } from "../encoding/bytes";
 import { CoreError } from "../errors";
-import { assertEntryCount } from "./limits";
+import { assertEntryCount, DETECT_SAMPLE } from "./limits";
 import { collect, emptyResult, type ImportResult } from "./types";
 
 // Caps attacker-chosen KDF cost; below 1000 is not a real andOTP file.
@@ -26,7 +26,7 @@ const entrySchema = z.object({
 });
 
 export const isAndotpPlain = (json: unknown): boolean =>
-  Array.isArray(json) && json.some((e) => entrySchema.safeParse(e).success);
+  Array.isArray(json) && json.slice(0, DETECT_SAMPLE).some((e) => entrySchema.safeParse(e).success);
 
 export function isAndotpEncrypted(bytes: Uint8Array): boolean {
   if (bytes.length < HEADER + TAG) return false;
@@ -54,7 +54,7 @@ export function parseAndotpPlain(json: unknown): ImportResult {
       const parts = label.split(" - ");
       if (parts.length > 1) {
         issuer = parts[0];
-        label = parts[1]!;
+        label = parts.slice(1).join(" - ");
       }
     }
     const before = result.accounts.length;

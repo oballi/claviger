@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { base32Encode } from "../encoding/base32";
 import { CoreError } from "../errors";
-import { assertEntryCount } from "./limits";
+import { assertEntryCount, DETECT_SAMPLE } from "./limits";
 import { collect, emptyResult, type ImportResult } from "./types";
 
 const tokenSchema = z.object({
@@ -19,7 +19,10 @@ const fileSchema = z.object({ tokens: z.array(z.unknown()) });
 
 export const isFreeotpPlus = (json: unknown): boolean => {
   const file = fileSchema.safeParse(json);
-  return file.success && file.data.tokens.some((t) => tokenSchema.safeParse(t).success);
+  return (
+    file.success &&
+    file.data.tokens.slice(0, DETECT_SAMPLE).some((t) => tokenSchema.safeParse(t).success)
+  );
 };
 
 export function parseFreeotpPlus(json: unknown): ImportResult {

@@ -14,4 +14,13 @@ describe("binary import transport", () => {
     expect(decodeBinaryImport(`${BINARY_PREFIX}!!!not base64`)).toBeNull();
     expect(decodeBinaryImport(encodeBinaryImport(new Uint8Array(3_800_000)))).toBeNull();
   });
+
+  it("enforces the byte cap exactly", () => {
+    expect(decodeBinaryImport(encodeBinaryImport(new Uint8Array(3_700_000)))).not.toBeNull();
+    expect(decodeBinaryImport(encodeBinaryImport(new Uint8Array(3_700_001)))).toBeNull();
+  });
+
+  it("rejects an over-long body before decoding even if it fits once whitespace is stripped", () => {
+    expect(decodeBinaryImport(`${BINARY_PREFIX}${"AAAA ".repeat(1_000_000)}`)).toBeNull();
+  });
 });

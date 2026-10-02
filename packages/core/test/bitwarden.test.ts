@@ -73,4 +73,14 @@ describe("Bitwarden JSON import", () => {
       status: "unrecognized",
     });
   });
+
+  it("flags a too-short steam secret as malformed", async () => {
+    const out = await ok({
+      items: [
+        { id: "1", type: 1, name: "Steam", login: { username: "u", totp: "steam://MFRGGZDF" } },
+      ],
+    });
+    expect(out.result.accounts).toEqual([]);
+    expect(out.result.issues).toMatchObject([{ position: 0, reason: "malformed-entry" }]);
+  });
 });

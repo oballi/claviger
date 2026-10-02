@@ -117,17 +117,19 @@ const MIN_ENCRYPTED_LENGTH = 4 + 12 + 12 + 16;
 async function parseBinary(text: string, password?: string): Promise<ImportParseOutcome> {
   const bytes = decodeBinaryImport(text);
   if (!bytes) throw new CoreError("corrupt-file", "Binary import is invalid or too large");
-  // The UI only sends non-UTF-8 files this way, but a text payload still works.
+  // Only plausible text formats; NUL-heavy binary headers are valid UTF-8 too.
+  const looksLikeText = (s: string) => /^\s*(\[|\{|otpauth)/i.test(s);
   try {
     const decoded = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-    // Only plausible text formats; NUL-heavy binary headers are valid UTF-8 too.
-    if (/^\s*(\[|\{|otpauth)/i.test(decoded)) return parseImport(decoded, password);
+    if (looksLikeText(decoded)) return parseImport(decoded, password);
   } catch {
-    // Not text: fall through to the binary formats.
+    // Not UTF-8: may still be a legacy-codepage text export (e.g. Windows-1252).
+    const decoded = new TextDecoder("windows-1252").decode(bytes);
+    if (looksLikeText(decoded)) return parseImport(decoded, password);
   }
   if (bytes.length < MIN_ENCRYPTED_LENGTH) return { status: "unrecognized" };
   if (!isAndotpEncrypted(bytes))
-    throw new CoreError("corrupt-file", "Unsupported binary backup parameters");
+    throw new CoreError("unsupported-format", "andOTP older than 0.6.3 is not supported");
   if (!password) return { status: "needs-password", format: "andotp" };
   return {
     status: "ok",

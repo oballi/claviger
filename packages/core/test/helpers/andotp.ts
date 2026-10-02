@@ -51,6 +51,7 @@ export async function andotpEncrypted(
   password: string,
   entries: unknown = ANDOTP_ENTRIES,
   iterations = 1000,
+  rawPayload?: string,
 ): Promise<Uint8Array> {
   const salt = crypto.getRandomValues(new Uint8Array(12));
   const nonce = crypto.getRandomValues(new Uint8Array(12));
@@ -67,7 +68,7 @@ export async function andotpEncrypted(
     await crypto.subtle.encrypt(
       { name: "AES-GCM", iv: nonce },
       key,
-      enc.encode(JSON.stringify(entries)),
+      enc.encode(rawPayload ?? JSON.stringify(entries)),
     ),
   );
   const out = new Uint8Array(4 + 12 + 12 + ct.length);

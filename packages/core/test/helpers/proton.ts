@@ -30,7 +30,11 @@ export const PROTON_ENTRIES = [
 
 export const protonPlain = (entries: unknown[] = PROTON_ENTRIES) => ({ version: 1, entries });
 
-export async function protonEncrypted(password: string, entries: unknown[] = PROTON_ENTRIES) {
+export async function protonEncrypted(
+  password: string,
+  entries: unknown[] = PROTON_ENTRIES,
+  rawPayload?: string,
+) {
   const salt = randomBytes(16);
   const key = await argon2id({
     password,
@@ -45,7 +49,7 @@ export async function protonEncrypted(password: string, entries: unknown[] = PRO
   const cipher = createCipheriv("aes-256-gcm", key, nonce);
   cipher.setAAD(Buffer.from("proton.authenticator.export.v1"));
   const ct = Buffer.concat([
-    cipher.update(JSON.stringify({ entries })),
+    cipher.update(rawPayload ?? JSON.stringify({ entries })),
     cipher.final(),
     cipher.getAuthTag(),
   ]);

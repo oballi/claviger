@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseImport } from "../src/importers";
+import { asyncCodeOf } from "./helpers/errors";
 import { aegisPlain } from "./helpers/aegis";
 import { freeotpPlus, FREEOTP_SECRETS } from "./helpers/freeotp";
 import { plainBackup } from "./helpers/upstream";
@@ -34,6 +35,18 @@ describe("FreeOTP+ import", () => {
       [4, "malformed-entry"],
       [5, "unsupported-type"],
     ]);
+  });
+
+  it("rejects more than 10 000 tokens", async () => {
+    const file = freeotpPlus();
+    file.tokens = Array.from({ length: 10_001 }, () => file.tokens[0]);
+    expect(await asyncCodeOf(parseImport(JSON.stringify(file)))).toBe("unsupported-format");
+  });
+
+  it("does not scan a huge non-FreeOTP token array", async () => {
+    const tokens: unknown[] = Array.from({ length: 200_000 }, () => 1);
+    tokens.push(freeotpPlus().tokens[0]);
+    expect(await parseImport(JSON.stringify({ tokens }))).toEqual({ status: "unrecognized" });
   });
 
   it("does not claim other JSON formats", async () => {

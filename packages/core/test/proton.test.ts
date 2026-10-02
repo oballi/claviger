@@ -44,6 +44,44 @@ describe("Proton Authenticator import", () => {
     ).toBe("corrupt-file");
   });
 
+  it("rejects out-of-range salts as CoreError", async () => {
+    const enc = await protonEncrypted("pw-one-two");
+    for (const n of [7, 65]) {
+      const salt = Buffer.alloc(n, 1).toString("base64");
+      expect(await asyncCodeOf(parseImport(JSON.stringify({ ...enc, salt }), "pw-one-two"))).toBe(
+        "corrupt-file",
+      );
+    }
+  });
+
+  it("malformed decrypted payload is corrupt-file without a cause", async () => {
+    const enc = await protonEncrypted("pw-one-two", [], "not json {");
+    const err = await parseImport(JSON.stringify(enc), "pw-one-two").catch((e: unknown) => e);
+    expect(err).toMatchObject({ code: "corrupt-file", message: "Proton payload is malformed" });
+    expect((err as Error).cause).toBeUndefined();
+  });
+
+  it("an unknown encrypted version fails without asking for a password", async () => {
+    const out = parseImport(JSON.stringify({ version: 2, salt: "AAAA", content: "AAAA" }));
+    expect(await asyncCodeOf(out)).toBe("unsupported-format");
+  });
+
+  it("does not scan a huge non-Proton entries array", async () => {
+    const entries: unknown[] = Array.from({ length: 200_000 }, () => 1);
+    entries.push(PROTON_ENTRIES[0]);
+    expect(await parseImport(JSON.stringify({ version: 1, entries }))).toEqual({
+      status: "unrecognized",
+    });
+  });
+
+  it("flags a too-short steam secret as malformed", async () => {
+    const entry = { id: "s", content: { uri: "steam://MFRGGZDF", name: "Short" } };
+    const out = await parseImport(JSON.stringify(protonPlain([entry])));
+    if (out.status !== "ok") throw new Error("expected ok");
+    expect(out.result.accounts).toEqual([]);
+    expect(out.result.issues).toMatchObject([{ position: 0, reason: "malformed-entry" }]);
+  });
+
   it("reports unreadable entries instead of dropping them", async () => {
     const entries = [
       ...PROTON_ENTRIES,

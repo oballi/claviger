@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { AccountDraft } from "../account/account";
 import { CoreError } from "../errors";
 import { parseOtpauthUri } from "../uri/otpauth";
-import { assertEntryCount } from "./limits";
+import { assertEntryCount, assertSteamSecret } from "./limits";
 import { collect, emptyResult, type ImportResult } from "./types";
 
 const fileSchema = z.object({
@@ -55,8 +55,10 @@ export async function parseBitwarden(json: unknown): Promise<ImportResult> {
     const username = item.data.login?.username ?? "";
     collect(result, position, name, (): AccountDraft => {
       const steam = STEAM.exec(totp);
-      if (steam)
+      if (steam) {
+        assertSteamSecret(steam[1]!);
         return { type: "steam", secret: steam[1]!, issuer: name || "Steam", label: username };
+      }
       if (/^otpauth:\/\//i.test(totp)) {
         const p = parseOtpauthUri(totp);
         return { ...p, issuer: p.issuer || name, label: p.label || username };

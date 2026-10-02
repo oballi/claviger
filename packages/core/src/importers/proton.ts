@@ -6,7 +6,7 @@ import { fromBase64 } from "../encoding/base64";
 import { utf8Decode, utf8Encode } from "../encoding/bytes";
 import { CoreError } from "../errors";
 import { parseOtpauthUri } from "../uri/otpauth";
-import { assertEntryCount } from "./limits";
+import { assertEntryCount, assertSteamSecret, DETECT_SAMPLE } from "./limits";
 import { collect, emptyResult, type ImportResult } from "./types";
 
 const AAD = utf8Encode("proton.authenticator.export.v1");
@@ -29,11 +29,17 @@ const entrySchema = z.object({
 export const isProtonFile = (json: unknown): boolean => {
   if (encryptedSchema.safeParse(json).success) return true;
   const plain = plainSchema.safeParse(json);
-  return plain.success && plain.data.entries.some((e) => entrySchema.safeParse(e).success);
+  return (
+    plain.success &&
+    plain.data.entries.slice(0, DETECT_SAMPLE).some((e) => entrySchema.safeParse(e).success)
+  );
 };
 
-export const protonNeedsPassword = (json: unknown): boolean =>
-  encryptedSchema.safeParse(json).success;
+// An unknown version fails in parseProton right away instead of asking for a password first.
+export const protonNeedsPassword = (json: unknown): boolean => {
+  const enc = encryptedSchema.safeParse(json);
+  return enc.success && enc.data.version === 1;
+};
 
 async function decrypt(
   file: z.infer<typeof encryptedSchema>,
@@ -86,7 +92,10 @@ export async function parseProton(json: unknown, password?: string): Promise<Imp
     const display = name ?? "";
     collect(result, position, display, (): AccountDraft => {
       const steam = STEAM.exec(uri.trim());
-      if (steam) return { type: "steam", secret: steam[1]!, issuer: "Steam", label: display };
+      if (steam) {
+        assertSteamSecret(steam[1]!);
+        return { type: "steam", secret: steam[1]!, issuer: "Steam", label: display };
+      }
       const parsed = parseOtpauthUri(uri);
       return { ...parsed, label: parsed.label || display };
     });
