@@ -122,7 +122,9 @@ export function AccountRow({
   return (
     <li
       onClick={copyFromRow}
-      title={account.issuer && account.label ? `${account.issuer}: ${account.label}` : undefined}
+      title={
+        account.issuer && account.label ? `${account.issuer}: ${account.label}` : name || undefined
+      }
       className="ov-row -mx-3 flex cursor-pointer flex-wrap items-center gap-x-3 rounded-xl px-3 pt-2 pb-1"
     >
       <div className="flex w-full items-center gap-3">
@@ -137,8 +139,12 @@ export function AccountRow({
         {menuButton}
       </div>
       {showLabel ? (
-        // Pulled into the code button's empty min-h-11 padding so the row keeps its old height.
-        <div data-row-label="" className="-mt-3.5 w-full basis-full truncate text-xs text-muted">
+        // Pulled into the code button's empty min-h-11 padding so the row keeps its old height;
+        // pointer-events-none keeps it from covering the bottom of the code and menu buttons.
+        <div
+          data-row-label=""
+          className="pointer-events-none -mt-3.5 w-full basis-full truncate text-xs text-muted"
+        >
           {account.label}
         </div>
       ) : null}

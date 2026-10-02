@@ -99,7 +99,8 @@ describe("view modes", () => {
     await popupWith("normal");
     const label = await screen.findByText("a@x");
     const row = label.closest("li")!;
-    for (const c of ["w-full", "basis-full", "truncate"]) expect(label.className).toContain(c);
+    for (const c of ["w-full", "basis-full", "truncate", "pointer-events-none"])
+      expect(label.className).toContain(c);
     expect(label.parentElement).toBe(row);
     const top = row.querySelector("[data-code-button]")!.parentElement!;
     expect(top).not.toContain(label);
@@ -114,7 +115,7 @@ describe("view modes", () => {
     const solo = (await screen.findByText("solo@x")).closest("li")!;
     expect(solo.querySelector("[data-row-label]")).toBeNull();
     expect(solo.querySelector("[data-row-name]")!.textContent).toBe("solo@x");
-    expect(solo.getAttribute("title")).toBeNull();
+    expect(solo.getAttribute("title")).toBe("solo@x");
     expect(container.querySelectorAll("[data-row-label]")).toHaveLength(1);
   });
 
