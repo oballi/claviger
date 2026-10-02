@@ -244,12 +244,25 @@ describe("empty vault offer", () => {
     const h = await withCopy();
     const state = await h.service.getState();
     expect(state.snapshotOffer).not.toBeNull();
-    renderUi(<CodesScreen state={state} pollMs={0} onLocked={() => {}} />, h.ui);
+    // Deleting the account also filled the bin, which hides the offer; this case is a bin-less vault.
+    const rpc: UiPlatform["rpc"] = async (type, payload) =>
+      type === "listTrash" ? ([] as never) : h.ui.rpc(type, payload);
+    renderUi(<CodesScreen state={state} pollMs={0} onLocked={() => {}} />, { ...h.ui, rpc });
     const user = userEvent.setup();
     await user.click(
       await screen.findByRole("button", { name: "Otomatik kopyadan geri yükle (1 hesap)" }),
     );
     expect(h.ui.openManage).toHaveBeenCalledWith("backup");
+  });
+
+  it("hides the offer while the recently deleted bin has entries", async () => {
+    const h = await withCopy();
+    renderUi(
+      <CodesScreen state={await h.service.getState()} pollMs={0} onLocked={() => {}} />,
+      h.ui,
+    );
+    await screen.findByRole("button", { name: "Son silinenler \u00b7 1" });
+    expect(screen.queryByRole("button", { name: /Otomatik kopyadan/ })).toBeNull();
   });
 
   it("shows no offer without a copy", async () => {

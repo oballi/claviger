@@ -203,5 +203,18 @@ export const tr = {
   "trash.restored": "{name} geri yüklendi",
   "error.trash-entry-not-found": "Bu hesap artık son silinenlerde değil.",
   "error.trash-corrupt": "Bu kayıt okunamadı. Listeden kaldırabilirsin.",
+  "trash.link": "Son silinenler \u00b7 {count}",
+  "trash.title": "Son silinenler.",
+  "trash.listLabel": "Son silinenler",
+  "trash.popupNote":
+    "Silinen hesaplar {days} gün şifreli olarak saklanır, sonra buradan kaldırılır. Kod gösterilmez.",
+  "trash.popupFoot": "Listeden kaldırmak için yönetim sayfasını kullan.",
+  "trash.restore": "Geri yükle",
+  "trash.restoreRow": "{name} hesabını geri yükle",
+  "trash.age.today": "bugün silindi",
+  "trash.age.yesterday": "dün silindi",
+  "trash.age.days": "{count} gün önce silindi",
+  "trash.left": "{count} gün kaldı",
+  "trash.leftOne": "{count} gün kaldı",
 } as const;
 export type PopupKey = keyof typeof tr;

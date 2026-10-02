@@ -8,7 +8,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
-import type { AccountView, ServiceState, StorageUsageView } from "../contract/views";
+import type { AccountView, ServiceState, StorageUsageView, TrashItemView } from "../contract/views";
 import { RpcError } from "../rpc/client";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
@@ -29,6 +29,7 @@ import { NO_GROUP_KEY, sectionsOf } from "../groups";
 import { neighbourOf, swapOrder } from "../reorder";
 
 const EditAccount = lazy(() => import("./EditAccount").then((m) => ({ default: m.EditAccount })));
+const TrashList = lazy(() => import("./TrashList").then((m) => ({ default: m.TrashList })));
 
 function Section({
   title,
@@ -93,6 +94,8 @@ export function CodesScreen({
   const clearToast = useCallback(() => setToast(null), []);
   const [undo, setUndo] = useState<{ id: string; name: string; focus: boolean } | null>(null);
   const trash = useTrash();
+  const [showTrash, setShowTrash] = useState(false);
+  const [focusSearch, setFocusSearch] = useState(false);
   // Last input modality: only a keyboard delete moves focus to "Undo" (the confirm button is gone).
   const viaKeyboard = useRef(false);
   const clearUndo = useCallback(() => setUndo(null), []);
@@ -109,14 +112,14 @@ export function CodesScreen({
   }, [error, onLocked]);
 
   // A stale offer must not reappear when the list view returns.
-  const away = adding || editing !== null;
+  const away = adding || editing !== null || showTrash;
   useEffect(() => {
     if (away) setUndo(null);
   }, [away]);
 
   // "/" must work as soon as the popup opens, when focus is still on <body> (spec §6.2).
   useEffect(() => {
-    if (adding || editing) return;
+    if (adding || editing || showTrash) return;
     function onKey(event: globalThis.KeyboardEvent) {
       const target = event.target as HTMLElement | null;
       if (event.key !== "/" || target?.closest("input, textarea, select")) return;
@@ -126,7 +129,7 @@ export function CodesScreen({
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [adding, editing]);
+  }, [adding, editing, showTrash]);
 
   // A row can move to another section (and remount), so focus returns to its menu trigger by id.
   useEffect(() => {
@@ -141,6 +144,21 @@ export function CodesScreen({
     }
     setRefocus(null);
   }, [list, refocus]);
+
+  // The bin emptied while its view was open: go back to the list.
+  useEffect(() => {
+    if (!showTrash || trash.items.length > 0) return;
+    setShowTrash(false);
+    setActionError(null);
+    setFocusSearch(true);
+  }, [showTrash, trash.items.length]);
+
+  // The search field only exists once the list view has rendered again.
+  useEffect(() => {
+    if (!focusSearch || showTrash || adding || editing) return;
+    searchRef.current?.focus();
+    setFocusSearch(false);
+  }, [focusSearch, showTrash, adding, editing, list]);
 
   // An account deleted elsewhere must not leave the edit view blank or silently vanish.
   const gone = editing !== null && list !== null && !list.accounts.some((a) => a.id === editing);
@@ -162,6 +180,26 @@ export function CodesScreen({
           void reload();
         }}
       />
+    );
+  }
+
+  if (showTrash) {
+    return (
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <Suspense fallback={null}>
+          <TrashList
+            items={trash.items}
+            error={actionError}
+            onBack={() => {
+              setShowTrash(false);
+              setActionError(null);
+              setFocusSearch(true);
+            }}
+            onRestore={restoreFromList}
+          />
+        </Suspense>
+        <Toast message={toast} onDone={clearToast} />
+      </div>
     );
   }
 
@@ -378,6 +416,19 @@ export function CodesScreen({
     }
   }
 
+  async function restoreFromList(item: TrashItemView) {
+    setActionError(null);
+    try {
+      const restored = await rpc("restoreTrash", { id: item.id });
+      setToast(t("trash.restored", { name: restored.name }));
+      await Promise.all([reload(), trash.reload()]);
+    } catch (e) {
+      setActionError(errorMessage(t, e));
+      // The entry may be gone (expired or removed elsewhere): the list must not keep offering it.
+      await trash.reload();
+    }
+  }
+
   function menuFor(account: AccountView, movable: boolean): MenuItem[] {
     const name = account.issuer || account.label;
     const groups = list?.groups ?? [];
@@ -510,6 +561,20 @@ export function CodesScreen({
     />
   );
 
+  const trashLink =
+    trash.items.length > 0 ? (
+      <Button
+        variant="link"
+        onClick={() => {
+          setActionError(null);
+          setUndo(null);
+          setShowTrash(true);
+        }}
+        className="mt-3 justify-start text-xs text-muted"
+      >
+        {t("trash.link", { count: trash.items.length })}
+      </Button>
+    ) : null;
   const validKeys = [NO_GROUP_KEY, ...(list?.groups.map((g) => g.id) ?? [])];
   const grouped = (list?.groups.length ?? 0) > 0;
   const siteRows = accounts.filter(onSite);
@@ -609,8 +674,9 @@ export function CodesScreen({
       <div ref={listRef} className="min-h-0 flex-1 overflow-auto px-7 pb-[72px]">
         {list && accounts.length === 0 ? (
           <div className="flex flex-col items-start gap-4 pt-10">
+            {trashLink}
             <p className="m-0 text-sm text-muted">{t("codes.empty")}</p>
-            {state.snapshotOffer ? (
+            {state.snapshotOffer && trash.items.length === 0 ? (
               <Button
                 variant="link"
                 onClick={() => openManage("backup")}
@@ -667,6 +733,7 @@ export function CodesScreen({
             )}
           </>
         )}
+        {accounts.length > 0 ? trashLink : null}
       </div>
       <Toast message={toast} onDone={clearToast} raised={undo !== null} />
       <UndoToast

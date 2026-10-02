@@ -296,3 +296,198 @@ describe("UndoToast timers", () => {
     expect(onDone).not.toHaveBeenCalled();
   });
 });
+
+const DAY = 86_400_000;
+const restoreBtn = (name: string) =>
+  screen.findByRole("button", { name: `${name} hesab\u0131n\u0131 geri y\u00fckle` });
+
+describe("recently deleted list in the popup", () => {
+  it("shows no link while the bin is empty and a count once something is deleted", async () => {
+    const h = await seeded();
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await trigger("Alpha");
+    expect(screen.queryByRole("button", { name: /Son silinenler/ })).toBeNull();
+    await deleteViaMenu("Beta");
+    expect(await screen.findByRole("button", { name: "Son silinenler \u00b7 1" })).toBeTruthy();
+  });
+
+  it("lists deleted accounts without any code and restores one", async () => {
+    const h = await harness();
+    const { id } = await h.ui.rpc("addAccountManual", {
+      draft: { secret: "JBSWY3DPEHPK3PXA", issuer: "Instagram", label: "omer.balli" },
+    });
+    await h.ui.rpc("deleteAccount", { id });
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await userEvent.click(await screen.findByRole("button", { name: "Son silinenler \u00b7 1" }));
+    expect(await screen.findByRole("heading", { name: "Son silinenler." })).toBeTruthy();
+    expect(screen.getByText("Instagram")).toBeTruthy();
+    expect(
+      screen.getByText("omer.balli \u00b7 bug\u00fcn silindi \u00b7 30 g\u00fcn kald\u0131"),
+    ).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/\d{3}\s?\d{3}/);
+    expect(document.body.textContent).not.toContain("JBSWY3DPEHPK3PXA");
+    expect(document.body.textContent).not.toMatch(/kal\u0131c\u0131|permanent/i);
+    await userEvent.click(await restoreBtn("Instagram"));
+    expect(await screen.findByText("Instagram geri y\u00fcklendi")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Son silinenler/ })).toBeNull();
+    expect((await h.ui.rpc("listAccounts", {})).accounts.map((a) => a.issuer)).toEqual([
+      "Instagram",
+    ]);
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("searchbox")));
+  });
+
+  it("shows older entries with their age and days left", async () => {
+    const h = await seeded();
+    await h.ui.rpc("deleteAccount", { id: h.ids.Beta! });
+    h.p.clock.advance(26 * DAY);
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await userEvent.click(await screen.findByRole("button", { name: "Son silinenler \u00b7 1" }));
+    expect(
+      await screen.findByText("26 g\u00fcn \u00f6nce silindi \u00b7 4 g\u00fcn kald\u0131"),
+    ).toBeTruthy();
+  });
+
+  it("keeps focus inside the view after a restore and goes back on Escape", async () => {
+    const h = await seeded();
+    await h.ui.rpc("deleteAccount", { id: h.ids.Alpha! });
+    await h.ui.rpc("deleteAccount", { id: h.ids.Beta! });
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await userEvent.click(await screen.findByRole("button", { name: "Son silinenler \u00b7 2" }));
+    await userEvent.click((await screen.findAllByRole("button", { name: /geri y\u00fckle$/ }))[0]!);
+    await waitFor(() =>
+      expect(screen.getAllByRole("button", { name: /geri y\u00fckle$/ })).toHaveLength(1),
+    );
+    const remaining = screen.getAllByRole("button", { name: /geri y\u00fckle$/ });
+    await waitFor(() => expect(document.activeElement).toBe(remaining[0]));
+    await userEvent.keyboard("{Escape}");
+    expect(await screen.findByRole("searchbox")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Son silinenler." })).toBeNull();
+  });
+
+  it("goes back with the back button", async () => {
+    const h = await seeded();
+    await h.ui.rpc("deleteAccount", { id: h.ids.Beta! });
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await userEvent.click(await screen.findByRole("button", { name: "Son silinenler \u00b7 1" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Geri" }));
+    expect(await screen.findByRole("searchbox")).toBeTruthy();
+  });
+
+  it("shows a duplicate as an alert and keeps the entry", async () => {
+    const h = await seeded();
+    await h.ui.rpc("deleteAccount", { id: h.ids.Beta! });
+    await h.ui.rpc("addAccountManual", {
+      draft: { secret: "JBSWY3DPEHPK3PXB", issuer: "Beta again" },
+    });
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await userEvent.click(await screen.findByRole("button", { name: "Son silinenler \u00b7 1" }));
+    await userEvent.click(await restoreBtn("Beta"));
+    expect((await screen.findByRole("alert")).textContent).toContain("zaten kay\u0131tl\u0131");
+    expect(await h.ui.rpc("listTrash", {})).toHaveLength(1);
+    // The button stays usable (aria-disabled only while a restore runs) and keeps focus.
+    expect(document.activeElement).toBe(await restoreBtn("Beta"));
+  });
+
+  it("does not start a second restore while one is running", async () => {
+    const h = await seeded();
+    await h.ui.rpc("deleteAccount", { id: h.ids.Alpha! });
+    await h.ui.rpc("deleteAccount", { id: h.ids.Beta! });
+    let calls = 0;
+    let release: () => void = () => {};
+    const gate = new Promise<void>((r) => (release = r));
+    const ui = {
+      ...h.ui,
+      rpc: (async (type: string, payload: unknown) => {
+        if (type === "restoreTrash") {
+          calls++;
+          await gate;
+        }
+        return (h.ui.rpc as (t: string, p: unknown) => Promise<unknown>)(type, payload);
+      }) as Harness["ui"]["rpc"],
+    };
+    renderUi(<PopupApp pollMs={0} />, ui);
+    await userEvent.click(await screen.findByRole("button", { name: "Son silinenler \u00b7 2" }));
+    const buttons = await screen.findAllByRole("button", { name: /geri y\u00fckle$/ });
+    await userEvent.click(buttons[0]!);
+    await userEvent.click(buttons[1]!);
+    expect(buttons[1]!.getAttribute("aria-disabled")).toBe("true");
+    release();
+    await waitFor(() =>
+      expect(screen.getAllByRole("button", { name: /geri y\u00fckle$/ })).toHaveLength(1),
+    );
+    expect(calls).toBe(1);
+  });
+
+  it("refreshes the list when the entry is already gone", async () => {
+    const h = await seeded();
+    await h.ui.rpc("deleteAccount", { id: h.ids.Beta! });
+    const ui = {
+      ...h.ui,
+      rpc: ((type: string, payload: unknown) =>
+        type === "restoreTrash"
+          ? Promise.reject(new RpcError("trash-entry-not-found", "x"))
+          : (h.ui.rpc as (t: string, p: unknown) => Promise<unknown>)(
+              type,
+              payload,
+            )) as Harness["ui"]["rpc"],
+    };
+    renderUi(<PopupApp pollMs={0} />, ui);
+    await userEvent.click(await screen.findByRole("button", { name: "Son silinenler \u00b7 1" }));
+    await userEvent.click(await restoreBtn("Beta"));
+    expect((await screen.findByRole("alert")).textContent).toContain("son silinenlerde de\u011fil");
+  });
+
+  it("drops a pending undo offer when the list opens", async () => {
+    const h = await seeded();
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await deleteViaMenu("Beta");
+    await screen.findByText("Beta silindi");
+    await userEvent.click(await screen.findByRole("button", { name: "Son silinenler \u00b7 1" }));
+    await screen.findByRole("heading", { name: "Son silinenler." });
+    expect(screen.queryByText("Beta silindi")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Geri al" })).toBeNull();
+  });
+
+  it("shows the restored toast inside the list while entries remain", async () => {
+    const h = await seeded();
+    await h.ui.rpc("deleteAccount", { id: h.ids.Alpha! });
+    await h.ui.rpc("deleteAccount", { id: h.ids.Beta! });
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await userEvent.click(await screen.findByRole("button", { name: "Son silinenler \u00b7 2" }));
+    await userEvent.click(await restoreBtn("Alpha"));
+    expect(await screen.findByText("Alpha geri y\u00fcklendi")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Son silinenler." })).toBeTruthy();
+  });
+
+  it("does not steal '/' inside the list view", async () => {
+    const h = await seeded();
+    await h.ui.rpc("deleteAccount", { id: h.ids.Beta! });
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await userEvent.click(await screen.findByRole("button", { name: "Son silinenler \u00b7 1" }));
+    await screen.findByRole("heading", { name: "Son silinenler." });
+    await userEvent.keyboard("/");
+    expect(screen.queryByRole("searchbox")).toBeNull();
+  });
+
+  it("shows the bin link first on an empty popup and hides the snapshot offer meanwhile", async () => {
+    const h = await seeded();
+    await h.ui.rpc("deleteAccount", { id: h.ids.Alpha! });
+    await h.ui.rpc("deleteAccount", { id: h.ids.Beta! });
+    const ui = h.ui;
+    renderUi(<PopupApp pollMs={0} />, ui);
+    const link = await screen.findByRole("button", { name: "Son silinenler \u00b7 2" });
+    const add = screen.getAllByRole("button", { name: "Hesap ekle" }).at(-1)!;
+    expect(link.compareDocumentPosition(add) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByText(/kasa kopyas\u0131|Kopya/)).toBeNull();
+  });
+
+  it("renders in English", async () => {
+    const h = await seeded();
+    await h.ui.rpc("deleteAccount", { id: h.ids.Beta! });
+    renderUi(<PopupApp pollMs={0} />, h.ui, "en");
+    await userEvent.click(await screen.findByRole("button", { name: "Recently deleted \u00b7 1" }));
+    expect(await screen.findByRole("heading", { name: "Recently deleted." })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Restore Beta" })).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/for good|permanent/i);
+  });
+});
