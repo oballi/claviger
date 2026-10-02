@@ -1,8 +1,8 @@
 import { CoreError } from "@otp-vault/core";
 import { describe, expect, it } from "vitest";
 import { VaultService } from "../src/background/vaultService";
-import { createRpcClient, RpcError } from "../src/rpc/client";
-import { RPC_CHANNEL } from "../src/rpc/protocol";
+import { createRpcClient, RpcError } from "@otp-vault/ui/rpc-client";
+import { RPC_CHANNEL } from "@otp-vault/ui/protocol";
 import { handleRpcMessage, isRpcEnvelope, isTrustedSender } from "../src/rpc/server";
 import { memoryPlatform } from "./helpers/platform";
 import { PASSWORD } from "./helpers/service";

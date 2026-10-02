@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { LockPolicy, ViewMode } from "../../background/settings";
-import type { ServiceState } from "../../background/vaultService";
+import type { LockPolicy, ServiceState, ViewMode } from "@otp-vault/ui/views";
 import { Button } from "../components/Button";
 import { NewPasswordFields, newPasswordProblem } from "../components/NewPasswordFields";
 import { Notice } from "../components/Notice";

@@ -20,11 +20,20 @@ import {
   type AccountDraft,
   type AccountInput,
   type AccountPatch,
-  type ImportFormat,
-  type ImportIssue,
   type StoragePort,
   type VaultDeps,
 } from "@otp-vault/core";
+import type {
+  AccountListView,
+  AccountView,
+  FillOutcome,
+  ImportPreviewItemView,
+  ImportPreviewView,
+  ServiceState,
+  ServiceStatus,
+  SnapshotInfo,
+  StorageUsageView,
+} from "@otp-vault/ui/views";
 import type { Platform, StorageAreaName } from "../platform/ports";
 import { ServiceError } from "./errors";
 import {
@@ -45,6 +54,18 @@ import {
   type ViewMode,
 } from "./settings";
 import { SNAPSHOT_ATTEMPTS_KEY, Throttle } from "./throttle";
+
+export type {
+  AccountListView,
+  AccountView,
+  FillOutcome,
+  ImportPreviewItemView,
+  ImportPreviewView,
+  ServiceState,
+  ServiceStatus,
+  SnapshotInfo,
+  StorageUsageView,
+};
 
 export const AUTOLOCK_ALARM = "autolock";
 export const CLIPBOARD_ALARM = "clipboard-clear";
@@ -69,63 +90,6 @@ const PURGE_PENDING_KEY = "snapshotPurgePending";
 
 const itemBytes = (key: string, value: unknown) => key.length + JSON.stringify(value).length;
 
-export type ServiceStatus = "no-vault" | "locked" | "unlocked" | "unsupported" | "corrupt";
-
-export interface ServiceState {
-  status: ServiceStatus;
-  lockPolicy: LockPolicy;
-  storageArea: StorageAreaName;
-  /** Known while locked too (read from the plaintext header); null when there is no readable vault. */
-  hasRecoveryCode: boolean | null;
-  /** Live account records, counted without decrypting; null when there is no readable vault. */
-  accountCount: number | null;
-  retryAfterMs: number;
-  clockOffsetSec: number;
-  clockCheckEnabled: boolean;
-  revealRequiresPassword: boolean;
-  lastBackupAt: number | null;
-  viewMode: ViewMode;
-  clipboardClearSec: ClipboardClearSec;
-  recoveryCodeConfirmed: boolean;
-  fillOnlyLinked: boolean;
-  siteMemory: boolean;
-  /** Set only when the unlocked vault is empty and a non-empty local copy exists. */
-  snapshotOffer: { id: string; createdAt: number; accountCount: number } | null;
-}
-
-export interface SnapshotInfo {
-  id: string;
-  createdAt: number;
-  reason: SnapshotReason;
-  accountCount: number;
-  sameVault: boolean;
-}
-
-export interface AccountView {
-  id: string;
-  type: Account["type"];
-  issuer: string;
-  label: string;
-  algorithm: Account["algorithm"];
-  digits: number;
-  period: number;
-  domains: string[];
-  pinned: boolean;
-  code: string;
-  remaining: number | null;
-}
-
-export interface AccountListView {
-  accounts: AccountView[];
-  unreadable: string[];
-  indexDamaged: boolean;
-  /** `remembered` only orders the popup; it never authorises a fill. */
-  matches: { exact: string[]; suggested: string[]; remembered: string[] };
-  pageDomain: string | null;
-}
-
-export type FillOutcome = "filled" | "copied-instead" | "refused";
-
 function unavailable(): ServiceError {
   return new ServiceError("storage-area-unavailable", "No synced storage area on this platform");
 }
@@ -140,33 +104,6 @@ function fillableUrl(raw: string): boolean {
   }
   if (u.protocol === "https:") return true;
   return u.protocol === "http:" && (u.hostname === "localhost" || u.hostname === "127.0.0.1");
-}
-
-export interface ImportPreviewItemView {
-  index: number;
-  issuer: string;
-  label: string;
-  type: Account["type"];
-  status: "new" | "duplicate";
-}
-
-export type ImportPreviewView =
-  | {
-      status: "ok";
-      previewId: string;
-      format: ImportFormat;
-      items: ImportPreviewItemView[];
-      issues: ImportIssue[];
-    }
-  | { status: "needs-password"; format: ImportFormat }
-  | { status: "unrecognized" };
-
-export interface StorageUsageView {
-  area: StorageAreaName;
-  bytes: number;
-  indexBytes: number;
-  quotaBytes: number | null;
-  maxItemBytes: number | null;
 }
 
 export function assertPassword(password: string): void {
@@ -501,6 +438,8 @@ export class VaultService {
     lockPolicy: LockPolicy;
     storageArea: StorageAreaName;
   }): Promise<{ recoveryCode: string | null }> {
+    // Before any cleanup: a rejected setup must not delete leftover snapshots.
+    if (opts.storageArea === "sync" && !this.p.sync) throw unavailable();
     const epoch = this.lockEpoch;
     if ((await Vault.exists(this.p.local)) || (this.p.sync && (await Vault.exists(this.p.sync)))) {
       throw new ServiceError("already-set-up", "A vault already exists");

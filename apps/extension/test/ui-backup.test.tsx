@@ -8,7 +8,7 @@ import { ImportScreen } from "../src/ui/manage/ImportScreen";
 import { harness, renderUi, type Harness } from "./helpers/ui";
 import { PASSWORD } from "./helpers/service";
 import { migrationUri } from "./helpers/qr";
-import { QrImageTooLargeError } from "../src/qr/limits";
+import { QrImageTooLargeError } from "@otp-vault/ui/qr-limits";
 
 const ACME = "otpauth://totp/Acme:bob?secret=JBSWY3DPEHPK3PXP&issuer=Acme";
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { RpcError } from "../../rpc/client";
+import { RpcError } from "@otp-vault/ui/rpc-client";
 import { Button } from "../components/Button";
 import { NewPasswordFields, newPasswordProblem } from "../components/NewPasswordFields";
 import { RecoveryCodeDisplay } from "../components/RecoveryCodeDisplay";

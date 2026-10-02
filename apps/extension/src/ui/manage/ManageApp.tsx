@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import type { ServiceState } from "../../background/vaultService";
+import type { ServiceState } from "@otp-vault/ui/views";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { LockScreen } from "../components/LockScreen";
 import { errorMessage } from "../errors";

@@ -1,7 +1,7 @@
 import { parseOtpauthUri } from "@otp-vault/core";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import type { AccountView } from "../../background/vaultService";
-import { RpcError } from "../../rpc/client";
+import type { AccountView } from "@otp-vault/ui/views";
+import { RpcError } from "@otp-vault/ui/rpc-client";
 import { Button } from "../components/Button";
 import { Dialog } from "../components/Dialog";
 import { QrCode } from "../components/QrCode";

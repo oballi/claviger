@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { handleRpcMessage } from "../src/rpc/server";
-import { RPC_CHANNEL } from "../src/rpc/protocol";
+import { RPC_CHANNEL } from "@otp-vault/ui/protocol";
 import { codeOf, unlockedService } from "./helpers/service";
 
 const CAPTURE = { dataUrl: "data:image/png;base64,AAAA", tabUrl: "https://github.com/settings" };

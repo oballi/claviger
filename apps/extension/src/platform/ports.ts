@@ -44,4 +44,4 @@ export interface Platform {
   kdf?: Argon2Params;
 }
 
-export type StorageAreaName = "local" | "sync";
+export type { StorageAreaName } from "@otp-vault/ui/views";

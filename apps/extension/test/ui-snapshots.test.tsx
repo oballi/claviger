@@ -3,7 +3,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { VaultService } from "../src/background/vaultService";
-import { createRpcClient, RpcError } from "../src/rpc/client";
+import { createRpcClient, RpcError } from "@otp-vault/ui/rpc-client";
 import { handleRpcMessage } from "../src/rpc/server";
 import type { UiPlatform } from "../src/ui/platform";
 import { BackupScreen } from "../src/ui/manage/BackupScreen";

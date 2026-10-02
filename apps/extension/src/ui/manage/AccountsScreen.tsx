@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { AccountView, ServiceState } from "../../background/vaultService";
+import type { AccountView, ServiceState } from "@otp-vault/ui/views";
 import { AccountForm } from "../components/AccountForm";
 import { Button } from "../components/Button";
 import { Dialog } from "../components/Dialog";

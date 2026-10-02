@@ -7,8 +7,8 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
-import type { LockPolicy } from "../../background/settings";
-import { RpcError } from "../../rpc/client";
+import type { LockPolicy } from "@otp-vault/ui/views";
+import { RpcError } from "@otp-vault/ui/rpc-client";
 import { AccountForm } from "../components/AccountForm";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";

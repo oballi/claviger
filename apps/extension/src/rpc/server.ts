@@ -7,7 +7,7 @@ import {
   type RpcErrorBody,
   type RpcRequest,
   type RpcResponse,
-} from "./protocol";
+} from "@otp-vault/ui/protocol";
 
 export interface RpcSender {
   id?: string;

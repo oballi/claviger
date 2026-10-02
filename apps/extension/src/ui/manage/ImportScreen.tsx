@@ -1,7 +1,7 @@
 import type { ImportFormat } from "@otp-vault/core";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import type { ImportPreviewView } from "../../background/vaultService";
-import { RpcError } from "../../rpc/client";
+import type { ImportPreviewView } from "@otp-vault/ui/views";
+import { RpcError } from "@otp-vault/ui/rpc-client";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { TextField } from "../components/TextField";

@@ -3,7 +3,7 @@ import { generateCode } from "@otp-vault/core";
 import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { RpcError } from "../src/rpc/client";
+import { RpcError } from "@otp-vault/ui/rpc-client";
 import { formatCode } from "../src/ui/format";
 import type { UiPlatform } from "../src/ui/platform";
 import { PopupApp } from "../src/ui/popup/PopupApp";

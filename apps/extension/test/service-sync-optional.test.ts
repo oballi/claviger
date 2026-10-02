@@ -65,4 +65,47 @@ describe("a platform without a sync area", () => {
     expect((await service.storageUsage()).area).toBe("local");
     await expect(service.quarantineVault()).rejects.toMatchObject({ code: "invalid-request" });
   });
+
+  it("keeps leftover snapshots when a sync setup is rejected", async () => {
+    const p = memoryPlatform({ sync: false });
+    await p.local.set({
+      snapshotPurgePending: true,
+      [`${SNAPSHOT_PREFIX}old`]: { stale: true },
+    });
+    await expect(
+      new VaultService(p).setup({ ...SETUP, storageArea: "sync" }),
+    ).rejects.toMatchObject({ code: "storage-area-unavailable" });
+    const stored = await p.local.get();
+    expect(stored.snapshotPurgePending).toBe(true);
+    expect(stored[`${SNAPSHOT_PREFIX}old`]).toBeDefined();
+  });
+
+  it("deletes the local vault when the persisted setting says sync", async () => {
+    const p = memoryPlatform({ sync: false });
+    await new VaultService(p).setup(SETUP);
+    const stored = (await p.local.get([SETTINGS_KEY]))[SETTINGS_KEY] as object;
+    await p.local.set({ [SETTINGS_KEY]: { ...stored, storageArea: "sync" } });
+    const service = new VaultService(restartBrowser(p));
+    await service.unlock(PASSWORD);
+    const { token } = await service.reauth(PASSWORD);
+    await service.deleteVault(token);
+    expect((await service.getState()).status).toBe("no-vault");
+    expect(Object.keys(await p.local.get()).some((k) => k.startsWith("vault:"))).toBe(false);
+  });
+
+  it("quarantines the local vault when the persisted setting says sync", async () => {
+    const p = memoryPlatform({ sync: false });
+    await new VaultService(p).setup(SETUP);
+    const stored = (await p.local.get([SETTINGS_KEY]))[SETTINGS_KEY] as object;
+    await p.local.set({
+      [SETTINGS_KEY]: { ...stored, storageArea: "sync" },
+      "vault:header": { format: 1, nope: true },
+    });
+    const service = new VaultService(restartBrowser(p));
+    expect((await service.getState()).status).toBe("corrupt");
+    const { moved } = await service.quarantineVault();
+    expect(moved).toBeGreaterThan(0);
+    expect((await service.getState()).status).toBe("no-vault");
+    expect(Object.keys(await p.local.get()).some((k) => k.startsWith("quarantine:"))).toBe(true);
+  });
 });

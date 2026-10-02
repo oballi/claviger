@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent } from "react";
-import { RpcError } from "../../rpc/client";
+import { RpcError } from "@otp-vault/ui/rpc-client";
 import { errorMessage } from "../errors";
 import { useT } from "../i18n/i18n";
 import { useUi } from "../platform";

@@ -2,7 +2,7 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { RpcError } from "../src/rpc/client";
+import { RpcError } from "@otp-vault/ui/rpc-client";
 import { Button } from "../src/ui/components/Button";
 import { ErrorBoundary } from "../src/ui/components/ErrorBoundary";
 import { Icon } from "../src/ui/components/Icon";

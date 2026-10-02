@@ -7,8 +7,8 @@ import {
   type DragEvent,
   type ReactNode,
 } from "react";
-import type { ServiceState, StorageUsageView } from "../../background/vaultService";
-import { QrImageTooLargeError } from "../../qr/limits";
+import type { ServiceState, StorageUsageView } from "@otp-vault/ui/views";
+import { QrImageTooLargeError } from "@otp-vault/ui/qr-limits";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { NewPasswordFields, newPasswordProblem } from "../components/NewPasswordFields";

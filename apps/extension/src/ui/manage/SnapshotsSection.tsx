@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { SnapshotInfo } from "../../background/vaultService";
-import { RpcError } from "../../rpc/client";
+import type { SnapshotInfo } from "@otp-vault/ui/views";
+import { RpcError } from "@otp-vault/ui/rpc-client";
 import { Button } from "../components/Button";
 import { ReauthForm } from "../components/ReauthForm";
 import { TextField } from "../components/TextField";

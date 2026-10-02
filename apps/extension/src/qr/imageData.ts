@@ -1,5 +1,5 @@
 import { readImageSize } from "./header";
-import { assertQrImageSize, QrImageUnreadableError, reducedQrSize } from "./limits";
+import { assertQrImageSize, QrImageUnreadableError, reducedQrSize } from "@otp-vault/ui/qr-limits";
 
 /**
  * Browser-only (createImageBitmap and canvas); excluded from coverage like uiPlatform.ts.

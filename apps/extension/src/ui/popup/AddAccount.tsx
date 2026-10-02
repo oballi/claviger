@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { AccountForm } from "../components/AccountForm";
 import { Icon } from "../components/Icon";
-import { RpcError } from "../../rpc/client";
+import { RpcError } from "@otp-vault/ui/rpc-client";
 import { errorMessage } from "../errors";
 import { useT } from "../i18n/i18n";
 import { useUi } from "../platform";

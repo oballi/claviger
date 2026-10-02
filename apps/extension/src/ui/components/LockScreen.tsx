@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
-import type { ServiceState } from "../../background/vaultService";
-import { RpcError } from "../../rpc/client";
+import type { ServiceState } from "@otp-vault/ui/views";
+import { RpcError } from "@otp-vault/ui/rpc-client";
 import { errorMessage } from "../errors";
 import { lockPolicySentence } from "../format";
 import { useNow } from "../hooks";

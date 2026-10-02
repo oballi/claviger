@@ -7,6 +7,7 @@ import {
   type RandomPort,
   type StoragePort,
 } from "@otp-vault/core";
+import { SNAPSHOT_REASONS, type SnapshotReason } from "@otp-vault/ui/protocol";
 import { z } from "zod";
 
 export const SNAPSHOT_PREFIX = "snapshot:";
@@ -16,22 +17,13 @@ export class NotCorruptError extends Error {}
 
 export const DAY_MS = 86_400_000;
 
-const REASONS = [
-  "daily",
-  "before-import",
-  "before-delete",
-  "before-move",
-  "before-restore",
-  "before-rebuild",
-  "before-recovery",
-] as const;
-export type SnapshotReason = (typeof REASONS)[number];
+export type { SnapshotReason };
 
 const snapshotSchema = z.object({
   v: z.literal(1),
   id: z.string().min(1),
   createdAt: z.number(),
-  reason: z.enum(REASONS),
+  reason: z.enum(SNAPSHOT_REASONS),
   vaultId: z.string().min(1),
   accountCount: z.number().int().nonnegative(),
   digest: z.string(),

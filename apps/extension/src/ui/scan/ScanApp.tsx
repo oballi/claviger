@@ -1,7 +1,7 @@
 import { registrableDomain } from "@otp-vault/core";
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
-import { QrImageTooLargeError } from "../../qr/limits";
-import { RpcError } from "../../rpc/client";
+import { QrImageTooLargeError } from "@otp-vault/ui/qr-limits";
+import { RpcError } from "@otp-vault/ui/rpc-client";
 import { Button } from "../components/Button";
 import { errorMessage } from "../errors";
 import { ImportScreen } from "../manage/ImportScreen";

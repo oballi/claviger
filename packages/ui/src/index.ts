@@ -1,2 +1,4 @@
-// The popup-safe entry point. Filled in Task 4-6; never export ./manage, ./protocol or ./testing from here.
-export {};
+// The popup-safe entry point. Never export ./manage, ./protocol or ./testing from here.
+export type * from "./contract/views";
+export * from "./contract/qrLimits";
+export * from "./rpc/client";

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ServiceState } from "../../background/vaultService";
+import type { ServiceState } from "@otp-vault/ui/views";
 import { Button } from "../components/Button";
 import { errorMessage } from "../errors";
 import { useT } from "../i18n/i18n";

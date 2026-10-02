@@ -1,6 +1,5 @@
-import "../zodConfig";
+import "./zodConfig";
 import { z } from "zod";
-import { clipboardClearSchema, lockPolicySchema, viewModeSchema } from "../background/settings";
 import type {
   AccountListView,
   FillOutcome,
@@ -8,9 +7,10 @@ import type {
   ServiceState,
   SnapshotInfo,
   StorageUsageView,
-} from "../background/vaultService";
+} from "../contract/views";
+import { clipboardClearSchema, lockPolicySchema, viewModeSchema } from "./schemas";
 
-export { RPC_CHANNEL } from "./channel";
+export { RPC_CHANNEL } from "../rpc/channel";
 
 const id = z.string().min(1);
 const token = z.string().min(1);

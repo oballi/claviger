@@ -1,5 +1,4 @@
-import type { ViewMode } from "../../background/settings";
-import type { AccountView } from "../../background/vaultService";
+import type { AccountView, ViewMode } from "@otp-vault/ui/views";
 import { Button } from "../components/Button";
 import { CountdownRing } from "../components/CountdownRing";
 import { Icon } from "../components/Icon";

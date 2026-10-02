@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { vi } from "vitest";
 import type { LockPolicy } from "../../src/background/settings";
 import { VaultService } from "../../src/background/vaultService";
-import { createRpcClient } from "../../src/rpc/client";
+import { createRpcClient } from "@otp-vault/ui/rpc-client";
 import { handleRpcMessage } from "../../src/rpc/server";
 import { LocaleProvider, type Locale } from "../../src/ui/i18n/i18n";
 import { UiProvider, type UiCapabilities, type UiPlatform } from "../../src/ui/platform";
