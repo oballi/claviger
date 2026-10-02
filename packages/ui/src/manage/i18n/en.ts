@@ -330,6 +330,8 @@ export const manageEn: Record<ManageKey, string> = {
   "format.claviger": "claviger backup",
   "format.andotp": "andOTP backup",
   "format.freeotp-plus": "FreeOTP+ export",
+  "format.stratum": "Stratum (Authenticator Pro) backup",
+  "format.raivo": "Raivo export",
   "import.binarySingle": "Choose binary backups (andOTP) one at a time.",
   "import.andotpHint": "andOTP 0.6.3 or newer is required for encrypted backups.",
   "manage.found": "We found your vault.",

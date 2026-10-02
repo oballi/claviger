@@ -18,7 +18,7 @@
 - **Display and clipboard.** Display modes Normal, Compact and Hidden. Optionally clear the clipboard 30 s or 1 min after copying a code. A reminder appears if a recovery code was never confirmed as saved.
 - **Organizing.** Reorder accounts by drag and drop; adding an account with an existing name shows a warning.
 - **Optional clock check.** Compares your clock with one HTTPS source (`www.google.com`). It is off by default and the browser asks for that permission only for the request.
-- **Imports** from Google Authenticator, the Authenticator extension, Aegis, 2FAS, Proton Authenticator (plain and encrypted), Bitwarden (unencrypted JSON), andOTP (plain and encrypted), FreeOTP+ (JSON) and plain `otpauth://` links. A preview shows exactly what will be added; duplicates are skipped.
+- **Imports** from Google Authenticator, the Authenticator extension, Aegis, 2FAS, Proton Authenticator (plain and encrypted), Bitwarden (unencrypted JSON), andOTP (plain and encrypted), FreeOTP+ (JSON), Stratum / Authenticator Pro (plain and encrypted), Raivo (JSON) and plain `otpauth://` links. A preview shows exactly what will be added; duplicates are skipped.
 - **Backups.** Encrypted `.claviger` export (recommended) or a plain `otpauth://` list for moving to another app.
 - **Chrome and Firefox** (Manifest V3; Chrome 116+, Firefox 140+), with minimal permissions and no remote code, fonts or analytics.
 

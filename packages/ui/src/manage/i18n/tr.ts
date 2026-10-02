@@ -324,6 +324,8 @@ export const manageTr = {
   "format.claviger": "claviger yedeği",
   "format.andotp": "andOTP yedeği",
   "format.freeotp-plus": "FreeOTP+ dışa aktarımı",
+  "format.stratum": "Stratum (Authenticator Pro) yedeği",
+  "format.raivo": "Raivo dışa aktarımı",
   "import.binarySingle": "İkili yedekleri (andOTP) tek tek seçin.",
   "import.andotpHint": "Şifreli yedekler için andOTP 0.6.3 veya üstü gerekir.",
   "manage.found": "Kasan bulundu.",

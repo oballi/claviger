@@ -6,6 +6,13 @@ import { BINARY_PREFIX, decodeBinaryImport } from "./binary";
 import { isFreeotpPlus, parseFreeotpPlus } from "./freeotpPlus";
 import { CoreError } from "../errors";
 import { parseOtpauthText } from "./otpauthText";
+import { isRaivo, parseRaivo } from "./raivo";
+import {
+  isStratumEncrypted,
+  isStratumJson,
+  parseStratumEncrypted,
+  parseStratumJson,
+} from "./stratum";
 import { isProtonFile, parseProton, protonNeedsPassword } from "./proton";
 import { isTwofasFile, parseTwofas, twofasNeedsPassword } from "./twofas";
 import type { ImportResult } from "./types";
@@ -21,7 +28,9 @@ export type ImportFormat =
   | "proton-authenticator"
   | "bitwarden"
   | "andotp"
-  | "freeotp-plus";
+  | "freeotp-plus"
+  | "stratum"
+  | "raivo";
 
 export type ImportParseOutcome =
   | { status: "ok"; format: ImportFormat; result: ImportResult }
@@ -56,6 +65,12 @@ const JSON_FORMATS: JsonFormat[] = [
     detect: isBitwardenFile,
     needsPassword: () => false,
     parse: (j) => parseBitwarden(j),
+  },
+  {
+    format: "stratum",
+    detect: isStratumJson,
+    needsPassword: () => false,
+    parse: (j) => Promise.resolve(parseStratumJson(j)),
   },
   {
     format: "freeotp-plus",
@@ -93,10 +108,11 @@ export async function parseImport(text: string, password?: string): Promise<Impo
     return { status: "unrecognized" };
   }
 
-  // Root arrays: andOTP first (Raivo joins later, after the andOTP check).
   if (Array.isArray(json)) {
-    if (!isAndotpPlain(json)) return { status: "unrecognized" };
-    return { status: "ok", format: "andotp", result: parseAndotpPlain(json) };
+    if (isAndotpPlain(json))
+      return { status: "ok", format: "andotp", result: parseAndotpPlain(json) };
+    if (isRaivo(json)) return { status: "ok", format: "raivo", result: parseRaivo(json) };
+    return { status: "unrecognized" };
   }
 
   for (const candidate of JSON_FORMATS) {
@@ -126,6 +142,14 @@ async function parseBinary(text: string, password?: string): Promise<ImportParse
     // Not UTF-8: may still be a legacy-codepage text export (e.g. Windows-1252).
     const decoded = new TextDecoder("windows-1252").decode(bytes);
     if (looksLikeText(decoded)) return parseImport(decoded, password);
+  }
+  if (isStratumEncrypted(bytes)) {
+    if (!password) return { status: "needs-password", format: "stratum" };
+    return {
+      status: "ok",
+      format: "stratum",
+      result: await parseStratumEncrypted(bytes, password),
+    };
   }
   if (bytes.length < MIN_ENCRYPTED_LENGTH) return { status: "unrecognized" };
   if (!isAndotpEncrypted(bytes))

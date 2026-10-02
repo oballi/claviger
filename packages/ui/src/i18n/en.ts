@@ -70,7 +70,8 @@ export const en: Record<PopupKey, string> = {
   "add.manual": "Enter manually",
   "add.manualHint": "Paste the setup key or an otpauth:// link.",
   "add.import": "Import",
-  "add.importHint": "From a Google Authenticator, Authenticator extension, Aegis or 2FAS backup.",
+  "add.importHint":
+    "From the backup of Google Authenticator, Aegis, 2FAS, Bitwarden and other apps.",
   "add.footer": 'Codes for the site an account is linked to appear first, under "This site".',
   "add.manualTitle": "Enter manually.",
   "add.secret": "Setup key or otpauth:// link",

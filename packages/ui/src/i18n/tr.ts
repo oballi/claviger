@@ -68,7 +68,8 @@ export const tr = {
   "add.manual": "Elle gir",
   "add.manualHint": "Kurulum anahtarını veya bir otpauth:// bağlantısını yapıştır.",
   "add.import": "İçe aktar",
-  "add.importHint": "Google Authenticator, Authenticator eklentisi, Aegis veya 2FAS yedeğinden.",
+  "add.importHint":
+    "Google Authenticator, Aegis, 2FAS, Bitwarden ve diğer uygulamaların yedeğinden.",
   "add.footer": 'Hesabı bağladığın sitede kod en üstte, "Bu site" altında görünür.',
   "add.manualTitle": "Elle gir.",
   "add.secret": "Kurulum anahtarı veya otpauth:// bağlantısı",

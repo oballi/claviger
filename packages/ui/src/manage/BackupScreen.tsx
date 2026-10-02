@@ -48,6 +48,8 @@ const SOURCES = [
   "Bitwarden",
   "andOTP",
   "FreeOTP+",
+  "Stratum",
+  "Raivo",
   "claviger",
 ];
 
