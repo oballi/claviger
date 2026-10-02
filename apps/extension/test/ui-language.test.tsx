@@ -60,4 +60,11 @@ describe("language", () => {
     expect(resolveLocale("tr", ["en-US"])).toBe("tr");
     expect(translate("tr", "no.such.key" as never)).toBe("no.such.key");
   });
+
+  it("falls back to English before the raw key", () => {
+    const key = "only.in.en" as never;
+    const extra = { tr: {}, en: { [key as string]: "English text" } };
+    expect(translate("tr", key, undefined, extra)).toBe("English text");
+    expect(translate("tr", key)).toBe("only.in.en");
+  });
 });

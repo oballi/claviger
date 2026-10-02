@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { backupReminderFor } from "../src/background/backupReminder";
+import { backupReminderFor, needsReminderStamp } from "../src/background/backupReminder";
 import { DEFAULT_SETTINGS } from "../src/background/settings";
 
 const DAY = 86_400_000;
@@ -41,8 +41,29 @@ describe("backupReminderFor", () => {
     ).toEqual({ daysSince: null });
   });
 
-  it("is null when the clock is behind the base date", () => {
+  it("ignores a base date from a clock that ran ahead", () => {
+    // lastBackupAt far in the future: fall back to the first-seen date.
+    expect(
+      backupReminderFor(
+        { ...base, lastBackupAt: NOW + 2 * DAY, backupReminderSince: NOW - 40 * DAY },
+        1,
+        NOW,
+      ),
+    ).toEqual({ daysSince: null });
+    // since far in the future counts as now: nothing due yet.
+    expect(backupReminderFor({ ...base, backupReminderSince: NOW + 2 * DAY }, 1, NOW)).toBeNull();
+    // within a day of skew a real date is still honoured.
     expect(backupReminderFor({ ...base, lastBackupAt: NOW + DAY }, 1, NOW)).toBeNull();
-    expect(backupReminderFor({ ...base, backupReminderSince: NOW + DAY }, 1, NOW)).toBeNull();
+  });
+
+  it("needsReminderStamp restarts the clock only without a sane base", () => {
+    expect(needsReminderStamp({ ...DEFAULT_SETTINGS }, NOW)).toBe(true);
+    expect(needsReminderStamp({ ...base }, NOW)).toBe(false);
+    expect(needsReminderStamp({ ...base, backupReminderSince: NOW + 2 * DAY }, NOW)).toBe(true);
+    expect(needsReminderStamp({ ...base, backupReminderSince: NOW + DAY }, NOW)).toBe(false);
+    expect(needsReminderStamp({ ...DEFAULT_SETTINGS, lastBackupAt: NOW + 2 * DAY }, NOW)).toBe(
+      true,
+    );
+    expect(needsReminderStamp({ ...DEFAULT_SETTINGS, lastBackupAt: NOW - DAY }, NOW)).toBe(false);
   });
 });

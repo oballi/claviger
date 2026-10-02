@@ -319,4 +319,30 @@ describe("tap to reveal (hidden mode)", () => {
     act(() => setMode("hidden"));
     absent(container, code);
   });
+
+  it("hides when the user leaves the list view and returns", async () => {
+    const user = userEvent.setup();
+    const { container, h } = await popupWith("hidden", { extra: B });
+    const [a] = (await h.service.listAccounts()).accounts;
+    await user.click(await screen.findByRole("button", { name: "Acme kodunu g\u00f6ster" }));
+    expect(container.innerHTML).toContain(spaced(a!.code));
+    await user.click(screen.getByRole("button", { name: "S\u0131rala" }));
+    await user.click(await screen.findByRole("button", { name: "Bitti" }));
+    await screen.findByRole("button", { name: "Acme kodunu g\u00f6ster" });
+    absent(container, a!.code);
+  });
+
+  it("the copy button label names the code only while it is revealed", async () => {
+    const user = userEvent.setup();
+    const { code } = await popupWith("hidden");
+    const row = (await screen.findByText("Acme")).closest("li")!;
+    const copyLabel = () =>
+      [...row.querySelectorAll("button")]
+        .map((b) => b.getAttribute("aria-label") ?? "")
+        .filter((l) => /kopyala/i.test(l));
+    expect(copyLabel().length).toBeGreaterThan(0);
+    for (const l of copyLabel()) expect(l).not.toContain(code);
+    await user.click(screen.getByRole("button", { name: "Acme kodunu g\u00f6ster" }));
+    expect(copyLabel().some((l) => l.includes(code) || l.includes(spaced(code)))).toBe(true);
+  });
 });

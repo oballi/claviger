@@ -72,7 +72,7 @@ import {
   type Theme,
   type ViewMode,
 } from "./settings";
-import { backupReminderFor, SNOOZE_DAYS } from "./backupReminder";
+import { backupReminderFor, needsReminderStamp, SNOOZE_DAYS } from "./backupReminder";
 import { SNAPSHOT_ATTEMPTS_KEY, Throttle } from "./throttle";
 
 export type {
@@ -502,10 +502,11 @@ export class VaultService {
   ): Promise<ServiceState["backupReminder"]> {
     let settings = await this.settings();
     // First account seen without any backup: the clock starts here, once (queued against races).
-    if (accountCount && settings.lastBackupAt === null && settings.backupReminderSince === null) {
+    // A date from a clock that ran ahead restarts it too.
+    if (accountCount && needsReminderStamp(settings, this.p.clock.now())) {
       settings = await this.exclusive(async () => {
         const cur = await this.settings();
-        if (cur.lastBackupAt !== null || cur.backupReminderSince !== null) return cur;
+        if (!needsReminderStamp(cur, this.p.clock.now())) return cur;
         return saveSettings(this.p.local, { backupReminderSince: this.p.clock.now() });
       });
     }
