@@ -31,9 +31,26 @@ describe("manifest", () => {
   });
 
   it("declares clipboard permissions per browser", () => {
-    const base = ["storage", "alarms", "idle", "activeTab", "scripting", "clipboardWrite"];
+    const base = [
+      "storage",
+      "alarms",
+      "idle",
+      "activeTab",
+      "scripting",
+      "clipboardWrite",
+      "contextMenus",
+    ];
     expect(manifestFor("chrome").permissions).toEqual([...base, "offscreen"]);
     expect(manifestFor("firefox").permissions).toEqual(base);
+  });
+
+  it.each(["chrome", "firefox"])("declares the fill shortcut for %s", (browser) => {
+    expect(manifestFor(browser).commands).toEqual({
+      "fill-code": {
+        suggested_key: { default: "Alt+Shift+O" },
+        description: "__MSG_commandFill__",
+      },
+    });
   });
 
   it("pins the Firefox add-on id and minimum version", () => {
@@ -65,6 +82,16 @@ describe("manifest", () => {
     expect(versionOf("../package.json")).toBe(root);
     expect(versionOf("../../../packages/core/package.json")).toBe(root);
     expect(CORE_VERSION).toBe(root);
+  });
+
+  it("defines the menu and command strings in every locale", () => {
+    for (const lang of ["en", "tr"]) {
+      const messages = JSON.parse(
+        readFileSync(new URL(`../public/_locales/${lang}/messages.json`, import.meta.url), "utf8"),
+      ) as Record<string, { message: string }>;
+      expect(messages.menuFill?.message).toBeTruthy();
+      expect(messages.commandFill?.message).toBeTruthy();
+    }
   });
 
   it("has the same message keys in every locale", () => {

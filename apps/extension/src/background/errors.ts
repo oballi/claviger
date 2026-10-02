@@ -9,7 +9,8 @@ export type ServiceErrorCode =
   | "invalid-request"
   | "not-found"
   | "snapshot-password-required"
-  | "same-name";
+  | "same-name"
+  | "not-linked";
 
 export class ServiceError extends Error {
   readonly code: ServiceErrorCode;

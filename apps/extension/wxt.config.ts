@@ -23,8 +23,15 @@ export default defineConfig({
       "activeTab",
       "scripting",
       "clipboardWrite",
+      "contextMenus",
       ...(browser === "firefox" ? [] : ["offscreen"]),
     ],
+    commands: {
+      "fill-code": {
+        suggested_key: { default: "Alt+Shift+O" },
+        description: "__MSG_commandFill__",
+      },
+    },
     content_security_policy: {
       extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",
     },

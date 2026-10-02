@@ -39,7 +39,7 @@ describe("listing", () => {
       ],
       unreadable: [],
       indexDamaged: false,
-      matches: { exact: [], suggested: [] },
+      matches: { exact: [], suggested: [], remembered: [] },
       pageDomain: null,
     });
     expect(JSON.stringify(view)).not.toContain(SECRET);
@@ -65,7 +65,11 @@ describe("listing", () => {
     });
     const view = await service.listAccounts({ pageUrl: "https://github.com/login" });
     expect(view.accounts.find((a) => a.id === bound.id)!.domains).toEqual(["github.com"]);
-    expect(view.matches).toEqual({ exact: [bound.id], suggested: [guessed.id] });
+    expect(view.matches).toEqual({
+      exact: [bound.id],
+      suggested: [guessed.id],
+      remembered: [],
+    });
   });
 
   it("ignores non-web source pages when binding domains", async () => {

@@ -1,4 +1,14 @@
 {
-  "extName": { "message": "otp-vault" },
-  "extDescription": { "message": "Şifreli, açık kaynak iki adımlı doğrulama kodları." }
+  "extName": {
+    "message": "otp-vault"
+  },
+  "extDescription": {
+    "message": "Şifreli, açık kaynak iki adımlı doğrulama kodları."
+  },
+  "menuFill": {
+    "message": "2FA kodunu ekle"
+  },
+  "commandFill": {
+    "message": "Bu sitenin 2FA kodunu doldur"
+  }
 }

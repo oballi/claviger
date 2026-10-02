@@ -420,6 +420,7 @@ export const tr = {
   "corrupt.syncWarning":
     "Bu kasa eşitleniyor; kenara almak diğer cihazlardaki kopyayı da kaldırabilir.",
   "error.not-found": "Bu kopya artık yok.",
+  "error.not-linked": "Bu hesap bu siteye bağlı değil.",
   "error.snapshot-password-required": "Bu kopya başka bir kasaya ait; parolasını gir.",
 } as const;
 

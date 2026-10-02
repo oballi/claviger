@@ -135,6 +135,14 @@ async function dispatch(service: VaultService, req: RpcRequest): Promise<unknown
     case "setClockCheckEnabled":
       await service.setClockCheckEnabled(req.enabled);
       return null;
+    case "fillCode":
+      return service.fillCode({ id: req.id, tabId: req.tabId, confirmed: req.confirmed });
+    case "setFillOnlyLinked":
+      await service.setFillOnlyLinked(req.value);
+      return null;
+    case "setSiteMemory":
+      await service.setSiteMemory(req.value);
+      return null;
     default: {
       const unreachable: never = req;
       throw new Error(`Unhandled request ${(unreachable as { type: string }).type}`);

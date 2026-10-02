@@ -20,6 +20,8 @@ describe("settings", () => {
       viewMode: "normal",
       clipboardClearSec: 0,
       recoveryCodeConfirmed: true,
+      fillOnlyLinked: true,
+      siteMemory: true,
     });
     expect(DEFAULT_SETTINGS.lockPolicy).toEqual({ kind: "browser-close" });
   });
@@ -67,6 +69,8 @@ describe("settings", () => {
       viewMode: "normal",
       clipboardClearSec: 0,
       recoveryCodeConfirmed: true,
+      fillOnlyLinked: true,
+      siteMemory: true,
       storageArea: "sync",
       lastBackupAt: 7,
     });

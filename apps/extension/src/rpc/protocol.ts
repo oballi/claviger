@@ -3,6 +3,7 @@ import { z } from "zod";
 import { clipboardClearSchema, lockPolicySchema, viewModeSchema } from "../background/settings";
 import type {
   AccountListView,
+  FillOutcome,
   ImportPreviewView,
   ServiceState,
   SnapshotInfo,
@@ -120,6 +121,15 @@ export const rpcRequestSchema = z.discriminatedUnion("type", [
     endMs: z.number(),
   }),
   z.object({ type: z.literal("setClockCheckEnabled"), enabled: z.boolean() }),
+  // No tab URL or frame here: the service re-reads the tab's URL itself.
+  z.object({
+    type: z.literal("fillCode"),
+    id,
+    tabId: z.number().int().nonnegative(),
+    confirmed: z.boolean().optional(),
+  }),
+  z.object({ type: z.literal("setFillOnlyLinked"), value: z.boolean() }),
+  z.object({ type: z.literal("setSiteMemory"), value: z.boolean() }),
 ]);
 
 export type RpcRequest = z.infer<typeof rpcRequestSchema>;
@@ -162,6 +172,9 @@ export interface RpcResults {
   storageUsage: StorageUsageView;
   applyClockSample: { offsetSec: number; applied: number };
   setClockCheckEnabled: null;
+  fillCode: { result: FillOutcome; code: string | null };
+  setFillOnlyLinked: null;
+  setSiteMemory: null;
 }
 
 export interface RpcErrorBody {

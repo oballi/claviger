@@ -1,4 +1,14 @@
 {
-  "extName": { "message": "otp-vault" },
-  "extDescription": { "message": "Encrypted, open-source two-factor authentication codes." }
+  "extName": {
+    "message": "otp-vault"
+  },
+  "extDescription": {
+    "message": "Encrypted, open-source two-factor authentication codes."
+  },
+  "menuFill": {
+    "message": "Insert 2FA code"
+  },
+  "commandFill": {
+    "message": "Fill this site's 2FA code"
+  }
 }

@@ -427,5 +427,6 @@ export const en: Record<MessageKey, string> = {
   "corrupt.syncWarning":
     "This vault is synced; moving it aside may also remove it from your other devices.",
   "error.not-found": "This copy no longer exists.",
+  "error.not-linked": "This account is not linked to this site.",
   "error.snapshot-password-required": "This copy belongs to another vault; enter its password.",
 };

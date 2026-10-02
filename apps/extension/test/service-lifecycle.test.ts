@@ -29,6 +29,8 @@ describe("setup", () => {
       viewMode: "normal",
       clipboardClearSec: 0,
       recoveryCodeConfirmed: true,
+      fillOnlyLinked: true,
+      siteMemory: true,
     });
   });
 

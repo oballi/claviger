@@ -22,6 +22,7 @@ const KNOWN: Record<string, MessageKey> = {
   "not-found": "error.not-found",
   "snapshot-password-required": "error.snapshot-password-required",
   "same-name": "error.same-name",
+  "not-linked": "error.not-linked",
 };
 
 /** Maps an RPC failure to user-facing text; unknown errors never leak their internal message. */
