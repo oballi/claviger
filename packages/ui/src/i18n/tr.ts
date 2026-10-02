@@ -87,6 +87,8 @@ export const tr = {
   "codes.searchPlaceholder": "Ara",
   "codes.add": "Hesap ekle",
   "codes.lock": "Kilitle",
+  "theme.switchToDark": "Koyu temaya geç",
+  "theme.switchToLight": "Açık temaya geç",
   "codes.manage": "Yönetim sayfası",
   "codes.pinnedMark": "sabit",
   "menu.actions": "{issuer} için işlemler",

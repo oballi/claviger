@@ -16,6 +16,8 @@ export type IconName =
   | "grip"
   | "settings"
   | "chevron-down"
+  | "sun"
+  | "moon"
   | "more";
 
 const PATHS: Record<IconName, ReactElement> = {
@@ -35,6 +37,13 @@ const PATHS: Record<IconName, ReactElement> = {
       <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" />
     </>
   ),
+  sun: (
+    <>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+    </>
+  ),
+  moon: <path d="M20 14.5A8 8 0 1 1 9.5 4 6.5 6.5 0 0 0 20 14.5z" />,
   "chevron-down": <path d="M6 9l6 6 6-6" />,
   more: (
     <>

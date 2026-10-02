@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { cleanup, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { PopupApp } from "@otp-vault/ui/popup";
 import { SecurityScreen } from "@otp-vault/ui/manage";
 import { applyCachedTheme } from "@otp-vault/ui";
+import { resolvedScheme } from "@otp-vault/ui/popup";
 import { harness, renderUi } from "./helpers/ui";
 
 const html = document.documentElement;
@@ -12,7 +13,18 @@ afterEach(() => {
   cleanup();
   html.removeAttribute("data-theme");
   localStorage.clear();
+  vi.unstubAllGlobals();
 });
+
+const prefersDark = (dark: boolean) =>
+  vi.stubGlobal("matchMedia", (q: string) => ({
+    matches: dark && q.includes("dark"),
+    media: q,
+    addEventListener() {},
+    removeEventListener() {},
+    addListener() {},
+    removeListener() {},
+  }));
 
 async function security(status: "unlocked" | "locked" = "unlocked") {
   const h = await harness({ status });
@@ -97,5 +109,64 @@ describe("theme", () => {
     );
     expect(screen.getByRole("radiogroup", { name: "Theme" })).toBeTruthy();
     expect(screen.getByRole("radio", { name: "Dark" })).toBeTruthy();
+  });
+});
+
+describe("popup theme toggle", () => {
+  it("shows the moon and offers dark when the resolved scheme is light", async () => {
+    prefersDark(false);
+    const h = await harness();
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    expect(await screen.findByRole("button", { name: "Koyu temaya geç" })).toBeTruthy();
+  });
+
+  it("from system it switches to the opposite of the resolved scheme and stores it", async () => {
+    prefersDark(true);
+    const h = await harness();
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await userEvent.click(await screen.findByRole("button", { name: "Açık temaya geç" }));
+    expect(html.getAttribute("data-theme")).toBe("light");
+    expect(await screen.findByRole("button", { name: "Koyu temaya geç" })).toBeTruthy();
+    await waitFor(async () => expect((await h.service.getState()).theme).toBe("light"));
+  });
+
+  it("toggles light and dark on every click and persists each choice", async () => {
+    prefersDark(false);
+    const h = await harness();
+    await h.service.setTheme("light");
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await userEvent.click(await screen.findByRole("button", { name: "Koyu temaya geç" }));
+    expect(html.getAttribute("data-theme")).toBe("dark");
+    await waitFor(async () => expect((await h.service.getState()).theme).toBe("dark"));
+    await userEvent.click(await screen.findByRole("button", { name: "Açık temaya geç" }));
+    expect(html.getAttribute("data-theme")).toBe("light");
+    await waitFor(async () => expect((await h.service.getState()).theme).toBe("light"));
+  });
+
+  it("reverts the theme and shows an error when the RPC fails", async () => {
+    prefersDark(false);
+    const h = await harness();
+    await h.service.setTheme("light");
+    const real = h.ui.rpc;
+    h.ui.rpc = ((type: string, ...rest: unknown[]) =>
+      type === "setTheme"
+        ? Promise.reject(new Error("boom"))
+        : (real as (...a: unknown[]) => unknown)(type, ...rest)) as typeof real;
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await userEvent.click(await screen.findByRole("button", { name: "Koyu temaya geç" }));
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(html.getAttribute("data-theme")).toBe("light");
+    expect(screen.getByRole("button", { name: "Koyu temaya geç" })).toBeTruthy();
+  });
+
+  it("keeps the Settings picker: system option still exists", async () => {
+    await security();
+    expect(screen.getByRole("radio", { name: "Sistem" })).toBeTruthy();
+  });
+
+  it("resolvedScheme falls back to light without matchMedia", () => {
+    vi.stubGlobal("matchMedia", undefined);
+    expect(resolvedScheme("system")).toBe("light");
+    expect(resolvedScheme("dark")).toBe("dark");
   });
 });

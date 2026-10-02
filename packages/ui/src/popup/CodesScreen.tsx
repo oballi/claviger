@@ -18,6 +18,8 @@ import { errorMessage } from "../errors";
 import { useAccountList } from "../hooks";
 import { useLocale, useT } from "../i18n/i18n";
 import { useUi } from "../platform";
+import { iconButton } from "./iconButton";
+import { ThemeToggle } from "./ThemeToggle";
 import { AccountRow, type FillPrompt } from "./AccountRow";
 import type { MenuItem } from "./RowMenu";
 import { AddAccount } from "./AddAccount";
@@ -49,9 +51,6 @@ function Section({
     </section>
   );
 }
-
-const iconButton =
-  "flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-0 text-text hover:bg-hair";
 
 /** Sync quota pressure: total bytes, or the index item nearing the per-item limit (spec §7). */
 function quotaPercent(usage: StorageUsageView | null): number | null {
@@ -561,6 +560,7 @@ export function CodesScreen({
         >
           <Icon name="settings" size={17} />
         </button>
+        <ThemeToggle theme={state.theme} onError={setActionError} />
         <button
           type="button"
           aria-label={t("codes.add")}

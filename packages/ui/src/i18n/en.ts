@@ -89,6 +89,8 @@ export const en: Record<PopupKey, string> = {
   "codes.searchPlaceholder": "Search",
   "codes.add": "Add account",
   "codes.lock": "Lock",
+  "theme.switchToDark": "Switch to dark theme",
+  "theme.switchToLight": "Switch to light theme",
   "codes.manage": "Manage page",
   "codes.pinnedMark": "pinned",
   "menu.actions": "Actions for {issuer}",
