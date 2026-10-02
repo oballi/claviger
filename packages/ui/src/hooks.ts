@@ -20,10 +20,14 @@ export function useNow(intervalMs: number): number {
  * the list doesn't render once without "This site" and then jump. */
 export function useAccountList(pageUrl: string | undefined | null, pollMs: number) {
   const { rpc } = useUi();
-  const [list, setList] = useState<AccountListView | null>(null);
+  // The list is stored with the page it was requested for, so a list for another tab is never
+  // returned: "This site" matches would otherwise show against the wrong site.
+  const [loaded, setLoaded] = useState<{ url: string | undefined; list: AccountListView } | null>(
+    null,
+  );
   const [error, setError] = useState<unknown>(null);
 
-  // Set by real input; a poll without it must not postpone the background auto-lock.
+  // Set by real input; only that makes a load count as activity for the background auto-lock.
   const activeRef = useRef(false);
   useEffect(() => {
     const mark = () => {
@@ -37,19 +41,22 @@ export function useAccountList(pageUrl: string | undefined | null, pollMs: numbe
     };
   }, []);
 
+  // Responses older than the latest request or for a previous page are dropped.
+  const seqRef = useRef(0);
   const load = useCallback(
     async (passive: boolean) => {
       if (pageUrl === null) return;
+      const mine = ++seqRef.current;
       try {
-        setList(
-          await rpc("listAccounts", {
-            ...(pageUrl ? { pageUrl } : {}),
-            ...(passive ? { passive } : {}),
-          }),
-        );
+        const next = await rpc("listAccounts", {
+          ...(pageUrl ? { pageUrl } : {}),
+          ...(passive ? { passive } : {}),
+        });
+        if (mine !== seqRef.current) return;
+        setLoaded({ url: pageUrl, list: next });
         setError(null);
       } catch (e) {
-        setError(e);
+        if (mine === seqRef.current) setError(e);
       }
     },
     [rpc, pageUrl],
@@ -57,9 +64,16 @@ export function useAccountList(pageUrl: string | undefined | null, pollMs: numbe
 
   const reload = useCallback(() => load(false), [load]);
 
+  const firstLoadRef = useRef(true);
   useEffect(() => {
-    void load(false);
-    if (pollMs <= 0 || pageUrl === null) return;
+    if (pageUrl === null) return;
+    // The first load is the user opening the view; later page changes come from tab events,
+    // which must not postpone the auto-lock unless the user was active meanwhile.
+    const passive = !firstLoadRef.current && !activeRef.current;
+    firstLoadRef.current = false;
+    activeRef.current = false;
+    void load(passive);
+    if (pollMs <= 0) return;
     const id = setInterval(() => {
       const passive = !activeRef.current;
       activeRef.current = false;
@@ -68,5 +82,6 @@ export function useAccountList(pageUrl: string | undefined | null, pollMs: numbe
     return () => clearInterval(id);
   }, [load, pollMs, pageUrl]);
 
+  const list = loaded && loaded.url === pageUrl ? loaded.list : null;
   return { list, error, reload };
 }

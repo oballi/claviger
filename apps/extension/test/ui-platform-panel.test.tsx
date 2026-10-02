@@ -21,10 +21,12 @@ const mocks = vi.hoisted(() => {
       session: {} as Record<string, unknown>,
       tabs: [] as { id: number; url?: string; windowId: number; active: boolean }[],
     },
-    onActivated: event(),
-    onUpdated: event(),
+    onActivated: event<[{ windowId: number }]>(),
+    onUpdated:
+      event<[number, { url?: string; status?: string }, { active?: boolean; windowId?: number }]>(),
     onRemoved: event(),
     onStorageChanged: event<[Record<string, unknown>, string]>(),
+    onMessage: event<[unknown, { id?: string; tab?: object }]>(),
     query: vi.fn(),
     create: vi.fn(async () => ({})),
     capture: vi.fn(async () => "data:image/png;base64,AAAA"),
@@ -34,6 +36,8 @@ const mocks = vi.hoisted(() => {
 vi.mock("wxt/browser", () => ({
   browser: {
     runtime: {
+      id: "ext-id",
+      onMessage: mocks.onMessage,
       getURL: (path: string) => `chrome-extension://ext-id${path}`,
       getContexts: async () => [],
     },
@@ -86,6 +90,8 @@ afterEach(() => {
   mocks.onActivated.listeners.clear();
   mocks.onUpdated.listeners.clear();
   mocks.onRemoved.listeners.clear();
+  mocks.onMessage.listeners.clear();
+  mocks.onStorageChanged.listeners.clear();
 });
 
 describe("panel context", () => {
@@ -143,18 +149,46 @@ describe("panel context", () => {
     expect(mocks.capture).toHaveBeenCalledWith({ format: "png" });
   });
 
-  it("subscribes to tab changes in panel context only and unsubscribes", () => {
+  it("subscribes to tab changes in panel context only and unsubscribes", async () => {
     expect(createBrowserUiPlatform("popup").onActiveTabChange).toBeUndefined();
     const ui = createBrowserUiPlatform("panel");
     const listener = vi.fn();
     const off = ui.onActiveTabChange!(listener);
-    mocks.onActivated.fire();
-    mocks.onUpdated.fire();
+    mocks.onActivated.fire({ windowId: 7 });
+    mocks.onUpdated.fire(1, { url: "https://a.example/" }, { active: true, windowId: 7 });
     mocks.onRemoved.fire();
-    expect(listener).toHaveBeenCalledTimes(3);
+    await waitFor(() => expect(listener).toHaveBeenCalledTimes(3));
     off();
-    mocks.onActivated.fire();
+    mocks.onActivated.fire({ windowId: 7 });
+    await new Promise((r) => setTimeout(r, 20));
     expect(listener).toHaveBeenCalledTimes(3);
+    expect(mocks.onActivated.listeners.size).toBe(0);
+    expect(mocks.onMessage.listeners.size).toBe(0);
+  });
+
+  it("ignores tab events that cannot change this site in the target window", async () => {
+    const listener = vi.fn();
+    createBrowserUiPlatform("panel").onActiveTabChange!(listener);
+    // Loading/title updates, background tabs and other windows must not re-resolve.
+    mocks.onUpdated.fire(1, { status: "loading" }, { active: true, windowId: 7 });
+    mocks.onUpdated.fire(1, { url: "https://a.example/" }, { active: false, windowId: 7 });
+    mocks.onUpdated.fire(1, { url: "https://a.example/" }, { active: true, windowId: 8 });
+    mocks.onActivated.fire({ windowId: 8 });
+    await new Promise((r) => setTimeout(r, 30));
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  it("window mode filters tab events by the stored target window", async () => {
+    mocks.state.windowType = "popup";
+    mocks.state.windowId = 99;
+    mocks.state.session = { "claviger-target-window": 7 };
+    const listener = vi.fn();
+    createBrowserUiPlatform("panel").onActiveTabChange!(listener);
+    mocks.onActivated.fire({ windowId: 99 });
+    await new Promise((r) => setTimeout(r, 30));
+    expect(listener).not.toHaveBeenCalled();
+    mocks.onActivated.fire({ windowId: 7 });
+    await waitFor(() => expect(listener).toHaveBeenCalledTimes(1));
   });
 
   it("drops 'this site' after the active tab becomes a URL-less tab", async () => {
@@ -174,7 +208,7 @@ describe("panel context", () => {
     renderUi(<CodesScreen state={state} pollMs={0} onLocked={() => {}} />, ui);
     expect(await screen.findByText("Bu site")).toBeTruthy();
     mocks.state.tabs = [{ id: 2, windowId: 7, active: true }];
-    mocks.onActivated.fire();
+    mocks.onActivated.fire({ windowId: 7 });
     await waitFor(() => expect(screen.queryByText("Bu site")).toBeNull());
   });
 
@@ -196,21 +230,26 @@ describe("panel context", () => {
     };
     renderUi(<CodesScreen state={await h.service.getState()} pollMs={0} onLocked={() => {}} />, ui);
     expect(await screen.findByText("Bu site")).toBeTruthy();
-    mocks.onActivated.fire();
+    mocks.onActivated.fire({ windowId: 7 });
     // The new tab is still unresolved here: the old site's match must already be gone.
     await waitFor(() => expect(screen.queryByText("Bu site")).toBeNull());
     release({ id: 2, url: "https://github.com/other" });
     expect(await screen.findByText("Bu site")).toBeTruthy();
   });
 
-  it("re-resolves when the launcher retargets the window (session key change)", async () => {
+  it("re-resolves on the background's retarget message and never watches storage", () => {
     const platform = createBrowserUiPlatform("panel");
     const listener = vi.fn();
     platform.onActiveTabChange!(listener);
-    mocks.onStorageChanged.fire({ "claviger-target-window": { newValue: 9 } }, "session");
+    // storage.onChanged would also deliver the vault session key to this page.
+    expect(mocks.onStorageChanged.listeners.size).toBe(0);
+    const msg = { type: "claviger/target-window", windowId: 9 };
+    mocks.onMessage.fire(msg, { id: "ext-id" });
     expect(listener).toHaveBeenCalledTimes(1);
-    mocks.onStorageChanged.fire({ settings: {} }, "local");
-    mocks.onStorageChanged.fire({ other: {} }, "session");
+    mocks.onMessage.fire(msg, { id: "other-ext" });
+    mocks.onMessage.fire(msg, { id: "ext-id", tab: {} });
+    mocks.onMessage.fire({ type: "something-else" }, { id: "ext-id" });
+    mocks.onMessage.fire(null, { id: "ext-id" });
     expect(listener).toHaveBeenCalledTimes(1);
   });
 });

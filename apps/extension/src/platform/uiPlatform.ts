@@ -8,6 +8,9 @@ const CLOCK_URL = "https://www.google.com/generate_204";
 /** The launcher stores the browsing window here in window mode (session storage, never synced). */
 export const TARGET_WINDOW_KEY = "claviger-target-window";
 
+/** Posted by the background after it rewrites the key above. */
+export const TARGET_WINDOW_MESSAGE = "claviger/target-window";
+
 type Context = "popup" | "manage" | "scan" | "panel";
 
 /**
@@ -107,21 +110,45 @@ export function createBrowserUiPlatform(
     onActiveTabChange:
       context === "panel"
         ? (listener) => {
-            // Any of these can change which tab "this site" means; the listener re-resolves.
-            const events = [
-              browser.tabs.onActivated,
-              browser.tabs.onUpdated,
-              browser.windows.onRemoved,
-            ];
-            for (const event of events) event.addListener(listener);
-            // The launcher retargets a detached window by rewriting this session key.
-            const onStorage = (changes: Record<string, unknown>, area: string) => {
-              if (area === "session" && TARGET_WINDOW_KEY in changes) listener();
+            // Only events that can change "this site" in the target window; anything else would
+            // re-resolve (and re-list) on every tab load.
+            const inTarget = async (windowId: number | undefined) =>
+              windowId !== undefined && windowId === (await targetWindowId(context));
+            const onActivated = (info: { windowId: number }) => {
+              void inTarget(info.windowId).then((ok) => ok && listener());
             };
-            browser.storage.onChanged.addListener(onStorage);
+            const onUpdated = (
+              _id: number,
+              changeInfo: { url?: string },
+              tab: { active?: boolean; windowId?: number },
+            ) => {
+              if (!changeInfo.url || !tab.active) return;
+              void inTarget(tab.windowId).then((ok) => ok && listener());
+            };
+            const onRemoved = () => listener();
+            // The launcher retargets a detached window with a message from the background; the
+            // session key itself is not watched because storage.onChanged would also deliver
+            // the vault session key to this page.
+            const onMessage = (message: unknown, sender: Browser.runtime.MessageSender) => {
+              if (
+                sender.id === browser.runtime.id &&
+                !sender.tab &&
+                typeof message === "object" &&
+                message !== null &&
+                (message as { type?: unknown }).type === TARGET_WINDOW_MESSAGE
+              ) {
+                listener();
+              }
+            };
+            browser.tabs.onActivated.addListener(onActivated);
+            browser.tabs.onUpdated.addListener(onUpdated);
+            browser.windows.onRemoved.addListener(onRemoved);
+            browser.runtime.onMessage.addListener(onMessage);
             return () => {
-              for (const event of events) event.removeListener(listener);
-              browser.storage.onChanged.removeListener(onStorage);
+              browser.tabs.onActivated.removeListener(onActivated);
+              browser.tabs.onUpdated.removeListener(onUpdated);
+              browser.windows.onRemoved.removeListener(onRemoved);
+              browser.runtime.onMessage.removeListener(onMessage);
             };
           }
         : undefined,

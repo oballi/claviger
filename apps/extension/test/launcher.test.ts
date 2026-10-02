@@ -8,6 +8,7 @@ function fakePorts(opts: { chrome?: boolean; firefox?: boolean } = { chrome: tru
     openOnClick: false,
     nextWindowId: 100,
     existing: new Set<number>(),
+    nonNormal: new Set<number>(),
     panelWindow: undefined as number | undefined,
     target: undefined as number | undefined,
     mirror: undefined as OpenMode | undefined,
@@ -17,6 +18,7 @@ function fakePorts(opts: { chrome?: boolean; firefox?: boolean } = { chrome: tru
   };
   const ports: LauncherPorts = {
     setPopup: vi.fn(async (p: string) => void (s.popup = p)),
+    getPopup: vi.fn(async () => s.popup),
     ...(opts.chrome
       ? {
           sidePanel: {
@@ -40,6 +42,7 @@ function fakePorts(opts: { chrome?: boolean; firefox?: boolean } = { chrome: tru
       }),
       focus: vi.fn(async (id: number) => void s.focused.push(id)),
       exists: vi.fn(async (id: number) => s.existing.has(id)),
+      isNormal: vi.fn(async (id: number) => !s.nonNormal.has(id)),
     },
     session: {
       getPanelWindow: async () => s.panelWindow,
@@ -108,6 +111,19 @@ describe("apply", () => {
   });
 });
 
+describe("apply rollback", () => {
+  it("restores the previous popup when the panel behaviour cannot be set", async () => {
+    const { ports, s } = fakePorts();
+    (ports.sidePanel!.setOpenOnActionClick as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new Error("no"),
+    );
+    const launcher = createLauncher(ports);
+    await expect(launcher.apply("panel")).rejects.toThrow();
+    expect(s.popup).toBe("popup.html");
+    expect(launcher.currentMode()).toBeUndefined();
+  });
+});
+
 describe("action click", () => {
   it("Firefox panel: opens the sidebar synchronously, before any await", () => {
     const { ports } = fakePorts({ firefox: true });
@@ -143,6 +159,18 @@ describe("action click", () => {
     expect(s.target).toBe(5);
     expect(s.created).toEqual(["chrome-extension://x/sidepanel.html"]);
     expect(s.panelWindow).toBe(100);
+  });
+
+  it("window mode never targets the panel window itself or a non-browsing window", async () => {
+    const { ports, s } = fakePorts();
+    const launcher = createLauncher(ports);
+    await launcher.onActionClick("window", { windowId: 5 });
+    // Clicked from inside the detached window (id 100).
+    await launcher.onActionClick("window", { windowId: 100 });
+    expect(s.target).toBe(5);
+    s.nonNormal.add(8);
+    await launcher.onActionClick("window", { windowId: 8 });
+    expect(s.target).toBe(5);
   });
 
   it("window mode: the second click focuses the existing window and retargets", async () => {

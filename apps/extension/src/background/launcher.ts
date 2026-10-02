@@ -6,6 +6,7 @@ const WINDOW_HEIGHT = 640;
 export interface LauncherPorts {
   /** action.setPopup; "" makes the toolbar click fire action.onClicked. */
   setPopup(path: string): Promise<void>;
+  getPopup(): Promise<string>;
   /** Chrome only. Panel mode relies on openPanelOnActionClick, so there is no click code. */
   sidePanel?: {
     setOpenOnActionClick(open: boolean): Promise<void>;
@@ -17,6 +18,8 @@ export interface LauncherPorts {
     create(url: string, width: number, height: number): Promise<number>;
     focus(id: number): Promise<void>;
     exists(id: number): Promise<boolean>;
+    /** False for popup/panel-type windows and for windows that are gone. */
+    isNormal(id: number): Promise<boolean>;
   };
   /** Window ids only, never secrets. */
   session: {
@@ -49,8 +52,15 @@ export function createLauncher(ports: LauncherPorts) {
 
   const openWindow = (windowId: number | undefined) => {
     const run = async () => {
-      if (windowId !== undefined) await ports.session.setTargetWindow(windowId);
       const existing = await ports.session.getPanelWindow();
+      // The detached window must never target itself or another non-browsing window.
+      if (
+        windowId !== undefined &&
+        windowId !== existing &&
+        (await ports.windows.isNormal(windowId))
+      ) {
+        await ports.session.setTargetWindow(windowId);
+      }
       if (existing !== undefined && (await ports.windows.exists(existing))) {
         await ports.windows.focus(existing);
         return;
@@ -71,8 +81,16 @@ export function createLauncher(ports: LauncherPorts) {
 
     async apply(mode: OpenMode): Promise<void> {
       if (mode === "panel" && !ports.sidePanel && !ports.sidebar) throw new Error("unsupported");
-      await ports.setPopup(mode === "popup" ? "popup.html" : "");
-      await ports.sidePanel?.setOpenOnActionClick(mode === "panel");
+      const popup = mode === "popup" ? "popup.html" : "";
+      const previousPopup = await ports.getPopup().catch(() => undefined);
+      await ports.setPopup(popup);
+      try {
+        await ports.sidePanel?.setOpenOnActionClick(mode === "panel");
+      } catch (e) {
+        // Otherwise a cleared popup with no click behaviour leaves the toolbar button dead.
+        if (previousPopup !== undefined) await ports.setPopup(previousPopup).catch(() => {});
+        throw e;
+      }
       ports.mirror?.set(mode);
       cached = mode;
     },

@@ -1,7 +1,7 @@
 import { browser } from "wxt/browser";
 import type { OpenMode } from "@claviger/ui/protocol";
 import type { LauncherPorts } from "../background/launcher";
-import { TARGET_WINDOW_KEY } from "./uiPlatform";
+import { TARGET_WINDOW_KEY, TARGET_WINDOW_MESSAGE } from "./uiPlatform";
 
 const PANEL_WINDOW_KEY = "claviger-panel-window";
 const MIRROR_KEY = "claviger-open-mode";
@@ -18,6 +18,7 @@ export function createBrowserLauncherPorts(
   const sidebarApi = (browser as unknown as { sidebarAction?: SidebarActionApi }).sidebarAction;
   return {
     setPopup: (path) => browser.action.setPopup({ popup: path }),
+    getPopup: () => browser.action.getPopup({}),
     ...(!firefox && browser.sidePanel
       ? {
           sidePanel: {
@@ -60,6 +61,13 @@ export function createBrowserLauncherPorts(
       async focus(id) {
         await browser.windows.update(id, { focused: true });
       },
+      async isNormal(id) {
+        try {
+          return (await browser.windows.get(id)).type === "normal";
+        } catch {
+          return false;
+        }
+      },
       async exists(id) {
         try {
           await browser.windows.get(id);
@@ -78,7 +86,13 @@ export function createBrowserLauncherPorts(
         if (id === undefined) await browser.storage.session.remove(PANEL_WINDOW_KEY);
         else await browser.storage.session.set({ [PANEL_WINDOW_KEY]: id });
       },
-      setTargetWindow: (id) => browser.storage.session.set({ [TARGET_WINDOW_KEY]: id }),
+      async setTargetWindow(id) {
+        await browser.storage.session.set({ [TARGET_WINDOW_KEY]: id });
+        // No open panel page is not an error.
+        await browser.runtime
+          .sendMessage({ type: TARGET_WINDOW_MESSAGE, windowId: id })
+          .catch(() => {});
+      },
     },
     flashBadge,
     panelUrl: browser.runtime.getURL("/sidepanel.html"),

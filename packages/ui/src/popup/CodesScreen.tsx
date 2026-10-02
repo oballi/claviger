@@ -142,9 +142,10 @@ export function CodesScreen({
     };
     void resolve();
     const unsubscribe = onActiveTabChange?.(() => {
-      // Drop the old match first: until the new tab resolves it must not show against it.
+      // Back to "unknown": until the new tab resolves the old match must not show, and the
+      // list must wait instead of loading once for "no tab".
       latest++;
-      setTab(undefined);
+      setTab(null);
       void resolve();
     });
     return () => {
