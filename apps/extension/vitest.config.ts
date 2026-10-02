@@ -16,7 +16,7 @@ export default defineConfig({
         "src/platform/browserRpc.ts",
         "src/platform/uiPlatform.ts",
         "src/qr/imageData.ts",
-        "src/ui/scan/crop.ts",
+        "src/scan/crop.ts",
         "**/packages/ui/src/**/index.ts",
         "**/packages/ui/src/testing/**",
         "**/packages/ui/src/contract/views.ts",

@@ -11,8 +11,13 @@ import { QrCode } from "@otp-vault/ui";
 import { ReauthForm } from "@otp-vault/ui";
 import { RecoveryCodeDisplay } from "@otp-vault/ui";
 import { translate } from "@otp-vault/ui";
-import { ManageFrame, PageTitle, SettingsRow, SettingsSection } from "../src/ui/manage/ManageFrame";
-import { WizardFrame } from "../src/ui/manage/WizardFrame";
+import {
+  ManageFrame,
+  PageTitle,
+  SettingsRow,
+  SettingsSection,
+  WizardFrame,
+} from "@otp-vault/ui/manage";
 import { harness, renderUi } from "./helpers/ui";
 import { PASSWORD } from "./helpers/service";
 

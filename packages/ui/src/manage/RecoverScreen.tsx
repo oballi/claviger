@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { RpcError } from "@otp-vault/ui/rpc-client";
-import { Button } from "@otp-vault/ui";
-import { NewPasswordFields, newPasswordProblem } from "@otp-vault/ui";
-import { RecoveryCodeDisplay } from "@otp-vault/ui";
-import { TextField } from "@otp-vault/ui";
-import { errorMessage } from "@otp-vault/ui";
-import { useNow } from "@otp-vault/ui";
-import { useT } from "@otp-vault/ui";
-import { useUi } from "@otp-vault/ui";
+import { RpcError } from "../rpc/client";
+import { Button } from "../components/Button";
+import { NewPasswordFields, newPasswordProblem } from "../components/NewPasswordFields";
+import { RecoveryCodeDisplay } from "../components/RecoveryCodeDisplay";
+import { TextField } from "../components/TextField";
+import { errorMessage } from "../errors";
+import { useNow } from "../hooks";
+import { useT } from "../i18n/i18n";
+import { useUi } from "../platform";
 import { PageTitle } from "./ManageFrame";
 
 /** Spec §5.6: the recovery code opens the vault, a new password is set and the code is rotated. */

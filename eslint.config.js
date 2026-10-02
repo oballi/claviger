@@ -93,7 +93,7 @@ export default defineConfig(
     },
   },
   {
-    files: ["apps/extension/src/ui/**/*.{ts,tsx}"],
+    files: ["apps/extension/src/scan/**/*.{ts,tsx}"],
     rules: {
       "no-restricted-globals": [
         "error",

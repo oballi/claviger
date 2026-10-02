@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { reorderByDrop } from "../src/ui/reorder";
+import { reorderByDrop } from "@otp-vault/ui";
 
 const rows = [
   { id: "p1", pinned: true },

@@ -25,3 +25,4 @@ export * from "./i18n/en";
 export * from "./i18n/i18n";
 export * from "./i18n/tr";
 export * from "./platform";
+export * from "./reorder";

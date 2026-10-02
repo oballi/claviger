@@ -4,7 +4,7 @@ import { RpcError } from "@otp-vault/ui/rpc-client";
 import type { UiPlatform } from "@otp-vault/ui";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ManageApp, parseRoute } from "../src/ui/manage/ManageApp";
+import { ManageApp, parseRoute } from "@otp-vault/ui/manage";
 import { harness, renderUi, withStatus } from "./helpers/ui";
 import { PASSWORD } from "./helpers/service";
 

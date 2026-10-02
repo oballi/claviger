@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from "react";
-import type { ServiceState } from "@otp-vault/ui/views";
-import { Button } from "@otp-vault/ui";
-import { TextField } from "@otp-vault/ui";
-import { errorMessage } from "@otp-vault/ui";
-import { useT } from "@otp-vault/ui";
-import { useUi } from "@otp-vault/ui";
+import type { ServiceState } from "../contract/views";
+import { Button } from "../components/Button";
+import { TextField } from "../components/TextField";
+import { errorMessage } from "../errors";
+import { useT } from "../i18n/i18n";
+import { useUi } from "../platform";
 
 const norm = (s: string) => s.normalize("NFC").trim();
 

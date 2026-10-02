@@ -3,8 +3,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { AddAccount, PopupApp } from "@otp-vault/ui/popup";
-import { SecurityScreen } from "../src/ui/manage/SecurityScreen";
-import { SetupWizard } from "../src/ui/manage/SetupWizard";
+import { SecurityScreen, SetupWizard } from "@otp-vault/ui/manage";
 import { harness, renderUi } from "./helpers/ui";
 
 const NONE = {

@@ -3,8 +3,7 @@ import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { BackupScreen, type ImportSource } from "../src/ui/manage/BackupScreen";
-import { ImportScreen } from "../src/ui/manage/ImportScreen";
+import { BackupScreen, type ImportSource, ImportScreen } from "@otp-vault/ui/manage";
 import { harness, renderUi, type Harness } from "./helpers/ui";
 import { PASSWORD } from "./helpers/service";
 import { migrationUri } from "./helpers/qr";
@@ -631,5 +630,25 @@ describe("BackupScreen fix round 1", () => {
       expect(seen.filter((s) => s === "Yedek indirildi: 1 hesap.").length).toBe(2),
     );
     expect(seen).toContain("");
+  });
+});
+
+describe("BackupScreen without a storage area", () => {
+  it("drops the storage section and renumbers the automatic copies", async () => {
+    await open(
+      await harness({
+        capabilities: {
+          activeTab: true,
+          qrScan: true,
+          autofill: true,
+          clockCheck: true,
+          storageArea: false,
+        },
+      }),
+    );
+    expect(screen.queryByRole("region", { name: "Depolama" })).toBeNull();
+    const copies = region("Otomatik kopyalar");
+    expect(within(copies).getByText("03")).toBeTruthy();
+    expect(within(copies).queryByText("04")).toBeNull();
   });
 });

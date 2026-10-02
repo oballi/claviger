@@ -1,11 +1,9 @@
 import { registrableDomain } from "@otp-vault/core";
-import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { ImportScreen } from "@otp-vault/ui/manage";
 import { QrImageTooLargeError } from "@otp-vault/ui/qr-limits";
 import { RpcError } from "@otp-vault/ui/rpc-client";
-import { Button } from "@otp-vault/ui";
-import { errorMessage } from "@otp-vault/ui";
-import { ImportScreen } from "../manage/ImportScreen";
-import { useUi } from "@otp-vault/ui";
+import { Button, errorMessage, useUi } from "@otp-vault/ui";
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { useScanT } from "./messages";
 import { cropSelection, type Cropper } from "./crop";
 import { dataUrlToBlob, otpauthName } from "./dataUrl";

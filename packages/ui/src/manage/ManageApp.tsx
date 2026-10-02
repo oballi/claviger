@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import type { ServiceState } from "@otp-vault/ui/views";
-import { ErrorBoundary } from "@otp-vault/ui";
-import { LockScreen } from "@otp-vault/ui";
-import { errorMessage } from "@otp-vault/ui";
-import { useT } from "@otp-vault/ui";
-import { useUi, type ManageRoute } from "@otp-vault/ui";
+import type { ServiceState } from "../contract/views";
+import { ErrorBoundary } from "../components/ErrorBoundary";
+import { LockScreen } from "../components/LockScreen";
+import { errorMessage } from "../errors";
+import { useT } from "../i18n/i18n";
+import { useUi, type ManageRoute } from "../platform";
 import { AccountsScreen } from "./AccountsScreen";
 import { CorruptScreen } from "./CorruptScreen";
 import { BackupScreen, type ImportSource } from "./BackupScreen";

@@ -1,11 +1,11 @@
-import { dataUrlToBlob, otpauthName } from "../src/ui/scan/dataUrl";
+import { dataUrlToBlob, otpauthName } from "../src/scan/dataUrl";
 import { describe, expect, it } from "vitest";
 import {
   defaultSelection,
   normalizeRect,
   nudgeSelection,
   toImageRect,
-} from "../src/ui/scan/selection";
+} from "../src/scan/selection";
 
 const VIEW = { w: 400, h: 300 };
 

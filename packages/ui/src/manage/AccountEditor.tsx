@@ -1,16 +1,16 @@
 import { parseOtpauthUri } from "@otp-vault/core";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import type { AccountView } from "@otp-vault/ui/views";
-import { RpcError } from "@otp-vault/ui/rpc-client";
-import { Button } from "@otp-vault/ui";
-import { Dialog } from "@otp-vault/ui";
-import { QrCode } from "@otp-vault/ui";
-import { ReauthForm } from "@otp-vault/ui";
-import { TextField } from "@otp-vault/ui";
-import { errorMessage } from "@otp-vault/ui";
-import { typeLabel } from "@otp-vault/ui";
-import { useT } from "@otp-vault/ui";
-import { useUi } from "@otp-vault/ui";
+import type { AccountView } from "../contract/views";
+import { RpcError } from "../rpc/client";
+import { Button } from "../components/Button";
+import { Dialog } from "../components/Dialog";
+import { QrCode } from "../components/QrCode";
+import { ReauthForm } from "../components/ReauthForm";
+import { TextField } from "../components/TextField";
+import { errorMessage } from "../errors";
+import { typeLabel } from "../format";
+import { useT } from "../i18n/i18n";
+import { useUi } from "../platform";
 
 type Mode = "main" | "delete" | "reveal";
 

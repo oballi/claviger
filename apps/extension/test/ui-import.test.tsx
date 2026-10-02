@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { LocaleProvider } from "@otp-vault/ui";
 import { UiProvider } from "@otp-vault/ui";
-import { ImportScreen } from "../src/ui/manage/ImportScreen";
+import { ImportScreen } from "@otp-vault/ui/manage";
 import { harness, renderUi, type Harness } from "./helpers/ui";
 import { PASSWORD } from "./helpers/service";
 

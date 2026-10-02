@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import type { LockPolicy, ServiceState, ViewMode } from "@otp-vault/ui/views";
-import { Button } from "@otp-vault/ui";
-import { NewPasswordFields, newPasswordProblem } from "@otp-vault/ui";
-import { Notice } from "@otp-vault/ui";
-import { ReauthForm } from "@otp-vault/ui";
-import { RecoveryCodeDisplay } from "@otp-vault/ui";
-import { TextField } from "@otp-vault/ui";
-import { errorMessage } from "@otp-vault/ui";
-import { lockPolicyLabel } from "@otp-vault/ui";
-import { useT } from "@otp-vault/ui";
-import { useUi } from "@otp-vault/ui";
+import type { LockPolicy, ServiceState, ViewMode } from "../contract/views";
+import { Button } from "../components/Button";
+import { NewPasswordFields, newPasswordProblem } from "../components/NewPasswordFields";
+import { Notice } from "../components/Notice";
+import { ReauthForm } from "../components/ReauthForm";
+import { RecoveryCodeDisplay } from "../components/RecoveryCodeDisplay";
+import { TextField } from "../components/TextField";
+import { errorMessage } from "../errors";
+import { lockPolicyLabel } from "../format";
+import { useT } from "../i18n/i18n";
+import { useUi } from "../platform";
 import { ClockRow } from "./ClockRow";
 import { PageTitle, SettingsRow, SettingsSection } from "./ManageFrame";
 

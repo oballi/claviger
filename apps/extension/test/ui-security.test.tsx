@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import type { ServiceState } from "../src/background/vaultService";
 import { describe, expect, it, vi } from "vitest";
-import { SecurityScreen } from "../src/ui/manage/SecurityScreen";
+import { SecurityScreen } from "@otp-vault/ui/manage";
 import { harness, renderUi, type Harness } from "./helpers/ui";
 import { PASSWORD } from "./helpers/service";
 

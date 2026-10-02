@@ -2,7 +2,7 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { SetupWizard, setupReducer, initialSetup } from "../src/ui/manage/SetupWizard";
+import { SetupWizard, setupReducer, initialSetup } from "@otp-vault/ui/manage";
 import { harness, renderUi } from "./helpers/ui";
 
 const NEW_PASSWORD = "kirmizi bisiklet ruzgar";
