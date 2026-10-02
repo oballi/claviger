@@ -83,4 +83,62 @@ describe("popup groups", () => {
     expect(await screen.findByRole("heading", { name: "Sonuçlar" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Work/ })).toBeNull();
   });
+
+  it("still toggles when setItem throws", async () => {
+    const h = await seeded();
+    const spy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await userEvent.click(await screen.findByRole("button", { name: /Work/ }));
+    expect(screen.queryByText("Alpha")).toBeNull();
+    spy.mockRestore();
+  });
+
+  it.each(["{not json", '{"a":1}', '"Work"', "42"])(
+    "treats stored %s as all expanded",
+    async (raw) => {
+      const h = await seeded();
+      localStorage.setItem("otpv.popup.collapsed", raw);
+      renderUi(<PopupApp pollMs={0} />, h.ui);
+      expect(await screen.findByText("Alpha")).toBeTruthy();
+      expect(screen.getAllByRole("button", { expanded: true })).toHaveLength(3);
+    },
+  );
+
+  it("prunes stale keys and ignores oversized entries", async () => {
+    const h = await seeded();
+    localStorage.setItem("otpv.popup.collapsed", JSON.stringify(["dead-group", "x".repeat(65)]));
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await userEvent.click(await screen.findByRole("button", { name: /Home/ }));
+    const stored = JSON.parse(localStorage.getItem("otpv.popup.collapsed") ?? "[]") as string[];
+    expect(stored).toHaveLength(1);
+    expect(stored).not.toContain("dead-group");
+  });
+
+  it("wires aria-controls only while open", async () => {
+    const h = await seeded();
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    const button = await screen.findByRole("button", { name: /Work/ });
+    const id = button.getAttribute("aria-controls");
+    expect(id).toBeTruthy();
+    expect(document.getElementById(id ?? "")?.tagName).toBe("UL");
+    await userEvent.click(button);
+    expect(button.getAttribute("aria-controls")).toBeNull();
+  });
+
+  it("keeps a site-matched account in Bu site, not in its group", async () => {
+    const h = await harness({ tabUrl: "https://acme.com/login" });
+    const g = await h.ui.rpc("createGroup", { name: "Work" });
+    const { id } = await h.ui.rpc("addAccountManual", {
+      draft: { secret: "JBSWY3DPEHPK3PXA", issuer: "Acme", domains: ["acme.com"] },
+    });
+    await h.ui.rpc("setAccountGroup", { id, groupId: g.id });
+    await h.ui.rpc("addAccountManual", { draft: { secret: "JBSWY3DPEHPK3PXB", issuer: "Other" } });
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    const site = await screen.findByRole("region", { name: /Bu site/ });
+    expect(within(site).getByText("Acme")).toBeTruthy();
+    expect(screen.getAllByText("Acme")).toHaveLength(1);
+    expect(screen.queryByRole("region", { name: /Work/ })).toBeNull();
+  });
 });

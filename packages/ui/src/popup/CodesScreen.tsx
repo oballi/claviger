@@ -288,6 +288,7 @@ export function CodesScreen({
     />
   );
 
+  const validKeys = [NO_GROUP_KEY, ...(list?.groups.map((g) => g.id) ?? [])];
   const grouped = (list?.groups.length ?? 0) > 0;
   const siteRows = accounts.filter(onSite);
   const pinnedRows = accounts.filter((a) => a.pinned && !onSite(a));
@@ -421,7 +422,7 @@ export function CodesScreen({
                     title={s.group?.name ?? t("group.none")}
                     count={s.rows.length}
                     open={!collapsed.has(key)}
-                    onToggle={() => toggle(key)}
+                    onToggle={() => toggle(key, validKeys)}
                   >
                     {s.rows.map((a) => row(a))}
                   </GroupSection>
