@@ -172,17 +172,11 @@ export default defineConfig(
   },
   {
     // Popup-safe package modules: runtime zod/core/protocol would leak into the popup bundle.
-    files: [
-      "packages/ui/src/contract/**/*.ts",
-      "packages/ui/src/rpc/**/*.ts",
-      "packages/ui/src/index.ts",
-      "packages/ui/src/components/**/*.{ts,tsx}",
-      "packages/ui/src/popup/**/*.{ts,tsx}",
-      "packages/ui/src/hooks.ts",
-      "packages/ui/src/format.ts",
-      "packages/ui/src/errors.ts",
-      "packages/ui/src/i18n/**/*.{ts,tsx}",
-      "packages/ui/src/platform.ts",
+    files: ["packages/ui/src/**/*.{ts,tsx}"],
+    ignores: [
+      "packages/ui/src/manage/**",
+      "packages/ui/src/protocol/**",
+      "packages/ui/src/testing/**",
     ],
     rules: {
       "@typescript-eslint/consistent-type-imports": [

@@ -47,6 +47,30 @@ describe("a platform without page, clock or sync abilities", () => {
     expect(h.ui.activeTab).not.toHaveBeenCalled();
   });
 
+  it("shows the site section but no fill button when autofill is off", async () => {
+    const h = await harness({
+      tabUrl: "https://acme.com/login",
+      capabilities: { activeTab: true, autofill: false },
+    });
+    await h.ui.rpc("addAccountUri", {
+      uri: "otpauth://totp/Acme:me?secret=JBSWY3DPEHPK3PXP&issuer=Acme",
+      sourceUrl: "https://acme.com",
+    });
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await screen.findByText("Acme");
+    expect(screen.getByText("Bu site")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /doldur/i })).toBeNull();
+    expect(screen.queryByText("Doldur")).toBeNull();
+  });
+
+  it("numbers the add options 01 and 02 without QR scan", async () => {
+    const h = await harness({ capabilities: NONE });
+    renderUi(<AddAccount onBack={() => {}} onAdded={() => {}} />, h.ui);
+    expect(screen.getByText("01")).toBeTruthy();
+    expect(screen.getByText("02")).toBeTruthy();
+    expect(screen.queryByText("03")).toBeNull();
+  });
+
   it("hides the page QR scan option", async () => {
     const h = await harness({ capabilities: NONE });
     renderUi(<AddAccount onBack={() => {}} onAdded={() => {}} />, h.ui);

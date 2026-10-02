@@ -1,7 +1,7 @@
-// Also asserts the zod jitless config survived into background.js.
 // Sums the JS the popup page loads: the entry script plus every modulepreload chunk.
 // Budget: 300 kB. Usage: node scripts/popup-size.mjs [build dir]
-import { readFileSync, statSync } from "node:fs";
+// Also asserts the zod jitless config is present in every built file that bundles zod.
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const BUDGET = 300_000;
@@ -25,7 +25,25 @@ if (total > BUDGET) {
 }
 
 // zod's JIT probes eval and violates the extension CSP; a sideEffects change must not drop the config.
-if (!readFileSync(join(dir, "background.js"), "utf8").includes("jitless")) {
-  console.error("background.js lacks the zod jitless config; check sideEffects in packages/ui.");
+const files = [
+  join(dir, "background.js"),
+  ...readdirSync(join(dir, "chunks"))
+    .filter((f) => f.endsWith(".js"))
+    .map((f) => join(dir, "chunks", f)),
+];
+let zodFiles = 0;
+for (const file of files) {
+  const text = readFileSync(file, "utf8");
+  if (!text.includes("ZodError")) continue;
+  zodFiles++;
+  if (!text.includes("jitless")) {
+    console.error(
+      `${file} bundles zod but lacks the jitless config; check sideEffects in packages/ui.`,
+    );
+    process.exit(1);
+  }
+}
+if (zodFiles === 0) {
+  console.error("No built file contains zod; the jitless check found nothing to verify.");
   process.exit(1);
 }
