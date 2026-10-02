@@ -5,13 +5,13 @@ import { CodesScreen } from "@claviger/ui/popup";
 import { harness, renderUi } from "./helpers/ui";
 
 const mocks = vi.hoisted(() => {
-  const event = () => {
-    const listeners = new Set<() => void>();
+  const event = <A extends unknown[] = []>() => {
+    const listeners = new Set<(...args: A) => void>();
     return {
       listeners,
-      addListener: (l: () => void) => listeners.add(l),
-      removeListener: (l: () => void) => listeners.delete(l),
-      fire: () => listeners.forEach((l) => l()),
+      addListener: (l: (...args: A) => void) => listeners.add(l),
+      removeListener: (l: (...args: A) => void) => listeners.delete(l),
+      fire: (...args: A) => listeners.forEach((l) => l(...args)),
     };
   };
   return {
@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => {
     onActivated: event(),
     onUpdated: event(),
     onRemoved: event(),
+    onStorageChanged: event<[Record<string, unknown>, string]>(),
     query: vi.fn(),
     create: vi.fn(async () => ({})),
     capture: vi.fn(async () => "data:image/png;base64,AAAA"),
@@ -43,6 +44,7 @@ vi.mock("wxt/browser", () => ({
     },
     storage: {
       session: { get: async (key: string) => ({ [key]: mocks.state.session[key] }) },
+      onChanged: mocks.onStorageChanged,
     },
     tabs: {
       query: mocks.query,
@@ -174,6 +176,42 @@ describe("panel context", () => {
     mocks.state.tabs = [{ id: 2, windowId: 7, active: true }];
     mocks.onActivated.fire();
     await waitFor(() => expect(screen.queryByText("Bu site")).toBeNull());
+  });
+
+  it("clears 'this site' synchronously on a tab change, before the new tab is resolved", async () => {
+    const h = await harness();
+    await h.ui.rpc("addAccountUri", {
+      uri: "otpauth://totp/GitHub:me?secret=JBSWY3DPEHPK3PXP&issuer=GitHub",
+      sourceUrl: "https://github.com",
+    });
+    let release: (tab: { id: number; url: string }) => void = () => {};
+    let first = true;
+    const ui = {
+      ...h.ui,
+      activeTab: () =>
+        first
+          ? ((first = false), Promise.resolve({ id: 1, url: "https://github.com/login" }))
+          : new Promise<{ id: number; url: string }>((resolve) => (release = resolve)),
+      onActiveTabChange: createBrowserUiPlatform("panel").onActiveTabChange,
+    };
+    renderUi(<CodesScreen state={await h.service.getState()} pollMs={0} onLocked={() => {}} />, ui);
+    expect(await screen.findByText("Bu site")).toBeTruthy();
+    mocks.onActivated.fire();
+    // The new tab is still unresolved here: the old site's match must already be gone.
+    await waitFor(() => expect(screen.queryByText("Bu site")).toBeNull());
+    release({ id: 2, url: "https://github.com/other" });
+    expect(await screen.findByText("Bu site")).toBeTruthy();
+  });
+
+  it("re-resolves when the launcher retargets the window (session key change)", async () => {
+    const platform = createBrowserUiPlatform("panel");
+    const listener = vi.fn();
+    platform.onActiveTabChange!(listener);
+    mocks.onStorageChanged.fire({ "claviger-target-window": { newValue: 9 } }, "session");
+    expect(listener).toHaveBeenCalledTimes(1);
+    mocks.onStorageChanged.fire({ settings: {} }, "local");
+    mocks.onStorageChanged.fire({ other: {} }, "session");
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -25,6 +25,7 @@ const KNOWN: Record<string, MessageKey> = {
   "snapshot-password-required": "error.snapshot-password-required",
   "same-name": "error.same-name",
   "not-linked": "error.not-linked",
+  "unsupported-open-mode": "error.unsupported-open-mode",
   "invalid-group-name": "error.invalid-group-name",
   "duplicate-group": "error.duplicate-group",
   "group-limit": "error.group-limit",

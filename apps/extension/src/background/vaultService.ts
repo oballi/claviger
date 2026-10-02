@@ -732,7 +732,11 @@ export class VaultService {
   setOpenMode(mode: OpenMode): Promise<void> {
     return this.exclusive(async () => {
       const previous = (await this.settings()).openMode;
-      await this.onOpenModeChange(mode);
+      try {
+        await this.onOpenModeChange(mode);
+      } catch {
+        throw new ServiceError("unsupported-open-mode", "The browser refused this open mode");
+      }
       try {
         await saveSettings(this.p.local, { openMode: mode });
       } catch (e) {

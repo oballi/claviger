@@ -114,8 +114,14 @@ export function createBrowserUiPlatform(
               browser.windows.onRemoved,
             ];
             for (const event of events) event.addListener(listener);
+            // The launcher retargets a detached window by rewriting this session key.
+            const onStorage = (changes: Record<string, unknown>, area: string) => {
+              if (area === "session" && TARGET_WINDOW_KEY in changes) listener();
+            };
+            browser.storage.onChanged.addListener(onStorage);
             return () => {
               for (const event of events) event.removeListener(listener);
+              browser.storage.onChanged.removeListener(onStorage);
             };
           }
         : undefined,

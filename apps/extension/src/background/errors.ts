@@ -11,7 +11,8 @@ export type ServiceErrorCode =
   | "snapshot-password-required"
   | "same-name"
   | "not-linked"
-  | "storage-area-unavailable";
+  | "storage-area-unavailable"
+  | "unsupported-open-mode";
 
 export class ServiceError extends Error {
   readonly code: ServiceErrorCode;

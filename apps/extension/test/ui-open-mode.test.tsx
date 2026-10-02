@@ -85,7 +85,7 @@ describe("open mode settings", () => {
     };
     renderUi(<SecurityScreen state={await h.service.getState()} onChanged={() => {}} />, h.ui);
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "Açılış biçimi" }), "panel");
-    expect(await screen.findByText(/hata|error|beklenmeyen/i)).toBeTruthy();
+    expect(await screen.findByText("Bu tarayıcı bu açılış biçimini desteklemiyor.")).toBeTruthy();
     expect((await h.service.getState()).openMode).toBe("popup");
   });
 });

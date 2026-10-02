@@ -132,14 +132,21 @@ export function CodesScreen({
       return;
     }
     let current = true;
+    let latest = 0;
     // Always re-resolved, never reused: a stale "this site" would be a false trust signal.
-    const resolve = () =>
-      activeTab().then(
-        (next) => current && setTab(next),
-        () => current && setTab(undefined),
-      );
+    const resolve = () => {
+      const mine = ++latest;
+      const apply = (next: { id: number; url: string } | undefined) =>
+        current && mine === latest && setTab(next);
+      return activeTab().then(apply, () => apply(undefined));
+    };
     void resolve();
-    const unsubscribe = onActiveTabChange?.(() => void resolve());
+    const unsubscribe = onActiveTabChange?.(() => {
+      // Drop the old match first: until the new tab resolves it must not show against it.
+      latest++;
+      setTab(undefined);
+      void resolve();
+    });
     return () => {
       current = false;
       unsubscribe?.();

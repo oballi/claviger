@@ -28,6 +28,7 @@ export const en: Record<PopupKey, string> = {
   "policy.sentence.never": "Never locks on its own",
   "error.wrong-password": "Wrong password.",
   "error.locked": "The vault is locked.",
+  "error.unsupported-open-mode": "This browser does not support that open mode.",
   "error.invalid-token": "Please confirm your password again.",
   "error.duplicate-account": "This account already exists.",
   "error.invalid-uri": "This is not an otpauth:// link.",

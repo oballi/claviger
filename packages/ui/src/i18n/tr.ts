@@ -31,6 +31,7 @@ export const tr = {
   "error.invalid-uri": "Bu bir otpauth:// bağlantısı değil.",
   "error.invalid-base32": "Kurulum anahtarı geçersiz. Yalnızca A–Z ve 2–7 karakterleri olabilir.",
   "error.unsupported-otp-type": "Bu hesap türü desteklenmiyor.",
+  "error.unsupported-open-mode": "Bu tarayıcı bu açılış biçimini desteklemiyor.",
   "error.unsupported-algorithm": "Bu algoritma desteklenmiyor.",
   "error.invalid-otp-params": "Hane veya süre değeri geçersiz.",
   "error.same-name": "Bu adla başka bir hesap zaten var. Yine de kaydetmek istiyor musun?",

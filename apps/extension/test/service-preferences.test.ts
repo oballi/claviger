@@ -52,7 +52,9 @@ describe("open mode and popup size", () => {
     const { service, calls } = withHook(async (mode) => {
       if (mode === "panel") throw new Error("unsupported");
     });
-    await expect(service.setOpenMode("panel")).rejects.toThrow("unsupported");
+    await expect(service.setOpenMode("panel")).rejects.toMatchObject({
+      code: "unsupported-open-mode",
+    });
     expect(calls).toEqual(["panel"]);
     expect((await service.getState()).openMode).toBe("popup");
   });
