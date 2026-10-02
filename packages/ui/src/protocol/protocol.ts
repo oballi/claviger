@@ -97,6 +97,12 @@ export const rpcRequestSchema = z.discriminatedUnion("type", [
     id,
     groupId: z.string().min(1).max(64).nullable(),
   }),
+  z.object({
+    type: z.literal("moveAccount"),
+    id,
+    groupId: z.string().min(1).max(64).nullable(),
+    beforeId: z.string().min(1).max(64).nullable(),
+  }),
   z.object({ type: z.literal("reorder"), order: z.array(z.string().max(64)).max(10_000) }),
   z.object({ type: z.literal("setPinned"), id, pinned: z.boolean() }),
   z.object({ type: z.literal("nextHotp"), id }),
@@ -180,6 +186,7 @@ export interface RpcResults {
   deleteGroup: null;
   reorderGroups: null;
   setAccountGroup: null;
+  moveAccount: null;
   reorder: null;
   setPinned: null;
   nextHotp: { code: string };

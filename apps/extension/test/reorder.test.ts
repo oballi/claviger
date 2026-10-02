@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { neighbourOf, reorderByDrop, swapOrder } from "@otp-vault/ui";
+import { dropPlacement, neighbourOf, reorderByDrop, swapOrder } from "@otp-vault/ui";
 
 const rows = [
   { id: "p1", pinned: true },
@@ -51,5 +51,36 @@ describe("reorderByDrop groups", () => {
       { id: "b", pinned: false, groupId: "g2" },
     ];
     expect(reorderByDrop(grouped, "a", "b")).toBeNull();
+  });
+});
+
+describe("dropPlacement", () => {
+  const r = (id: string, groupId: string | null, pinned = false) => ({ id, groupId, pinned });
+  const list = [
+    r("p", "g", true),
+    r("a", "g"),
+    r("b", "g"),
+    r("c", "g"),
+    r("x", null),
+    r("y", null),
+  ];
+
+  it("puts a downward drop after the target and an upward drop before it", () => {
+    expect(dropPlacement(list, "a", "b")).toEqual({ groupId: "g", beforeId: "c" });
+    expect(dropPlacement(list, "c", "a")).toEqual({ groupId: "g", beforeId: "a" });
+  });
+  it("lands before the target across groups and reports the target's group", () => {
+    expect(dropPlacement(list, "a", "y")).toEqual({ groupId: null, beforeId: "y" });
+    expect(dropPlacement(list, "y", "b")).toEqual({ groupId: "g", beforeId: "b" });
+  });
+  it("refuses pinned targets, the dragged row itself and unknown ids", () => {
+    expect(dropPlacement(list, "a", "p")).toBeNull();
+    expect(dropPlacement(list, "p", "a")).toBeNull();
+    expect(dropPlacement(list, "a", "a")).toBeNull();
+    expect(dropPlacement(list, "zz", "a")).toBeNull();
+    expect(dropPlacement(list, "a", "zz")).toBeNull();
+  });
+  it("downward onto the last row of a group appends (beforeId null)", () => {
+    expect(dropPlacement(list, "a", "c")).toEqual({ groupId: "g", beforeId: null });
   });
 });

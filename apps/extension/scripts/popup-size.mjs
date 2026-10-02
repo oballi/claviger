@@ -27,7 +27,7 @@ if (total > BUDGET) {
 // Lazy chunks load on demand and are not in popup.html; report them with their own cap.
 const LAZY_BUDGET = 30_000;
 for (const f of readdirSync(join(dir, "chunks")).filter((f) =>
-  /^(EditAccount|TrashList)-.*\.js$/.test(f),
+  /^(EditAccount|TrashList|SortList)-.*\.js$/.test(f),
 )) {
   const size = statSync(join(dir, "chunks", f)).size;
   console.log(`${String(size).padStart(8)}  chunks/${f} (lazy, budget ${LAZY_BUDGET})`);

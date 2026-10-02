@@ -880,6 +880,57 @@ export class Vault {
     });
   }
 
+  moveAccount(id: string, groupId: string | null, beforeId: string | null): Promise<void> {
+    return this.exclusive(async () => {
+      const current = await this.getLiveAccount(id);
+      const index = await this.readIndex({ strict: true });
+      const known = new Set((index.groups ?? []).map((g) => g.id));
+      if (groupId !== null && !known.has(groupId))
+        throw new CoreError("group-not-found", "Group not found");
+      const { accounts } = await this.listAccounts();
+      if (!accounts.some((a) => a.id === id))
+        throw new CoreError("account-not-found", `Account ${id} not found`);
+      // Listed rows are already cleaned of unknown groups; the raw record is not.
+      const groupOf = (a: { groupId?: string }) => a.groupId ?? null;
+      const currentGroup = current.groupId && known.has(current.groupId) ? current.groupId : null;
+
+      const rest = accounts.filter((a) => a.id !== id);
+      let order: string[];
+      if (beforeId === id) {
+        order = accounts.map((a) => a.id);
+      } else {
+        const before = beforeId === null ? undefined : rest.find((a) => a.id === beforeId);
+        let at: number;
+        if (before && groupOf(before) === groupId) at = rest.indexOf(before);
+        else {
+          let last = -1;
+          rest.forEach((a, i) => {
+            if (groupOf(a) === groupId) last = i;
+          });
+          at = last < 0 ? rest.length : last + 1;
+        }
+        order = rest.map((a) => a.id);
+        order.splice(at, 0, id);
+      }
+
+      const extra: Record<string, unknown> = {};
+      if (currentGroup !== groupId) {
+        const next: Account = {
+          ...withoutGroup(current),
+          updatedAt: this.nextUpdatedAt(current.updatedAt),
+          ...(groupId ? { groupId } : {}),
+        };
+        const key = accountKey(id);
+        extra[key] = await encryptRecord(this.dek, key, next, next.updatedAt, this.deps.random);
+      }
+      // One write: a failure leaves both the record and the order untouched.
+      await this.writeIndex(
+        { ...index, order, updatedAt: this.nextUpdatedAt(index.updatedAt) },
+        extra,
+      );
+    });
+  }
+
   setPinned(id: string, pinned: boolean): Promise<void> {
     return this.exclusive(async () => {
       const index = await this.readIndex({ strict: true });

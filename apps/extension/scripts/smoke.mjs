@@ -208,6 +208,97 @@ try {
       throw new Error("deleting a group did not ungroup its accounts");
   }
 
+  // Plan 8: moveAccount RPC, popup menu/theme/sort mode, manage layout at 1280 and 1024.
+  {
+    const g1 = await must({ type: "createGroup", name: "Kişisel hesaplar" });
+    const g2 = await must({ type: "createGroup", name: "Work2" });
+    const subject = (await must({ type: "listAccounts" })).accounts.find(
+      (a) => a.issuer === "Fill",
+    );
+    await must({ type: "moveAccount", id: subject.id, groupId: g2.id, beforeId: null });
+    const moved = (await must({ type: "listAccounts" })).accounts.find((a) => a.id === subject.id);
+    if (moved.groupId !== g2.id) throw new Error("moveAccount did not change the group");
+    const bad = await rpc({ type: "moveAccount", id: subject.id, groupId: "nope", beforeId: null });
+    if (bad?.ok || !JSON.stringify(bad).includes("group-not-found"))
+      throw new Error(`moveAccount to a missing group gave ${JSON.stringify(bad)}`);
+
+    await popup.goto(`chrome-extension://${id}/popup.html`);
+    await popup
+      .getByRole("button", { name: /için işlemler/ })
+      .first()
+      .click();
+    const items = await popup.getByRole("menuitem").allTextContents();
+    const joined = items.join("|");
+    for (const want of ["Sabitle", "Düzenle", "Gruba taşı", "Sil"])
+      if (!joined.includes(want)) throw new Error(`row menu lacks ${want}: ${joined}`);
+    if (/Yukarı taşı|Aşağı taşı/.test(joined)) throw new Error("row menu still has move up/down");
+    await popup.keyboard.press("Escape");
+
+    const themeBtn = popup.getByRole("button", { name: /temaya geç/ });
+    const themeBefore = await popup.evaluate(() => document.documentElement.dataset.theme);
+    await themeBtn.click();
+    await popup.waitForFunction((b) => document.documentElement.dataset.theme !== b, themeBefore);
+    const themeAfter = await popup.evaluate(() => document.documentElement.dataset.theme);
+    const stored = (await must({ type: "getState" })).theme;
+    if (stored !== themeAfter) throw new Error(`theme ${themeAfter} not stored (${stored})`);
+
+    const sortBtn = popup.getByRole("button", { name: "Sırala", exact: true });
+    await sortBtn.click();
+    if ((await sortBtn.getAttribute("aria-pressed")) !== "true")
+      throw new Error("sort mode did not engage");
+    if (await popup.getByRole("button", { name: /kodu kopyala/i }).count())
+      throw new Error("codes still visible in sort mode");
+    await popup.keyboard.press("Escape");
+    if ((await sortBtn.getAttribute("aria-pressed")) !== "false")
+      throw new Error("Escape did not leave sort mode");
+    if (!(await sortBtn.evaluate((el) => el === document.activeElement)))
+      throw new Error("focus did not return to the sort button");
+
+    const layout = async (width) => {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto(`chrome-extension://${id}/manage.html#/accounts`);
+      await page.reload();
+      await page.getByRole("table").waitFor();
+      return page.evaluate(() => {
+        const wrap = document.querySelector("table").parentElement;
+        const w = wrap.getBoundingClientRect();
+        const edit = [...document.querySelectorAll("table button")].find((b) =>
+          /^Düzenle$/.test(b.textContent.trim()),
+        );
+        const e = edit?.getBoundingClientRect();
+        const nameSpan = [
+          ...document.querySelectorAll("section[aria-label] li button span.truncate"),
+        ].find((x) => x.textContent === "Kişisel hesaplar");
+        const row = nameSpan?.closest("li");
+        const clipped = row
+          ? [...row.querySelectorAll("button")].some((b) => {
+              const r = b.getBoundingClientRect();
+              const rr = row.getBoundingClientRect();
+              return r.width === 0 || r.right > rr.right + 0.5 || r.left < rr.left - 0.5;
+            })
+          : true;
+        return {
+          fits: wrap.scrollWidth <= wrap.clientWidth,
+          editInside: Boolean(e && e.right <= w.right + 0.5),
+          pageScroll: document.documentElement.scrollWidth > window.innerWidth,
+          nameWidth: nameSpan ? nameSpan.getBoundingClientRect().width : -1,
+          nameClientWidth: nameSpan ? nameSpan.clientWidth : -1,
+          clipped,
+        };
+      });
+    };
+    for (const width of [1280, 1024]) {
+      const r = await layout(width);
+      console.log(`layout ${width}: ${JSON.stringify(r)}`);
+      if (!r.fits || !r.editInside || r.pageScroll)
+        throw new Error(`manage layout overflows at ${width}: ${JSON.stringify(r)}`);
+      if (width === 1280 && (r.nameWidth < 56 || r.clipped))
+        throw new Error(`group row too tight at 1280: ${JSON.stringify(r)}`);
+    }
+    await must({ type: "deleteGroup", id: g1.id });
+    await must({ type: "deleteGroup", id: g2.id });
+  }
+
   // Recently deleted: delete -> bin -> restore round trip; the popup shows the entry link.
   {
     const bin = await must({

@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { fireEvent, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { AccountsScreen } from "@otp-vault/ui/manage";
+import { AccountsScreen, GroupsSection } from "@otp-vault/ui/manage";
 import { harness, renderUi } from "./helpers/ui";
 
 expect.extend({
@@ -244,5 +244,118 @@ describe("groups section", () => {
     fireEvent.drop(first);
     await new Promise((r) => setTimeout(r, 50));
     expect(await groupNames(h)).toEqual(["İş", "Kişisel"]);
+  });
+
+  it("keeps grip, name toggle, up, down, rename and delete on one row", async () => {
+    const h = await open();
+    const row = within(h.section).getByText("İş").closest("li")!;
+    const first = row.firstElementChild as HTMLElement;
+    expect(first.className).toContain("gap-1");
+    for (const el of [
+      within(row).getByTestId("drag-handle"),
+      within(row).getByRole("button", { name: /^İş, \d+ hesap$/, expanded: false }),
+      within(row).getByRole("button", { name: "İş grubunu yukarı taşı" }),
+      within(row).getByRole("button", { name: "İş grubunu aşağı taşı" }),
+      within(row).getByRole("button", { name: "İş grubunu yeniden adlandır" }),
+      within(row).getByRole("button", { name: "İş grubunu sil" }),
+    ])
+      expect(el.parentElement).toBe(first);
+    const up = within(row).getByRole("button", { name: "İş grubunu yukarı taşı" });
+    expect(up.className).toContain("px-1");
+    expect(up.className).toContain("min-h-11");
+    const rename = within(row).getByRole("button", { name: "İş grubunu yeniden adlandır" });
+    expect(rename.className).toContain("text-xs");
+    expect(rename.className).toContain("font-normal");
+    const toggle = within(row).getByRole("button", { name: /^İş, \d+ hesap$/ });
+    expect(toggle.className).toContain("min-w-0");
+    expect(toggle.className).toContain("flex-1");
+    expect(within(toggle).getByText("İş").className).toContain("truncate");
+    expect(within(toggle).getByText("İş").getAttribute("title")).toBe("İş");
+  });
+
+  it("expands a group on name click and lists its accounts with aria-expanded", async () => {
+    const h = await open();
+    const toggle = within(h.section).getByRole("button", { name: /^İş, \d+ hesap$/ });
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(within(h.section).queryByText("Alpha")).toBeNull();
+    await userEvent.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(document.getElementById(toggle.getAttribute("aria-controls")!)).toBeTruthy();
+    expect(within(h.section).getByText("Alpha")).toBeTruthy();
+    expect(
+      within(h.section).getByRole("button", { name: "Alpha hesabını gruptan çıkar" }),
+    ).toBeTruthy();
+    await userEvent.click(toggle);
+    expect(within(h.section).queryByText("Alpha")).toBeNull();
+  });
+
+  it("shows the empty hint for a group without accounts", async () => {
+    const h = await open();
+    await userEvent.click(within(h.section).getByRole("button", { name: /^Kişisel, \d+ hesap$/ }));
+    expect(within(h.section).getByText("Boş. Soldan bir hesabı buraya sürükle.")).toBeTruthy();
+  });
+
+  it("Remove from group sets the account to no group, announces it and moves focus to the next member", async () => {
+    const h = await open();
+    const { id: id2 } = await h.ui.rpc("addAccountManual", {
+      draft: { secret: "GEZDGNBVGY3TQOJQ", issuer: "Beta" },
+    });
+    await h.ui.rpc("setAccountGroup", { id: id2, groupId: h.a.id });
+    const { groups, accounts } = await h.ui.rpc("listAccounts", {});
+    const onChanged = vi.fn();
+    cleanup();
+    renderUi(<GroupsSection groups={groups} accounts={accounts} onChanged={onChanged} />, h.ui);
+    const section = await screen.findByRole("region", { name: "Gruplar" });
+    await userEvent.click(within(section).getByRole("button", { name: /^İş, \d+ hesap$/ }));
+    await userEvent.click(
+      within(section).getByRole("button", { name: "Alpha hesabını gruptan çıkar" }),
+    );
+    await vi.waitFor(async () => {
+      const list = (await h.ui.rpc("listAccounts", {})).accounts;
+      expect(list.find((a) => a.id === h.id)!.groupId).toBeNull();
+    });
+    expect(onChanged).toHaveBeenCalledWith("Alpha gruptan çıkarıldı");
+    await vi.waitFor(() =>
+      expect(
+        within(section).getByRole("button", { name: "Beta hesabını gruptan çıkar" }),
+      ).toHaveFocus(),
+    );
+  });
+
+  it("a failing remove shows the error and keeps the member", async () => {
+    const h = await open();
+    const { groups, accounts } = await h.ui.rpc("listAccounts", {});
+    const ui = {
+      ...h.ui,
+      rpc: ((type: string, payload: unknown) =>
+        type === "setAccountGroup"
+          ? Promise.reject(new Error("boom"))
+          : h.ui.rpc(type as "getState", payload as never)) as typeof h.ui.rpc,
+    };
+    cleanup();
+    renderUi(<GroupsSection groups={groups} accounts={accounts} onChanged={() => {}} />, ui);
+    const section = await screen.findByRole("region", { name: "Gruplar" });
+    await userEvent.click(within(section).getByRole("button", { name: /^İş, \d+ hesap$/ }));
+    await userEvent.click(
+      within(section).getByRole("button", { name: "Alpha hesabını gruptan çıkar" }),
+    );
+    expect(await within(section).findByRole("alert")).toBeTruthy();
+    expect(within(section).getByText("Alpha")).toBeTruthy();
+  });
+
+  it("collapsing and re-expanding keeps members in sync after a reload", async () => {
+    const h = await open();
+    const toggle = within(h.section).getByRole("button", { name: /^İş, \d+ hesap$/ });
+    await userEvent.click(toggle);
+    expect(within(h.section).getByText("Alpha")).toBeTruthy();
+    await userEvent.click(toggle);
+    await h.ui.rpc("setAccountGroup", { id: h.id, groupId: h.b.id });
+    cleanup();
+    const { groups, accounts } = await h.ui.rpc("listAccounts", {});
+    renderUi(<GroupsSection groups={groups} accounts={accounts} onChanged={() => {}} />, h.ui);
+    const section = await screen.findByRole("region", { name: "Gruplar" });
+    await userEvent.click(within(section).getByRole("button", { name: /^İş, \d+ hesap$/ }));
+    expect(within(section).queryByText("Alpha")).toBeNull();
+    expect(within(section).getByText("Boş. Soldan bir hesabı buraya sürükle.")).toBeTruthy();
   });
 });

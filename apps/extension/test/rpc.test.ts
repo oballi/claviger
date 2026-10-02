@@ -115,6 +115,11 @@ describe("envelope and sender checks", () => {
     { type: "reorderGroups", ids: Array(1001).fill("a") },
     { type: "reorderGroups", ids: ["a".repeat(65)] },
     { type: "setAccountGroup", id: "a", groupId: "" },
+    { type: "moveAccount", id: "a".repeat(65), groupId: null, beforeId: null },
+    { type: "moveAccount", id: "a", groupId: "", beforeId: null },
+    { type: "moveAccount", id: "a", groupId: null, beforeId: "" },
+    { type: "moveAccount", id: "a", groupId: 5, beforeId: null },
+    { type: "moveAccount", id: "a", groupId: null },
     { type: "updateAccount", id: "a", patch: { groupId: "g".repeat(65) } },
     { type: "importCommit", previewId: "p".repeat(65), indexes: [0] },
     { type: "applyClockSample", serverDate: "d".repeat(65), startMs: 0, endMs: 1 },
@@ -418,6 +423,7 @@ describe("group rpcs", () => {
     { type: "deleteGroup", id: "a" },
     { type: "reorderGroups", ids: ["a"] },
     { type: "setAccountGroup", id: "a", groupId: null },
+    { type: "moveAccount", id: "a", groupId: null, beforeId: null },
   ])("forbids $type from an untrusted sender", async (request) => {
     const response = await handleRpcMessage(
       new VaultService(memoryPlatform()),

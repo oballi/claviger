@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { AccountView, ServiceState } from "../contract/views";
 import { AccountForm } from "../components/AccountForm";
 import { Button } from "../components/Button";
@@ -15,6 +15,7 @@ import { GroupChips, type GroupFilter } from "./GroupChips";
 import { PageTitle } from "./ManageFrame";
 import { TrashSection } from "./TrashSection";
 import { TextField } from "../components/TextField";
+import { ACCOUNT_DRAG, GROUP_DRAG } from "../dragTypes";
 import { neighbourOf, reorderByDrop, swapOrder } from "../reorder";
 
 /** Design board "Yönetim — hesaplar". */
@@ -52,7 +53,10 @@ export function AccountsScreen({
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [maintenanceError, setMaintenanceError] = useState<string | null>(null);
   const [reorderError, setReorderError] = useState<string | null>(null);
-  const [dragging, setDragging] = useState<string | null>(null);
+  const [drag, setDrag] = useState<{ id: string; source: "table" | "member" } | null>(null);
+  // Holds the drag object it belongs to, so a stale highlight never outlives its drag.
+  const [overTable, setOverTable] = useState<object | null>(null);
+  const moving = useRef(false);
   const [trashVersion, setTrashVersion] = useState(0);
 
   const [filter, setFilter] = useState<GroupFilter>("all");
@@ -130,8 +134,8 @@ export function AccountsScreen({
   };
 
   async function drop(target: string) {
-    const dragged = dragging;
-    setDragging(null);
+    const dragged = drag?.source === "table" ? drag.id : null;
+    setDrag(null);
     if (!dragged || q) return;
     const order = reorderByDrop(
       accounts.map((a) => ({ ...a, groupId: knownGroup(a) })),
@@ -145,6 +149,37 @@ export function AccountsScreen({
       changed(t("accounts.moved", { name: nameOf(dragged) }));
     } catch (e) {
       setReorderError(errorMessage(t, e));
+    }
+  }
+
+  const isGrouped = (id: string) => {
+    const a = accounts.find((x) => x.id === id);
+    return Boolean(a && knownGroup(a));
+  };
+  const memberDragged = drag?.source === "member" && isGrouped(drag.id);
+  const isGroupDrag = (e: { dataTransfer: DataTransfer | null }) =>
+    Boolean(e.dataTransfer?.types?.includes?.(GROUP_DRAG));
+
+  // Resolves false on failure so the group list keeps its state; the error shows in the page-level alert.
+  async function moveToGroup(id: string, groupId: string | null): Promise<boolean> {
+    setDrag(null);
+    if (moving.current) return false;
+    moving.current = true;
+    try {
+      const name = nameOf(id);
+      try {
+        await rpc("setAccountGroup", { id, groupId });
+      } catch (e) {
+        setReorderError(errorMessage(t, e));
+        return false;
+      }
+      const group = groups.find((g) => g.id === groupId)?.name ?? "";
+      await changed(
+        groupId ? t("accounts.joinedGroup", { name, group }) : t("accounts.leftGroup", { name }),
+      );
+      return true;
+    } finally {
+      moving.current = false;
     }
   }
 
@@ -295,16 +330,36 @@ export function AccountsScreen({
         </section>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-14 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[680px] table-fixed border-collapse text-left text-sm">
+      <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div
+          className={`min-w-0 overflow-x-auto ${
+            memberDragged && overTable === drag
+              ? "bg-hair shadow-[inset_0_2px_0_var(--color-line)]"
+              : ""
+          }`}
+          onDragOver={(e) => {
+            if (!memberDragged || isGroupDrag(e)) return;
+            e.preventDefault();
+            setOverTable(drag);
+          }}
+          onDragLeave={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOverTable(null);
+          }}
+          onDrop={(e) => {
+            if (!memberDragged || !drag || isGroupDrag(e)) return;
+            e.preventDefault();
+            setOverTable(null);
+            void moveToGroup(drag.id, null);
+          }}
+        >
+          <table className="w-full table-fixed border-collapse text-left text-sm">
             <colgroup>
               <col style={{ width: "32px" }} />
+              <col style={{ width: "20%" }} />
+              <col style={{ width: "26%" }} />
+              <col style={{ width: "13%" }} />
               <col style={{ width: "17%" }} />
-              <col style={{ width: "22%" }} />
-              <col style={{ width: "12%" }} />
-              <col style={{ width: "22%" }} />
-              <col style={{ width: "8%" }} />
+              <col style={{ width: "9%" }} />
               <col style={{ width: "96px" }} />
             </colgroup>
             <caption className="sr-only">{t("accounts.title")}</caption>
@@ -368,35 +423,43 @@ export function AccountsScreen({
                     key={a.id}
                     className="h-14 border-b border-hair"
                     onDragOver={(e) => {
-                      if (!q && dragging && sameGroup(dragging, a.id)) e.preventDefault();
+                      if (!q && drag?.source === "table" && sameGroup(drag.id, a.id))
+                        e.preventDefault();
                     }}
                     onDrop={(e) => {
+                      // Only an accepted reorder stops here; anything else bubbles to the wrapper.
+                      if (q || drag?.source !== "table" || !sameGroup(drag.id, a.id)) return;
                       e.preventDefault();
+                      e.stopPropagation();
                       void drop(a.id);
                     }}
                   >
                     <td>
-                      {q ? null : (
+                      {
                         // Mouse-only and not a button (Firefox will not drag buttons); keyboard users use the move buttons in the edit dialog.
+                        // While searching it still drags to a group but never reorders.
                         <span
                           draggable="true"
                           aria-hidden="true"
                           data-testid="drag-handle"
                           title={t("accounts.dragHandle", { name: editName })}
                           onDragStart={(e) => {
-                            setDragging(a.id);
+                            setDrag({ id: a.id, source: "table" });
+                            e.dataTransfer?.setData(ACCOUNT_DRAG, a.id);
                             e.dataTransfer?.setData("text/plain", a.id);
                           }}
-                          onDragEnd={() => setDragging(null)}
+                          onDragEnd={() => setDrag(null)}
                           className="flex h-11 w-8 cursor-grab items-center justify-center text-muted"
                         >
                           <Icon name="grip" size={16} />
                         </span>
-                      )}
+                      }
                     </td>
                     <td className="pr-4">
                       <span className="flex min-w-0 items-center gap-2.5">
-                        <span className="min-w-0 truncate">{name}</span>
+                        <span className="min-w-0 truncate" title={name}>
+                          {name}
+                        </span>
                         {a.pinned ? (
                           <span className="rounded-full border border-line px-[7px] py-px font-mono text-[10px] text-muted">
                             {t("accounts.pinnedBadge")}
@@ -404,17 +467,23 @@ export function AccountsScreen({
                         ) : null}
                       </span>
                     </td>
-                    <td className="truncate pr-4 text-muted">{a.issuer ? a.label : ""}</td>
-                    <td className={`truncate pr-4 text-xs ${groupName(a) ? "" : "text-muted"}`}>
+                    <td className="truncate pr-4 text-muted" title={a.issuer ? a.label : undefined}>
+                      {a.issuer ? a.label : ""}
+                    </td>
+                    <td
+                      className={`truncate pr-4 text-xs ${groupName(a) ? "" : "text-muted"}`}
+                      title={groupName(a)}
+                    >
                       {groupName(a) ?? "\u2014"}
                     </td>
                     <td
                       className={`truncate pr-4 font-mono text-xs ${a.domains.length ? "" : "text-muted"}`}
+                      title={a.domains.length ? a.domains.join(", ") : undefined}
                     >
                       {a.domains.length ? a.domains.join(", ") : t("accounts.unbound")}
                     </td>
                     <td className="pr-4 font-mono text-xs text-muted">{typeLabel(a.type)}</td>
-                    <td className="text-right">
+                    <td className="whitespace-nowrap pr-1 text-right">
                       <Button
                         variant="link"
                         aria-label={t("accounts.edit", { name: editName })}
@@ -429,7 +498,14 @@ export function AccountsScreen({
             </tbody>
           </table>
         </div>
-        <GroupsSection groups={groups} accounts={accounts} onChanged={changed} />
+        <GroupsSection
+          groups={groups}
+          accounts={accounts}
+          onChanged={changed}
+          dragAccount={drag}
+          onDragAccount={(d) => setDrag(d)}
+          onMoveToGroup={moveToGroup}
+        />
       </div>
 
       <dl className="m-0 grid grid-cols-1 border-y border-hair sm:grid-cols-3">

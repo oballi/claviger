@@ -42,3 +42,27 @@ export function swapOrder(order: readonly string[], a: string, b: string): strin
   [next[i], next[j]] = [next[j]!, next[i]!];
   return next;
 }
+
+/**
+ * Where a row dropped on another row lands, for `moveAccount`. Downward drops inside a group go
+ * below the target (like `reorderByDrop`); everything else goes above it. Null when the drop is
+ * not allowed: pinned rows stay put, a row cannot target itself.
+ */
+export function dropPlacement(
+  rows: readonly { id: string; pinned: boolean; groupId: string | null }[],
+  dragged: string,
+  target: string,
+): { groupId: string | null; beforeId: string | null } | null {
+  const from = rows.findIndex((r) => r.id === dragged);
+  const to = rows.findIndex((r) => r.id === target);
+  if (from < 0 || to < 0 || from === to) return null;
+  const source = rows[from]!;
+  const goal = rows[to]!;
+  if (goal.pinned || source.pinned) return null;
+  const groupId = goal.groupId ?? null;
+  if ((source.groupId ?? null) === groupId && from < to) {
+    const next = rows.slice(to + 1).find((r) => !r.pinned && (r.groupId ?? null) === groupId);
+    return { groupId, beforeId: next?.id ?? null };
+  }
+  return { groupId, beforeId: target };
+}

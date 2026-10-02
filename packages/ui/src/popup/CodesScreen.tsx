@@ -18,6 +18,8 @@ import { errorMessage } from "../errors";
 import { useAccountList } from "../hooks";
 import { useLocale, useT } from "../i18n/i18n";
 import { useUi } from "../platform";
+import { iconButton } from "./iconButton";
+import { ThemeToggle } from "./ThemeToggle";
 import { AccountRow, type FillPrompt } from "./AccountRow";
 import type { MenuItem } from "./RowMenu";
 import { AddAccount } from "./AddAccount";
@@ -26,10 +28,11 @@ import { GroupSection } from "./GroupSection";
 import { useCollapsed } from "./useCollapsed";
 import { useTrash } from "./useTrash";
 import { NO_GROUP_KEY, sectionsOf } from "../groups";
-import { neighbourOf, swapOrder } from "../reorder";
+import { swapOrder } from "../reorder";
 
 const EditAccount = lazy(() => import("./EditAccount").then((m) => ({ default: m.EditAccount })));
 const TrashList = lazy(() => import("./TrashList").then((m) => ({ default: m.TrashList })));
+const SortList = lazy(() => import("./SortList").then((m) => ({ default: m.SortList })));
 
 function Section({
   title,
@@ -50,9 +53,6 @@ function Section({
     </section>
   );
 }
-
-const iconButton =
-  "flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-0 text-text hover:bg-hair";
 
 /** Sync quota pressure: total bytes, or the index item nearing the per-item limit (spec §7). */
 function quotaPercent(usage: StorageUsageView | null): number | null {
@@ -96,6 +96,8 @@ export function CodesScreen({
   const trash = useTrash();
   const [showTrash, setShowTrash] = useState(false);
   const [focusSearch, setFocusSearch] = useState(false);
+  const [sorting, setSorting] = useState(false);
+  const sortToggle = useRef<HTMLButtonElement>(null);
   // Last input modality: only a keyboard delete moves focus to "Undo" (the confirm button is gone).
   const viaKeyboard = useRef(false);
   const clearUndo = useCallback(() => setUndo(null), []);
@@ -112,14 +114,32 @@ export function CodesScreen({
   }, [error, onLocked]);
 
   // A stale offer must not reappear when the list view returns.
-  const away = adding || editing !== null || showTrash;
+  const away = adding || editing !== null || showTrash || sorting;
   useEffect(() => {
     if (away) setUndo(null);
   }, [away]);
 
+  // Another view replaces the list, so the mode must not survive the round trip.
+  useEffect(() => {
+    if (adding || editing !== null || showTrash) setSorting(false);
+  }, [adding, editing, showTrash]);
+
+  // Document-level: focus can fall to <body> when a clicked arrow becomes disabled.
+  useEffect(() => {
+    if (!sorting) return;
+    function onEscape(event: globalThis.KeyboardEvent) {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      event.preventDefault();
+      setSorting(false);
+      sortToggle.current?.focus();
+    }
+    document.addEventListener("keydown", onEscape);
+    return () => document.removeEventListener("keydown", onEscape);
+  }, [sorting]);
+
   // "/" must work as soon as the popup opens, when focus is still on <body> (spec §6.2).
   useEffect(() => {
-    if (adding || editing || showTrash) return;
+    if (adding || editing || showTrash || sorting) return;
     function onKey(event: globalThis.KeyboardEvent) {
       const target = event.target as HTMLElement | null;
       if (event.key !== "/" || target?.closest("input, textarea, select")) return;
@@ -129,7 +149,7 @@ export function CodesScreen({
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [adding, editing, showTrash]);
+  }, [adding, editing, showTrash, sorting]);
 
   // A row can move to another section (and remount), so focus returns to its menu trigger by id.
   useEffect(() => {
@@ -345,6 +365,13 @@ export function CodesScreen({
 
   function onListKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     viaKeyboard.current = true;
+    if (event.key === "Escape" && sorting) {
+      event.preventDefault();
+      event.stopPropagation();
+      setSorting(false);
+      sortToggle.current?.focus();
+      return;
+    }
     if (event.key === "Escape" && query) {
       event.preventDefault();
       setQuery("");
@@ -376,6 +403,45 @@ export function CodesScreen({
     } catch (e) {
       setActionError(errorMessage(t, e));
     }
+  }
+
+  // Unlike act(), the list reloads after a failure too: the move may have hit a stale row or group.
+  async function actSort(action: () => Promise<unknown>, message: string) {
+    setActionError(null);
+    try {
+      await action();
+      setToast(message);
+    } catch (e) {
+      setActionError(errorMessage(t, e));
+    } finally {
+      await reload();
+    }
+  }
+
+  async function moveInSort(id: string, groupId: string | null, beforeId: string | null) {
+    const moved = accounts.find((a) => a.id === id);
+    const name = moved ? moved.issuer || moved.label : "";
+    const changed = (moved?.groupId ?? null) !== groupId;
+    const groupName = list?.groups.find((g) => g.id === groupId)?.name ?? t("group.none");
+    await actSort(
+      () => rpc("moveAccount", { id, groupId, beforeId }),
+      changed ? t("sort.movedTo", { name, group: groupName }) : t("accounts.moved", { name }),
+    );
+  }
+
+  async function swapInSort(id: string, otherId: string) {
+    const moved = accounts.find((a) => a.id === id);
+    await actSort(
+      () =>
+        rpc("reorder", {
+          order: swapOrder(
+            accounts.map((a) => a.id),
+            id,
+            otherId,
+          ),
+        }),
+      t("accounts.moved", { name: moved ? moved.issuer || moved.label : "" }),
+    );
   }
 
   async function removeAccount(account: AccountView) {
@@ -429,27 +495,9 @@ export function CodesScreen({
     }
   }
 
-  function menuFor(account: AccountView, movable: boolean): MenuItem[] {
+  function menuFor(account: AccountView): MenuItem[] {
     const name = account.issuer || account.label;
     const groups = list?.groups ?? [];
-    const peers = accounts.filter(
-      (a) => !onSite(a) && (a.groupId ?? null) === (account.groupId ?? null),
-    );
-    const up = movable ? neighbourOf(peers, account.id, -1) : undefined;
-    const down = movable ? neighbourOf(peers, account.id, 1) : undefined;
-    const swap = (other: AccountView) =>
-      act(
-        () =>
-          rpc("reorder", {
-            order: swapOrder(
-              accounts.map((a) => a.id),
-              account.id,
-              other.id,
-            ),
-          }),
-        t("accounts.moved", { name }),
-        account.id,
-      );
     const items: MenuItem[] = [];
     if (domain && !account.domains.includes(domain))
       items.push({
@@ -468,31 +516,15 @@ export function CodesScreen({
           account.id,
         ),
     });
-    if (movable) {
-      items.push({
-        key: "up",
-        label: t("account.moveUp"),
-        disabled: !up,
-        onSelect: () => up && void swap(up),
-      });
-      items.push({
-        key: "down",
-        label: t("account.moveDown"),
-        disabled: !down,
-        onSelect: () => down && void swap(down),
-      });
-    }
     items.push({
       key: "edit",
       label: t("menu.edit"),
-      divider: true,
       onSelect: () => setEditing(account.id),
     });
     if (groups.length > 0)
       items.push({
         key: "group",
         label: t("menu.moveToGroup"),
-        divider: true,
         sub: [...groups, { id: "", name: t("group.none") }].map((g) => ({
           key: `g:${g.id}`,
           label: g.name,
@@ -509,7 +541,6 @@ export function CodesScreen({
       key: "delete",
       label: t("menu.delete"),
       danger: true,
-      divider: true,
       onSelect: () => setConfirmDelete(account.id),
     });
     return items;
@@ -537,7 +568,7 @@ export function CodesScreen({
             }
           : undefined
       }
-      menu={menuFor(account, !filtered && !large)}
+      menu={menuFor(account)}
       confirmDelete={
         confirmDelete === account.id
           ? {
@@ -597,6 +628,18 @@ export function CodesScreen({
         >
           <Icon name="settings" size={17} />
         </button>
+        <ThemeToggle theme={state.theme} onError={setActionError} />
+        <button
+          ref={sortToggle}
+          type="button"
+          aria-label={t("sort.toggle")}
+          title={t("sort.toggle")}
+          aria-pressed={sorting}
+          className={`${iconButton} ${sorting ? "bg-btn text-btn-text" : ""}`}
+          onClick={() => setSorting((on) => !on)}
+        >
+          <Icon name="sort" size={17} />
+        </button>
         <button
           type="button"
           aria-label={t("codes.add")}
@@ -625,25 +668,27 @@ export function CodesScreen({
           </Button>
         </div>
       ) : null}
-      <div className="px-7 pt-1">
-        <div className="ov-line flex h-11 items-center gap-2.5 border-b border-hair">
-          <Icon name="search" size={15} className="text-muted" />
-          <input
-            ref={searchRef}
-            type="search"
-            data-bare=""
-            aria-label={t("codes.search")}
-            placeholder={t("codes.searchPlaceholder")}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-text outline-none"
-          />
-          <kbd aria-hidden="true" className="font-mono text-[11px] text-muted">
-            /
-          </kbd>
+      {sorting ? null : (
+        <div className="px-7 pt-1">
+          <div className="ov-line flex h-11 items-center gap-2.5 border-b border-hair">
+            <Icon name="search" size={15} className="text-muted" />
+            <input
+              ref={searchRef}
+              type="search"
+              data-bare=""
+              aria-label={t("codes.search")}
+              placeholder={t("codes.searchPlaceholder")}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-text outline-none"
+            />
+            <kbd aria-hidden="true" className="font-mono text-[11px] text-muted">
+              /
+            </kbd>
+          </div>
         </div>
-      </div>
-      {list && (list.unreadable.length > 0 || list.indexDamaged) ? (
+      )}
+      {!sorting && list && (list.unreadable.length > 0 || list.indexDamaged) ? (
         <Button
           variant="link"
           onClick={() => openManage("accounts")}
@@ -652,7 +697,7 @@ export function CodesScreen({
           {t("codes.problem")}
         </Button>
       ) : null}
-      {quota !== null ? (
+      {!sorting && quota !== null ? (
         <Button
           variant="link"
           onClick={() => openManage("backup")}
@@ -671,70 +716,89 @@ export function CodesScreen({
           {actionError}
         </p>
       ) : null}
-      <div ref={listRef} className="min-h-0 flex-1 overflow-auto px-7 pb-[72px]">
-        {list && accounts.length === 0 ? (
-          <div className="flex flex-col items-start gap-4 pt-10">
-            {trashLink}
-            <p className="m-0 text-sm text-muted">{t("codes.empty")}</p>
-            {state.snapshotOffer && trash.loaded && trash.items.length === 0 ? (
-              <Button
-                variant="link"
-                onClick={() => openManage("backup")}
-                className="justify-start text-[13px]"
-              >
-                {t(
-                  state.snapshotOffer.accountCount === 1 ? "snapshots.offerOne" : "snapshots.offer",
-                  { count: state.snapshotOffer.accountCount },
-                )}
+      {sorting && list ? (
+        <Suspense fallback={null}>
+          <SortList
+            accounts={accounts}
+            siteIds={new Set(siteRows.map((a) => a.id))}
+            groups={list.groups}
+            onMove={moveInSort}
+            onSwap={swapInSort}
+            onDone={() => {
+              setSorting(false);
+              sortToggle.current?.focus();
+            }}
+          />
+        </Suspense>
+      ) : null}
+      {sorting ? null : (
+        <div ref={listRef} className="min-h-0 flex-1 overflow-auto px-7 pb-[72px]">
+          {list && accounts.length === 0 ? (
+            <div className="flex flex-col items-start gap-4 pt-10">
+              {trashLink}
+              <p className="m-0 text-sm text-muted">{t("codes.empty")}</p>
+              {state.snapshotOffer && trash.loaded && trash.items.length === 0 ? (
+                <Button
+                  variant="link"
+                  onClick={() => openManage("backup")}
+                  className="justify-start text-[13px]"
+                >
+                  {t(
+                    state.snapshotOffer.accountCount === 1
+                      ? "snapshots.offerOne"
+                      : "snapshots.offer",
+                    { count: state.snapshotOffer.accountCount },
+                  )}
+                </Button>
+              ) : null}
+              <Button variant="primary" onClick={() => setAdding(true)}>
+                {t("codes.add")}
               </Button>
-            ) : null}
-            <Button variant="primary" onClick={() => setAdding(true)}>
-              {t("codes.add")}
-            </Button>
-          </div>
-        ) : null}
-        {filtered ? (
-          <Section title={t("codes.results")}>{filtered.map((a) => row(a))}</Section>
-        ) : (
-          <>
-            {siteRows.length > 0 ? (
-              <Section title={t("codes.thisSite")} aside={domain ?? undefined}>
-                {siteRows.map((a) => row(a, true))}
-              </Section>
-            ) : null}
-            {list && grouped ? (
-              sectionsOf(
-                accounts.filter((a) => !onSite(a)),
-                list.groups,
-              ).map((s) => {
-                const key = s.group?.id ?? NO_GROUP_KEY;
-                return (
-                  <GroupSection
-                    key={key}
-                    groupKey={key}
-                    title={s.group?.name ?? t("group.none")}
-                    count={s.rows.length}
-                    open={!collapsed.has(key)}
-                    onToggle={() => toggle(key, validKeys)}
-                  >
-                    {s.rows.map((a) => row(a))}
-                  </GroupSection>
-                );
-              })
-            ) : (
-              <>
-                {pinnedRows.length > 0 ? (
-                  <Section title={t("codes.pinned")}>{pinnedRows.map((a) => row(a))}</Section>
-                ) : null}
-                {otherRows.length > 0 ? (
-                  <Section title={t("codes.all")}>{otherRows.map((a) => row(a))}</Section>
-                ) : null}
-              </>
-            )}
-          </>
-        )}
-        {accounts.length > 0 ? trashLink : null}
-      </div>
+            </div>
+          ) : null}
+          {filtered ? (
+            <Section title={t("codes.results")}>{filtered.map((a) => row(a))}</Section>
+          ) : (
+            <>
+              {siteRows.length > 0 ? (
+                <Section title={t("codes.thisSite")} aside={domain ?? undefined}>
+                  {siteRows.map((a) => row(a, true))}
+                </Section>
+              ) : null}
+              {list && grouped ? (
+                sectionsOf(
+                  accounts.filter((a) => !onSite(a)),
+                  list.groups,
+                ).map((s) => {
+                  const key = s.group?.id ?? NO_GROUP_KEY;
+                  return (
+                    <GroupSection
+                      key={key}
+                      groupKey={key}
+                      title={s.group?.name ?? t("group.none")}
+                      count={s.rows.length}
+                      open={!collapsed.has(key)}
+                      onToggle={() => toggle(key, validKeys)}
+                    >
+                      {s.rows.map((a) => row(a))}
+                    </GroupSection>
+                  );
+                })
+              ) : (
+                <>
+                  {pinnedRows.length > 0 ? (
+                    <Section title={t("codes.pinned")}>{pinnedRows.map((a) => row(a))}</Section>
+                  ) : null}
+                  {otherRows.length > 0 ? (
+                    <Section title={t("codes.all")}>{otherRows.map((a) => row(a))}</Section>
+                  ) : null}
+                </>
+              )}
+            </>
+          )}
+          {accounts.length > 0 ? trashLink : null}
+        </div>
+      )}
       <Toast message={toast} onDone={clearToast} raised={undo !== null} />
       <UndoToast
         token={undo?.id}
