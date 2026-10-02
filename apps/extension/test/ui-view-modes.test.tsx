@@ -57,7 +57,7 @@ describe("view modes", () => {
   it("small rows have top padding too", async () => {
     const { container } = await popupWith("normal");
     await screen.findByText("Acme");
-    expect(container.querySelector("li")!.className).toContain("pt-3");
+    expect(container.querySelector("li")!.className).toContain("pt-2");
   });
 
   it("hidden mode never puts the code in the DOM but still copies it", async () => {

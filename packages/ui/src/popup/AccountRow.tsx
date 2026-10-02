@@ -121,7 +121,7 @@ export function AccountRow({
   return (
     <li
       onClick={copyFromRow}
-      className="ov-row -mx-3 flex cursor-pointer flex-wrap items-center gap-3 rounded-xl px-3 pt-3 pb-1"
+      className="ov-row -mx-3 flex cursor-pointer flex-wrap items-center gap-3 rounded-xl px-3 pt-2 pb-1"
     >
       <div className="min-w-0 flex-1">
         <div className="truncate text-[13px]">
