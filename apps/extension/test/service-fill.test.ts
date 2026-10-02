@@ -132,6 +132,17 @@ describe("fillCode", () => {
     expect(p.tabs.fills).toHaveLength(0);
   });
 
+  it("never fills an account that is only suggested for the page", async () => {
+    const { p, service, id } = await setup();
+    const evil = "https://bank.com.evil.io/";
+    p.tabs.activeTab = { id: TAB, url: evil };
+    const view = await service.listAccounts({ pageUrl: evil });
+    expect(view.matches.exact).toEqual([]);
+    expect(view.matches.suggested).toEqual([id]);
+    expect(await codeOf(service.fillCode({ id, tabId: TAB }))).toBe("not-linked");
+    expect(p.tabs.fills).toHaveLength(0);
+  });
+
   it("re-reads the tab url at fill time", async () => {
     const { p, service, id } = await setup();
     p.tabs.liveUrl = "https://bank.com.evil.io/";
