@@ -107,6 +107,8 @@ export const manageEn: Record<ManageKey, string> = {
   "accounts.unreadableDeleted": "Unreadable entry deleted.",
   "accounts.dragColumn": "Drag",
   "accounts.dragHandle": "Drag {name}",
+  "account.moveUp": "Move up",
+  "account.moveDown": "Move down",
   "account.edit": "Edit",
   "account.domains": "Sites",
   "account.domainsHint": 'Separate with commas. Codes show under "This site" on these sites.',

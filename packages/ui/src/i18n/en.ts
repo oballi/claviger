@@ -165,8 +165,6 @@ export const en: Record<PopupKey, string> = {
   "accounts.deleted": "{name} deleted.",
   "account.pin": "Pin",
   "account.unpin": "Unpin",
-  "account.moveUp": "Move up",
-  "account.moveDown": "Move down",
   "account.qrTooLong": "This account is too long for a QR code; enter the secret key manually.",
   "codes.copyHidden": "Copy the {issuer} code",
   "snapshots.offer": "Restore from an automatic copy ({count} accounts)",

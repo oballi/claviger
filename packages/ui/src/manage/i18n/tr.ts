@@ -104,6 +104,8 @@ export const manageTr = {
   "accounts.unreadableDeleted": "Okunamayan kayıt silindi.",
   "accounts.dragColumn": "Sürükle",
   "accounts.dragHandle": "{name} hesabını sürükle",
+  "account.moveUp": "Yukarı taşı",
+  "account.moveDown": "Aşağı taşı",
   "account.edit": "Düzenle",
   "account.domains": "Siteler",
   "account.domainsHint": 'Virgülle ayır. Kodu bu sitelerde "Bu site" altında görürsün.',

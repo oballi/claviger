@@ -8,7 +8,6 @@ export interface MenuItem {
   hint?: string;
   danger?: boolean;
   disabled?: boolean;
-  divider?: boolean;
   onSelect?: () => void;
   sub?: MenuItem[];
 }
@@ -132,11 +131,16 @@ export function RowMenu({
                   item.onSelect?.();
                 }
               }}
-              className={`flex min-h-10 cursor-pointer flex-col items-start justify-center gap-0.5 rounded-lg border-0 bg-transparent px-3 text-left font-sans text-[13px] hover:bg-hair focus-visible:bg-hair disabled:cursor-default disabled:opacity-40 ${item.danger ? "text-warn" : "text-text"} ${item.divider ? "mt-1 border-t border-hair pt-1" : ""}`}
+              className={`flex min-h-10 cursor-pointer flex-row items-center gap-2 rounded-lg border-0 bg-transparent px-3 text-left font-sans text-[13px] hover:bg-hair focus-visible:bg-hair disabled:cursor-default disabled:opacity-40 ${item.danger ? "text-warn" : "text-text"}`}
             >
               {item.label}
               {item.hint ? (
-                <span className="font-mono text-[11px] text-muted">{item.hint}</span>
+                <span className="ml-auto font-mono text-[11px] text-muted">{item.hint}</span>
+              ) : null}
+              {item.sub ? (
+                <span aria-hidden="true" className="ml-auto text-muted">
+                  {"\u203a"}
+                </span>
               ) : null}
             </button>
           ))}

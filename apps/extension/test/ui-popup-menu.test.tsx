@@ -37,19 +37,56 @@ describe("row menu", () => {
     expect(document.activeElement).toBe(button);
   });
 
+  it("lists link, pin, edit, move to group and delete in that order, without move up/down", async () => {
+    const h = await seeded("https://github.com/login");
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await userEvent.click(await trigger("Alpha"));
+    const names = within(screen.getByRole("menu"))
+      .getAllByRole("menuitem")
+      .map((i) => i.getAttribute("aria-label") ?? i.firstChild?.textContent);
+    expect(names).toEqual(["Bu siteye bağla", "Sabitle", "Düzenle…", "Gruba taşı", "Sil…"]);
+    expect(screen.queryByRole("menuitem", { name: /(Yukarı|Aşağı) taşı/ })).toBeNull();
+  });
+
+  it("has no divider borders; sub-menu item has an aria-hidden chevron and a right-aligned hint", async () => {
+    const h = await seeded("https://github.com/login");
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await userEvent.click(await trigger("Alpha"));
+    const items = within(screen.getByRole("menu")).getAllByRole("menuitem");
+    for (const i of items) expect(i.className).not.toContain("border-t");
+    const group = screen.getByRole("menuitem", { name: /Gruba taşı/ });
+    expect(group.querySelector('span[aria-hidden="true"]')?.textContent).toBe("\u203a");
+    expect(group.className).toContain("flex-row");
+    const hint = screen.getByRole("menuitem", { name: /Bu siteye bağla/ }).querySelector("span")!;
+    expect(hint.className).toContain("ml-auto");
+  });
+
+  it("omits move to group when no group exists", async () => {
+    const h = await harness();
+    await h.ui.rpc("addAccountManual", {
+      draft: { secret: "JBSWY3DPEHPK3PXA", issuer: "Solo" },
+    });
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await userEvent.click(await trigger("Solo"));
+    expect(screen.queryByRole("menuitem", { name: /Gruba taşı/ })).toBeNull();
+  });
+
   it("moves with arrow keys, wrapping, and skips disabled items", async () => {
     const h = await seeded();
     renderUi(<PopupApp pollMs={0} />, h.ui);
     await userEvent.click(await trigger("Alpha"));
     const items = () => within(screen.getByRole("menu")).getAllByRole("menuitem");
     await userEvent.keyboard("{ArrowDown}");
-    expect(document.activeElement).toBe(items().find((i) => i.textContent === "Aşağı taşı"));
+    expect(document.activeElement).toBe(items().find((i) => i.textContent === "Düzenle…"));
     await userEvent.keyboard("{End}");
     expect(document.activeElement?.textContent).toBe("Sil…");
     await userEvent.keyboard("{ArrowDown}");
-    expect(document.activeElement).toBe(
-      items().filter((i) => !(i as HTMLButtonElement).disabled)[0],
-    );
+    expect(document.activeElement).toBe(items()[0]);
+    await userEvent.click(screen.getByRole("menuitem", { name: /Gruba taşı/ }));
+    // Sub-list: Back, Work (disabled, current), Grupsuz; focus starts on the first real choice.
+    expect(document.activeElement?.textContent).toBe("Grupsuz");
+    await userEvent.keyboard("{ArrowUp}");
+    expect(document.activeElement?.textContent).toBe("Geri");
   });
 
   it("does not copy when the menu is used and does not clear the search on Escape", async () => {
@@ -61,7 +98,6 @@ describe("row menu", () => {
     expect(h.ui.copy).not.toHaveBeenCalled();
     await userEvent.keyboard("{Escape}");
     expect((screen.getByRole("searchbox") as HTMLInputElement).value).toBe("Alp");
-    expect(screen.queryByRole("menuitem", { name: /Yukarı taşı/ })).toBeNull();
   });
 
   it("pins and unpins", async () => {
@@ -73,19 +109,6 @@ describe("row menu", () => {
     expect(
       (await h.ui.rpc("listAccounts", {})).accounts.find((a) => a.issuer === "Beta")!.pinned,
     ).toBe(true);
-  });
-
-  it("moves down within the group", async () => {
-    const h = await seeded();
-    renderUi(<PopupApp pollMs={0} />, h.ui);
-    await userEvent.click(await trigger("Alpha"));
-    await userEvent.click(screen.getByRole("menuitem", { name: "Aşağı taşı" }));
-    await vi.waitFor(async () =>
-      expect((await h.ui.rpc("listAccounts", {})).accounts.map((a) => a.issuer)).toEqual([
-        "Beta",
-        "Alpha",
-      ]),
-    );
   });
 
   it("moves to another group through the in-menu list, with a back item", async () => {
@@ -278,11 +301,10 @@ describe("row menu", () => {
     expect(screen.queryByText("Beta sabitlendi.")).toBeNull();
   });
 
-  it("moves to Ungrouped, unpins, and disables move down on the last row", async () => {
+  it("moves to Ungrouped and unpins", async () => {
     const h = await seeded();
     renderUi(<PopupApp pollMs={0} />, h.ui);
     await userEvent.click(await trigger("Beta"));
-    expect(screen.getByRole("menuitem", { name: "Aşağı taşı" })).toHaveProperty("disabled", true);
     await userEvent.click(screen.getByRole("menuitem", { name: "Sabitle" }));
     await screen.findByText("Beta sabitlendi.");
     await userEvent.click(await trigger("Beta"));

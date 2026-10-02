@@ -162,8 +162,6 @@ export const tr = {
   "accounts.deleted": "{name} silindi.",
   "account.pin": "Sabitle",
   "account.unpin": "Sabitlemeyi kaldır",
-  "account.moveUp": "Yukarı taşı",
-  "account.moveDown": "Aşağı taşı",
   "account.qrTooLong": "Bu hesap QR'a sığmayacak kadar uzun; gizli anahtarı elle gir.",
   "codes.copyHidden": "{issuer} kodunu kopyala",
   "snapshots.offer": "Otomatik kopyadan geri yükle ({count} hesap)",

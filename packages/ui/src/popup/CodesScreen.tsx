@@ -26,7 +26,6 @@ import { GroupSection } from "./GroupSection";
 import { useCollapsed } from "./useCollapsed";
 import { useTrash } from "./useTrash";
 import { NO_GROUP_KEY, sectionsOf } from "../groups";
-import { neighbourOf, swapOrder } from "../reorder";
 
 const EditAccount = lazy(() => import("./EditAccount").then((m) => ({ default: m.EditAccount })));
 const TrashList = lazy(() => import("./TrashList").then((m) => ({ default: m.TrashList })));
@@ -429,27 +428,9 @@ export function CodesScreen({
     }
   }
 
-  function menuFor(account: AccountView, movable: boolean): MenuItem[] {
+  function menuFor(account: AccountView): MenuItem[] {
     const name = account.issuer || account.label;
     const groups = list?.groups ?? [];
-    const peers = accounts.filter(
-      (a) => !onSite(a) && (a.groupId ?? null) === (account.groupId ?? null),
-    );
-    const up = movable ? neighbourOf(peers, account.id, -1) : undefined;
-    const down = movable ? neighbourOf(peers, account.id, 1) : undefined;
-    const swap = (other: AccountView) =>
-      act(
-        () =>
-          rpc("reorder", {
-            order: swapOrder(
-              accounts.map((a) => a.id),
-              account.id,
-              other.id,
-            ),
-          }),
-        t("accounts.moved", { name }),
-        account.id,
-      );
     const items: MenuItem[] = [];
     if (domain && !account.domains.includes(domain))
       items.push({
@@ -468,31 +449,15 @@ export function CodesScreen({
           account.id,
         ),
     });
-    if (movable) {
-      items.push({
-        key: "up",
-        label: t("account.moveUp"),
-        disabled: !up,
-        onSelect: () => up && void swap(up),
-      });
-      items.push({
-        key: "down",
-        label: t("account.moveDown"),
-        disabled: !down,
-        onSelect: () => down && void swap(down),
-      });
-    }
     items.push({
       key: "edit",
       label: t("menu.edit"),
-      divider: true,
       onSelect: () => setEditing(account.id),
     });
     if (groups.length > 0)
       items.push({
         key: "group",
         label: t("menu.moveToGroup"),
-        divider: true,
         sub: [...groups, { id: "", name: t("group.none") }].map((g) => ({
           key: `g:${g.id}`,
           label: g.name,
@@ -509,7 +474,6 @@ export function CodesScreen({
       key: "delete",
       label: t("menu.delete"),
       danger: true,
-      divider: true,
       onSelect: () => setConfirmDelete(account.id),
     });
     return items;
@@ -537,7 +501,7 @@ export function CodesScreen({
             }
           : undefined
       }
-      menu={menuFor(account, !filtered && !large)}
+      menu={menuFor(account)}
       confirmDelete={
         confirmDelete === account.id
           ? {
