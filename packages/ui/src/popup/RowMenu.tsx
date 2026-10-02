@@ -15,7 +15,16 @@ export interface MenuItem {
 
 const ITEMS = '[role="menuitem"]:not(:disabled)';
 
-export function RowMenu({ label, items }: { label: string; items: MenuItem[] }) {
+export function RowMenu({
+  label,
+  items,
+  triggerId,
+}: {
+  label: string;
+  items: MenuItem[];
+  /** Lets the owner find this trigger again after the row re-renders elsewhere. */
+  triggerId?: string;
+}) {
   const t = useT();
   const id = useId();
   const [open, setOpen] = useState(false);
@@ -31,7 +40,9 @@ export function RowMenu({ label, items }: { label: string; items: MenuItem[] }) 
 
   useEffect(() => {
     if (!open) return;
-    menu.current?.querySelector<HTMLElement>(ITEMS)?.focus();
+    const enabled = menu.current?.querySelectorAll<HTMLElement>(ITEMS);
+    // In a sub-list, start on the first real choice rather than "Back".
+    (sub ? (enabled?.[1] ?? enabled?.[0]) : enabled?.[0])?.focus();
   }, [open, sub]);
 
   useEffect(() => {
@@ -63,7 +74,8 @@ export function RowMenu({ label, items }: { label: string; items: MenuItem[] }) 
       close(true);
       return;
     } else if (e.key === "Tab") {
-      close(false);
+      // Focus the trigger first so the default Tab continues from it instead of from a removed node.
+      close(true);
       return;
     } else return;
     // Keeps the list's own arrow handling and the search Escape out of it.
@@ -83,6 +95,7 @@ export function RowMenu({ label, items }: { label: string; items: MenuItem[] }) 
         aria-expanded={open}
         aria-controls={open ? id : undefined}
         aria-label={label}
+        data-menu-for={triggerId}
         onClick={() => (open ? close(true) : setOpen(true))}
         onKeyDown={(e) => {
           if (e.key === "ArrowDown" && !open) {

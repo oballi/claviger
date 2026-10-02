@@ -97,6 +97,7 @@ export const tr = {
   "menu.delete": "Sil…",
   "codes.deleteConfirm":
     "Bu hesap silinsin mi? Bu sitenin kodunu artık üretemezsin. Silmeden önce otomatik bir kopya alınır.",
+  "menu.deleteYes": "Sil",
   "group.none": "Grupsuz",
   "codes.thisSite": "Bu site",
   "codes.pinned": "Sabitlenenler",

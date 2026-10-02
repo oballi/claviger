@@ -140,11 +140,119 @@ describe("row menu", () => {
     expect((await h.ui.rpc("listAccounts", {})).accounts).toHaveLength(2);
     await userEvent.click(await trigger("Beta"));
     await userEvent.click(screen.getByRole("menuitem", { name: "Sil…" }));
-    await userEvent.click(screen.getByRole("button", { name: "Evet, sil" }));
+    await userEvent.click(screen.getByRole("button", { name: "Sil" }));
     await vi.waitFor(async () =>
       expect((await h.ui.rpc("listAccounts", {})).accounts).toHaveLength(1),
     );
     // An identical daily copy may already exist, so "before-delete" is deduplicated against it.
     expect((await h.ui.rpc("listSnapshots", {})).some((s) => s.accountCount === 2)).toBe(true);
+  });
+
+  it("Tab from the open menu lands after the trigger, not on body", async () => {
+    const h = await seeded();
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    const button = await trigger("Alpha");
+    await userEvent.click(button);
+    await userEvent.tab();
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(document.activeElement).not.toBe(document.body);
+    expect(document.activeElement).not.toBe(button);
+  });
+
+  it("returns focus to the account's trigger after pin and after move to group", async () => {
+    const h = await seeded();
+    const home = await h.ui.rpc("createGroup", { name: "Home" });
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await userEvent.click(await trigger("Beta"));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Sabitle" }));
+    await screen.findByText("Beta sabitlendi.");
+    await vi.waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: "Beta için işlemler" }),
+      ),
+    );
+    await userEvent.click(await trigger("Beta"));
+    await userEvent.click(screen.getByRole("menuitem", { name: /Gruba taşı/ }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Home" }));
+    await vi.waitFor(async () =>
+      expect(
+        (await h.ui.rpc("listAccounts", {})).accounts.find((a) => a.issuer === "Beta")!.groupId,
+      ).toBe(home.id),
+    );
+    await vi.waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: "Beta için işlemler" }),
+      ),
+    );
+  });
+
+  it("Escape cancels the delete confirmation and focuses the trigger", async () => {
+    const h = await seeded();
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await userEvent.click(await trigger("Beta"));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Sil…" }));
+    await screen.findByRole("alert");
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("alert")).toBeNull();
+    await vi.waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: "Beta için işlemler" }),
+      ),
+    );
+    expect((await h.ui.rpc("listAccounts", {})).accounts).toHaveLength(2);
+  });
+
+  it("focuses the first group, not Back, in the move-to-group list", async () => {
+    const h = await seeded();
+    await h.ui.rpc("createGroup", { name: "Home" });
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await userEvent.click(await trigger("Alpha"));
+    await userEvent.click(screen.getByRole("menuitem", { name: /Gruba taşı/ }));
+    expect(document.activeElement?.textContent).toBe("Home");
+  });
+
+  it("closes on outside click, and opening a second menu closes the first", async () => {
+    const h = await seeded();
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await userEvent.click(await trigger("Alpha"));
+    await userEvent.click(await trigger("Beta"));
+    expect(screen.getAllByRole("menu")).toHaveLength(1);
+    expect(screen.getByRole("menu", { name: "Beta için işlemler" })).toBeTruthy();
+    await userEvent.click(document.body);
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("shows the error when an action fails", async () => {
+    const h = await seeded();
+    const real = h.ui.rpc;
+    h.ui.rpc = ((type: string, ...rest: unknown[]) =>
+      type === "setPinned"
+        ? Promise.reject(new Error("boom"))
+        : (real as (...a: unknown[]) => unknown)(type, ...rest)) as typeof real;
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await userEvent.click(await trigger("Beta"));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Sabitle" }));
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(screen.queryByText("Beta sabitlendi.")).toBeNull();
+  });
+
+  it("moves to Ungrouped, unpins, and disables move down on the last row", async () => {
+    const h = await seeded();
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await userEvent.click(await trigger("Beta"));
+    expect(screen.getByRole("menuitem", { name: "Aşağı taşı" })).toHaveProperty("disabled", true);
+    await userEvent.click(screen.getByRole("menuitem", { name: "Sabitle" }));
+    await screen.findByText("Beta sabitlendi.");
+    await userEvent.click(await trigger("Beta"));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Sabitlemeyi kaldır" }));
+    await screen.findByText(/sabitlemesi kaldırıldı/);
+    await userEvent.click(await trigger("Beta"));
+    await userEvent.click(screen.getByRole("menuitem", { name: /Gruba taşı/ }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Grupsuz" }));
+    await vi.waitFor(async () => {
+      const b = (await h.ui.rpc("listAccounts", {})).accounts.find((a) => a.issuer === "Beta")!;
+      expect(b.groupId).toBeNull();
+      expect(b.pinned).toBe(false);
+    });
   });
 });

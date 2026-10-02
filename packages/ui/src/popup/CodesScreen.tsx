@@ -75,6 +75,7 @@ export function CodesScreen({
   const [toast, setToast] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [refocus, setRefocus] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [usage, setUsage] = useState<StorageUsageView | null>(null);
   const { collapsed, toggle } = useCollapsed();
@@ -106,6 +107,15 @@ export function CodesScreen({
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [adding]);
+
+  // A row can move to another section (and remount), so focus returns to its menu trigger by id.
+  useEffect(() => {
+    if (!refocus) return;
+    listRef.current
+      ?.querySelector<HTMLElement>(`[data-menu-for="${CSS.escape(refocus)}"]`)
+      ?.focus();
+    setRefocus(null);
+  }, [list, refocus]);
 
   if (adding) {
     return (
@@ -263,12 +273,13 @@ export function CodesScreen({
     buttons[next]?.focus();
   }
 
-  async function act(action: () => Promise<unknown>, message?: string) {
+  async function act(action: () => Promise<unknown>, message?: string, focusId?: string) {
     setActionError(null);
     try {
       await action();
       if (message) setToast(message);
       await reload();
+      if (focusId) setRefocus(focusId);
     } catch (e) {
       setActionError(errorMessage(t, e));
     }
@@ -293,6 +304,7 @@ export function CodesScreen({
             ),
           }),
         t("accounts.moved", { name }),
+        account.id,
       );
     const items: MenuItem[] = [];
     if (domain && !account.domains.includes(domain))
@@ -309,6 +321,7 @@ export function CodesScreen({
         void act(
           () => rpc("setPinned", { id: account.id, pinned: !account.pinned }),
           t(account.pinned ? "accounts.unpinned" : "accounts.pinned", { name }),
+          account.id,
         ),
     });
     if (movable) {
@@ -339,6 +352,7 @@ export function CodesScreen({
             void act(
               () => rpc("setAccountGroup", { id: account.id, groupId: g.id || null }),
               t("accounts.moved", { name }),
+              account.id,
             ),
         })),
       });
@@ -386,7 +400,10 @@ export function CodesScreen({
                   },
                   t("accounts.deleted", { name: account.issuer || account.label }),
                 ),
-              onCancel: () => setConfirmDelete(null),
+              onCancel: () => {
+                setConfirmDelete(null);
+                setRefocus(account.id);
+              },
             }
           : undefined
       }

@@ -99,6 +99,7 @@ export const en: Record<MessageKey, string> = {
   "menu.delete": "Delete…",
   "codes.deleteConfirm":
     "Delete this account? You won't be able to generate its codes any more. A backup copy is taken first.",
+  "menu.deleteYes": "Delete",
   "group.none": "Ungrouped",
   "codes.thisSite": "This site",
   "codes.pinned": "Pinned",

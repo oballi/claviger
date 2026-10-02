@@ -67,16 +67,24 @@ export function AccountRow({
     onCopy(account);
   };
   const menuButton = menu ? (
-    <RowMenu label={t("menu.actions", { issuer: name })} items={menu} />
+    <RowMenu label={t("menu.actions", { issuer: name })} items={menu} triggerId={account.id} />
   ) : null;
   const deleteConfirm = confirmDelete ? (
-    <div className="basis-full pb-3">
+    <div
+      className="basis-full pb-3"
+      onKeyDown={(e) => {
+        if (e.key !== "Escape") return;
+        e.preventDefault();
+        e.stopPropagation();
+        confirmDelete.onCancel();
+      }}
+    >
       <p role="alert" className="m-0 pb-3 text-[13px] leading-normal text-warn">
         {t("codes.deleteConfirm")}
       </p>
       <div className="flex gap-2">
         <Button variant="danger" autoFocus onClick={confirmDelete.onConfirm}>
-          {t("account.deleteYes")}
+          {t("menu.deleteYes")}
         </Button>
         <Button onClick={confirmDelete.onCancel}>{t("common.cancel")}</Button>
       </div>
