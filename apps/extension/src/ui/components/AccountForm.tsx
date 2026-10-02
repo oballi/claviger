@@ -1,5 +1,5 @@
-import { parseOtpauthUri, registrableDomain } from "@otp-vault/core";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
+import { RpcError } from "../../rpc/client";
 import { errorMessage } from "../errors";
 import { useT } from "../i18n/i18n";
 import { useUi } from "../platform";
@@ -15,14 +15,16 @@ const selectClass =
  */
 export function AccountForm({
   tabUrl,
+  tabDomain,
   onAdded,
 }: {
   tabUrl?: string;
+  tabDomain?: string | null;
   onAdded: (name: string) => void;
 }) {
   const { rpc } = useUi();
   const t = useT();
-  const domain = tabUrl ? registrableDomain(tabUrl) : null;
+  const domain = tabDomain ?? null;
   const [secret, setSecret] = useState("");
   const [issuer, setIssuer] = useState("");
   const [label, setLabel] = useState("");
@@ -33,22 +35,45 @@ export function AccountForm({
   const [bind, setBind] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [sameName, setSameName] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const digitsRef = useRef<HTMLInputElement>(null);
+  const periodRef = useRef<HTMLInputElement>(null);
+
+  // Any edit clears the warning: the next submit must be checked against the new values again.
+  const edit = (set: (value: string) => void) => (value: string) => {
+    set(value);
+    setSameName(false);
+    setError(null);
+  };
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    const value = secret.trim();
+    const isUri = /^otpauth:\/\//i.test(value);
+    if (!isUri) {
+      const badDigits = !/^\d+$/.test(digits.trim()) || Number(digits) < 6 || Number(digits) > 8;
+      const badPeriod = !/^\d+$/.test(period.trim()) || Number(period) < 1 || Number(period) > 300;
+      if (badDigits || badPeriod) {
+        setError(t("error.invalid-otp-params"));
+        setAdvancedOpen(true);
+        // Focus after the <details> opens, otherwise the hidden input cannot take focus.
+        setTimeout(() => (badDigits ? digitsRef : periodRef).current?.focus(), 0);
+        return;
+      }
+    }
     setBusy(true);
     setError(null);
-    const value = secret.trim();
     const sourceUrl = domain && bind ? tabUrl : undefined;
+    const allowSameName = sameName ? true : undefined;
     try {
       let name: string;
-      if (/^otpauth:\/\//i.test(value)) {
-        await rpc("addAccountUri", { uri: value, sourceUrl });
-        const parsed = parseOtpauthUri(value);
-        name = parsed.issuer || parsed.label;
+      if (isUri) {
+        ({ name } = await rpc("addAccountUri", { uri: value, sourceUrl, allowSameName }));
       } else {
-        await rpc("addAccountManual", {
+        ({ name } = await rpc("addAccountManual", {
           sourceUrl,
+          allowSameName,
           draft: {
             secret: value,
             issuer,
@@ -58,11 +83,11 @@ export function AccountForm({
             digits: Number(digits),
             period: Number(period),
           },
-        });
-        name = issuer || label;
+        }));
       }
       onAdded(name || t("add.unnamed"));
     } catch (e) {
+      setSameName(e instanceof RpcError && e.code === "same-name");
       setError(errorMessage(t, e));
     } finally {
       setBusy(false);
@@ -75,7 +100,7 @@ export function AccountForm({
         id="add-secret"
         label={t("add.secret")}
         value={secret}
-        onChange={(e) => setSecret(e.target.value)}
+        onChange={(e) => edit(setSecret)(e.target.value)}
         autoFocus
         autoComplete="off"
         spellCheck={false}
@@ -85,22 +110,30 @@ export function AccountForm({
         id="add-issuer"
         label={t("add.issuer")}
         value={issuer}
-        onChange={(e) => setIssuer(e.target.value)}
+        onChange={(e) => edit(setIssuer)(e.target.value)}
       />
       <TextField
         id="add-label"
         label={t("add.label")}
         value={label}
-        onChange={(e) => setLabel(e.target.value)}
+        onChange={(e) => edit(setLabel)(e.target.value)}
       />
-      <details className="text-sm">
+      <details
+        className="text-sm"
+        open={advancedOpen}
+        onToggle={(e) => setAdvancedOpen(e.currentTarget.open)}
+      >
         <summary className="flex min-h-11 cursor-pointer items-center text-xs text-muted">
           {t("add.advanced")}
         </summary>
         <div className="grid grid-cols-2 gap-4 pt-2">
           <label className="flex flex-col gap-1.5 text-xs text-muted">
             {t("add.type")}
-            <select className={selectClass} value={type} onChange={(e) => setType(e.target.value)}>
+            <select
+              className={selectClass}
+              value={type}
+              onChange={(e) => edit(setType)(e.target.value)}
+            >
               <option value="totp">TOTP</option>
               <option value="hotp">HOTP</option>
               <option value="steam">Steam</option>
@@ -111,7 +144,7 @@ export function AccountForm({
             <select
               className={selectClass}
               value={algorithm}
-              onChange={(e) => setAlgorithm(e.target.value)}
+              onChange={(e) => edit(setAlgorithm)(e.target.value)}
             >
               <option value="SHA1">SHA1</option>
               <option value="SHA256">SHA256</option>
@@ -120,23 +153,22 @@ export function AccountForm({
           </label>
           <label className="flex flex-col gap-1.5 text-xs text-muted">
             {t("add.digits")}
-            <select
+            <input
+              ref={digitsRef}
               className={selectClass}
+              inputMode="numeric"
               value={digits}
-              onChange={(e) => setDigits(e.target.value)}
-            >
-              <option value="6">6</option>
-              <option value="7">7</option>
-              <option value="8">8</option>
-            </select>
+              onChange={(e) => edit(setDigits)(e.target.value)}
+            />
           </label>
           <label className="flex flex-col gap-1.5 text-xs text-muted">
             {t("add.period")}
             <input
               className={selectClass}
+              ref={periodRef}
               inputMode="numeric"
               value={period}
-              onChange={(e) => setPeriod(e.target.value)}
+              onChange={(e) => edit(setPeriod)(e.target.value)}
             />
           </label>
         </div>
@@ -146,7 +178,10 @@ export function AccountForm({
           <input
             type="checkbox"
             checked={bind}
-            onChange={(e) => setBind(e.target.checked)}
+            onChange={(e) => {
+              setBind(e.target.checked);
+              setSameName(false);
+            }}
             className="h-4 w-4 accent-[var(--ov-text)]"
           />
           {t("add.bind", { domain })}
@@ -157,7 +192,7 @@ export function AccountForm({
       </p>
       <div>
         <Button type="submit" variant="primary" disabled={busy || secret.trim().length === 0}>
-          {t("add.submit")}
+          {sameName ? t("add.saveAnyway") : t("add.submit")}
         </Button>
       </div>
     </form>

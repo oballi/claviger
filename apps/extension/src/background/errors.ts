@@ -8,7 +8,8 @@ export type ServiceErrorCode =
   | "preview-expired"
   | "invalid-request"
   | "not-found"
-  | "snapshot-password-required";
+  | "snapshot-password-required"
+  | "same-name";
 
 export class ServiceError extends Error {
   readonly code: ServiceErrorCode;

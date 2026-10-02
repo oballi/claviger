@@ -1,4 +1,3 @@
-import "../../src/zodConfig";
 import "../../src/ui/styles.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";

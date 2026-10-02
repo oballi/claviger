@@ -1,4 +1,3 @@
-import { registrableDomain } from "@otp-vault/core";
 import {
   useCallback,
   useEffect,
@@ -87,6 +86,7 @@ export function CodesScreen({
     function onKey(event: globalThis.KeyboardEvent) {
       const target = event.target as HTMLElement | null;
       if (event.key !== "/" || target?.closest("input, textarea, select")) return;
+      if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return;
       event.preventDefault();
       searchRef.current?.focus();
     }
@@ -98,6 +98,7 @@ export function CodesScreen({
     return (
       <AddAccount
         tabUrl={pageUrl ?? undefined}
+        tabDomain={list?.pageDomain}
         onBack={() => setAdding(false)}
         onAdded={(name) => {
           setAdding(false);
@@ -118,7 +119,7 @@ export function CodesScreen({
         `${a.issuer} ${a.label} ${a.domains.join(" ")}`.toLocaleLowerCase(locale).includes(q),
       )
     : null;
-  const domain = pageUrl ? registrableDomain(pageUrl) : null;
+  const domain = list?.pageDomain ?? null;
   const quota = quotaPercent(usage);
   const listError = error && !(error instanceof RpcError && error.code === "locked");
 

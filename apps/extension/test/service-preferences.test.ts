@@ -88,4 +88,44 @@ describe("recovery code confirmation", () => {
     await service.unlockWithRecovery(recoveryCode, "another password 1");
     expect((await service.getState()).recoveryCodeConfirmed).toBe(false);
   });
+
+  it("still returns a new recovery code when the unconfirmed flag cannot be saved", async () => {
+    const { p, service } = await unlockedService();
+    const realSet = p.local.set.bind(p.local);
+    let failed = 0;
+    p.local.set = async (items) => {
+      const settings = items["settings"] as { recoveryCodeConfirmed?: boolean } | undefined;
+      if (settings?.recoveryCodeConfirmed === false && failed === 0) {
+        failed++;
+        throw new Error("QUOTA_BYTES quota exceeded");
+      }
+      return realSet(items);
+    };
+    const { token } = await service.reauth(PASSWORD);
+    const { recoveryCode } = await service.createRecoveryCode(token);
+    expect(failed).toBe(1);
+    await service.lock();
+    const recovered = await service.unlockWithRecovery(recoveryCode, "another password 1");
+    expect(recovered.recoveryCode).toBeTruthy();
+    await service.lock();
+    await service.unlock("another password 1");
+  });
+
+  it("still returns the replacement code after a recovery unlock when the flag cannot be saved", async () => {
+    const { p, service, recoveryCode } = await unlockedService();
+    await service.lock();
+    const realSet = p.local.set.bind(p.local);
+    let failed = 0;
+    p.local.set = async (items) => {
+      const settings = items["settings"] as { recoveryCodeConfirmed?: boolean } | undefined;
+      if (settings?.recoveryCodeConfirmed === false && failed === 0) {
+        failed++;
+        throw new Error("QUOTA_BYTES quota exceeded");
+      }
+      return realSet(items);
+    };
+    const result = await service.unlockWithRecovery(recoveryCode!, "another password 1");
+    expect(failed).toBe(1);
+    expect(result.recoveryCode).toBeTruthy();
+  });
 });

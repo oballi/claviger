@@ -9,7 +9,7 @@ import type {
   StorageUsageView,
 } from "../background/vaultService";
 
-export const RPC_CHANNEL = "otp-vault/rpc";
+export { RPC_CHANNEL } from "./channel";
 
 const id = z.string().min(1);
 const token = z.string().min(1);
@@ -65,11 +65,17 @@ export const rpcRequestSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("quarantineVault") }),
   z.object({ type: z.literal("listAccounts"), pageUrl: url.optional() }),
-  z.object({ type: z.literal("addAccountUri"), uri: url, sourceUrl: url.optional() }),
+  z.object({
+    type: z.literal("addAccountUri"),
+    uri: url,
+    sourceUrl: url.optional(),
+    allowSameName: z.boolean().optional(),
+  }),
   z.object({
     type: z.literal("addAccountManual"),
     draft: accountDraft,
     sourceUrl: url.optional(),
+    allowSameName: z.boolean().optional(),
   }),
   z.object({ type: z.literal("updateAccount"), id, patch: accountPatch }),
   z.object({ type: z.literal("deleteAccount"), id }),
@@ -130,8 +136,8 @@ export interface RpcResults {
   restoreSnapshot: { added: number; skipped: number; unreadable: number };
   quarantineVault: { moved: number };
   listAccounts: AccountListView;
-  addAccountUri: { id: string };
-  addAccountManual: { id: string };
+  addAccountUri: { id: string; name: string };
+  addAccountManual: { id: string; name: string };
   updateAccount: null;
   deleteAccount: null;
   reorder: null;

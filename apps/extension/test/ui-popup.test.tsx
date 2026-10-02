@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { generateCode } from "@otp-vault/core";
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { RpcError } from "../src/rpc/client";
@@ -160,6 +160,24 @@ describe("codes screen", () => {
     expect(within(screen.getByRole("region", { name: "Sonuçlar" })).getByText("Bank")).toBeTruthy();
     await userEvent.keyboard("{Escape}");
     expect(screen.getByText("GitHub")).toBeTruthy();
+  });
+
+  it("slash with a modifier or during IME composition does not jump to search", async () => {
+    const { ui } = await seeded();
+    renderUi(<PopupApp pollMs={0} />, ui);
+    await screen.findByText("Bank");
+    const search = screen.getByRole("searchbox", { name: "Hesap ara" });
+    for (const init of [
+      { ctrlKey: true },
+      { metaKey: true },
+      { altKey: true },
+      { isComposing: true },
+    ]) {
+      fireEvent.keyDown(document.body, { key: "/", ...init });
+      expect(document.activeElement).not.toBe(search);
+    }
+    fireEvent.keyDown(document.body, { key: "/" });
+    expect(document.activeElement).toBe(search);
   });
 
   it("moves exactly one code per arrow key press", async () => {

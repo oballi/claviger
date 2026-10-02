@@ -40,6 +40,7 @@ describe("listing", () => {
       unreadable: [],
       indexDamaged: false,
       matches: { exact: [], suggested: [] },
+      pageDomain: null,
     });
     expect(JSON.stringify(view)).not.toContain(SECRET);
   });
@@ -74,6 +75,43 @@ describe("listing", () => {
       { sourceUrl: "chrome://extensions" },
     );
     expect((await service.listAccounts()).accounts.find((a) => a.id === id)!.domains).toEqual([]);
+  });
+
+  it("warns about a different secret under the same name unless allowed", async () => {
+    const { service } = await unlockedService();
+    await service.addAccount({
+      draft: { secret: "JBSWY3DPEHPK3PXP", issuer: "Bank", label: "me" },
+    });
+    expect(
+      await codeOf(
+        service.addAccount({
+          draft: { secret: "JBSWY3DPEHPK3PXQ", issuer: " bank ", label: "ME" },
+        }),
+      ),
+    ).toBe("same-name");
+    await expect(
+      service.addAccount(
+        { draft: { secret: "JBSWY3DPEHPK3PXQ", issuer: "Bank", label: "me" } },
+        { allowSameName: true },
+      ),
+    ).resolves.toMatchObject({ name: "Bank" });
+  });
+
+  it("still reports a true duplicate as duplicate-account", async () => {
+    const { service } = await unlockedService();
+    const draft = { secret: "JBSWY3DPEHPK3PXP", issuer: "Bank", label: "me" };
+    await service.addAccount({ draft });
+    expect(await codeOf(service.addAccount({ draft }, { allowSameName: true }))).toBe(
+      "duplicate-account",
+    );
+  });
+
+  it("returns the registrable domain of the page", async () => {
+    const { service } = await unlockedService();
+    expect(
+      (await service.listAccounts({ pageUrl: "https://login.example.co.uk/x" })).pageDomain,
+    ).toBe("example.co.uk");
+    expect((await service.listAccounts()).pageDomain).toBeNull();
   });
 
   it("requires an unlocked vault", async () => {

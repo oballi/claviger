@@ -65,10 +65,12 @@ function Shell({ onBack, children }: { onBack: () => void; children: ReactNode }
 
 export function AddAccount({
   tabUrl,
+  tabDomain,
   onBack,
   onAdded,
 }: {
   tabUrl?: string;
+  tabDomain?: string | null;
   onBack: () => void;
   onAdded: (name: string) => void;
 }) {
@@ -82,7 +84,7 @@ export function AddAccount({
         <h1 className="m-0 pt-5 pb-5 text-[22px] font-medium tracking-tight">
           {t("add.manualTitle")}
         </h1>
-        <AccountForm tabUrl={tabUrl} onAdded={onAdded} />
+        <AccountForm tabUrl={tabUrl} tabDomain={tabDomain} onAdded={onAdded} />
       </Shell>
     );
   }

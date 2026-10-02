@@ -36,6 +36,7 @@ export const en: Record<MessageKey, string> = {
   "error.unsupported-otp-type": "This account type is not supported.",
   "error.unsupported-algorithm": "This algorithm is not supported.",
   "error.invalid-otp-params": "Invalid digits or period.",
+  "error.same-name": "Another account already has this name. Save anyway?",
   "error.quota-exceeded": "Browser storage is full. Try keeping the vault on this device only.",
   "error.preview-expired": "The preview expired. Choose the file again.",
   "error.invalid-request": "The values entered are not valid.",
@@ -84,6 +85,7 @@ export const en: Record<MessageKey, string> = {
   "add.period": "Period (s)",
   "add.bind": "Link to this site ({domain})",
   "add.submit": "Add account",
+  "add.saveAnyway": "Save anyway",
   "add.unnamed": "Account",
   "codes.search": "Search accounts",
   "codes.searchPlaceholder": "Search",
@@ -424,5 +426,4 @@ export const en: Record<MessageKey, string> = {
     "This vault is synced; moving it aside may also remove it from your other devices.",
   "error.not-found": "This copy no longer exists.",
   "error.snapshot-password-required": "This copy belongs to another vault; enter its password.",
-  "error.same-name": "An account with the same name already exists.",
 };

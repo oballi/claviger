@@ -83,4 +83,52 @@ export default defineConfig(
       ],
     },
   },
+  {
+    // Popup bundle: runtime imports of core, zod and the background modules would pull them in.
+    files: [
+      "apps/extension/src/ui/popup/**/*.{ts,tsx}",
+      "apps/extension/src/ui/components/**/*.{ts,tsx}",
+      "apps/extension/src/ui/hooks.ts",
+      "apps/extension/src/ui/format.ts",
+      "apps/extension/src/ui/errors.ts",
+      "apps/extension/src/ui/i18n/**/*.ts",
+      "apps/extension/src/ui/platform.ts",
+      "apps/extension/src/rpc/client.ts",
+      "apps/extension/src/rpc/channel.ts",
+      "apps/extension/src/platform/uiPlatform.ts",
+      "apps/extension/src/platform/browserRpc.ts",
+      "apps/extension/entrypoints/popup/**/*.{ts,tsx}",
+    ],
+    rules: {
+      "@typescript-eslint/consistent-type-imports": [
+        "error",
+        { prefer: "type-imports", fixStyle: "separate-type-imports" },
+      ],
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@otp-vault/core",
+              allowTypeImports: true,
+              message:
+                "Popup bundle: import core at runtime only from the background or manage pages.",
+            },
+            {
+              name: "zod",
+              allowTypeImports: true,
+              message: "Popup bundle: zod belongs to the background and manage pages.",
+            },
+          ],
+          patterns: [
+            {
+              group: ["**/background/*"],
+              allowTypeImports: true,
+              message: "Popup bundle: import background modules as types only.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 );

@@ -1,10 +1,5 @@
-import {
-  RPC_CHANNEL,
-  type RpcPayload,
-  type RpcResponse,
-  type RpcResults,
-  type RpcType,
-} from "./protocol";
+import { RPC_CHANNEL } from "./channel";
+import type { RpcPayload, RpcResponse, RpcResults, RpcType } from "./protocol";
 
 export class RpcError extends Error {
   readonly code: string;

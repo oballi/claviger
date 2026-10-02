@@ -62,9 +62,15 @@ async function dispatch(service: VaultService, req: RpcRequest): Promise<unknown
     case "listAccounts":
       return service.listAccounts({ pageUrl: req.pageUrl });
     case "addAccountUri":
-      return service.addAccount({ uri: req.uri }, { sourceUrl: req.sourceUrl });
+      return service.addAccount(
+        { uri: req.uri },
+        { sourceUrl: req.sourceUrl, allowSameName: req.allowSameName },
+      );
     case "addAccountManual":
-      return service.addAccount({ draft: req.draft }, { sourceUrl: req.sourceUrl });
+      return service.addAccount(
+        { draft: req.draft },
+        { sourceUrl: req.sourceUrl, allowSameName: req.allowSameName },
+      );
     case "updateAccount":
       await service.updateAccount(req.id, req.patch);
       return null;

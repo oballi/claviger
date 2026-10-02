@@ -38,7 +38,10 @@ describe("service snapshots", () => {
     await service.addAccount({ uri: URI });
     await service.rebuildIndex();
     expect((await service.listSnapshots()).map((s) => s.reason)).toContain("before-rebuild");
-    await service.addAccount({ uri: URI.replace("JBSWY3DPEHPK3PXP", "GEZDGNBVGY3TQOJQ") });
+    await service.addAccount(
+      { uri: URI.replace("JBSWY3DPEHPK3PXP", "GEZDGNBVGY3TQOJQ") },
+      { allowSameName: true },
+    );
     const { token } = await service.reauth(PASSWORD);
     await service.setStorageArea(token, "sync");
     expect((await service.listSnapshots()).map((s) => s.reason)).toContain("before-move");

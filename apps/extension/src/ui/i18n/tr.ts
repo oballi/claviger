@@ -34,6 +34,7 @@ export const tr = {
   "error.unsupported-otp-type": "Bu hesap türü desteklenmiyor.",
   "error.unsupported-algorithm": "Bu algoritma desteklenmiyor.",
   "error.invalid-otp-params": "Hane veya süre değeri geçersiz.",
+  "error.same-name": "Bu adla başka bir hesap zaten var. Yine de kaydetmek istiyor musun?",
   "error.quota-exceeded": "Tarayıcı depolaması dolu. Kasayı yalnızca bu cihaza taşımayı dene.",
   "error.preview-expired": "Önizlemenin süresi doldu. Dosyayı tekrar seç.",
   "error.invalid-request": "Girilen değerler geçersiz.",
@@ -82,6 +83,7 @@ export const tr = {
   "add.period": "Süre (sn)",
   "add.bind": "Bu siteye bağla ({domain})",
   "add.submit": "Hesabı ekle",
+  "add.saveAnyway": "Yine de kaydet",
   "add.unnamed": "Hesap",
   "codes.search": "Hesap ara",
   "codes.searchPlaceholder": "Ara",
@@ -417,7 +419,6 @@ export const tr = {
     "Bu kasa eşitleniyor; kenara almak diğer cihazlardaki kopyayı da kaldırabilir.",
   "error.not-found": "Bu kopya artık yok.",
   "error.snapshot-password-required": "Bu kopya başka bir kasaya ait; parolasını gir.",
-  "error.same-name": "Aynı adlı bir hesap zaten var.",
 } as const;
 
 export type MessageKey = keyof typeof tr;

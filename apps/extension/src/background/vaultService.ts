@@ -110,6 +110,7 @@ export interface AccountListView {
   unreadable: string[];
   indexDamaged: boolean;
   matches: { exact: string[]; suggested: string[] };
+  pageDomain: string | null;
 }
 
 export interface ImportPreviewItemView {
@@ -525,7 +526,7 @@ export class VaultService {
         throw e;
       }
       await this.revokeInSnapshots(result.vault);
-      await saveSettings(this.p.local, { recoveryCodeConfirmed: false });
+      await this.markRecoveryCodeUnconfirmed();
       await this.activate(result.vault, settings.lockPolicy, epoch);
       return { recoveryCode: result.recoveryCode };
     });
@@ -623,13 +624,14 @@ export class VaultService {
         exact: matches.exact.map((a) => a.id),
         suggested: matches.suggested.map((a) => a.id),
       },
+      pageDomain: opts.pageUrl ? registrableDomain(opts.pageUrl) : null,
     };
   }
 
   addAccount(
     source: { uri: string } | { draft: AccountDraft },
-    opts: { sourceUrl?: string } = {},
-  ): Promise<{ id: string }> {
+    opts: { sourceUrl?: string; allowSameName?: boolean } = {},
+  ): Promise<{ id: string; name: string }> {
     return this.exclusive(async () => {
       const vault = await this.requireVault();
       const parsed =
@@ -638,8 +640,19 @@ export class VaultService {
       const input = domain
         ? normalizeAccountInput({ ...parsed, domains: [...parsed.domains, domain] })
         : parsed;
+      if (!opts.allowSameName) {
+        const key = (v: string) => v.trim().toLocaleLowerCase("en");
+        const { accounts } = await vault.listAccounts();
+        const clash = accounts.some(
+          (a) =>
+            key(a.issuer) === key(input.issuer) &&
+            key(a.label) === key(input.label) &&
+            a.secret !== input.secret,
+        );
+        if (clash) throw new ServiceError("same-name", "Another account has the same name");
+      }
       const account = await vault.addAccount(input);
-      return { id: account.id };
+      return { id: account.id, name: account.issuer || account.label };
     });
   }
 
@@ -859,12 +872,21 @@ export class VaultService {
     });
   }
 
+  // Best effort: the keyslot change is already committed, so the new code must still be returned.
+  private async markRecoveryCodeUnconfirmed(): Promise<void> {
+    try {
+      await saveSettings(this.p.local, { recoveryCodeConfirmed: false });
+    } catch {
+      // ignored on purpose
+    }
+  }
+
   createRecoveryCode(token: string): Promise<{ recoveryCode: string }> {
     return this.exclusive(async () => {
       const vault = await this.spendToken(token);
       const recoveryCode = await vault.createRecoveryCode();
       await this.revokeInSnapshots(vault);
-      await saveSettings(this.p.local, { recoveryCodeConfirmed: false });
+      await this.markRecoveryCodeUnconfirmed();
       return { recoveryCode };
     });
   }

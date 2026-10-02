@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { AddAccount } from "../src/ui/popup/AddAccount";
@@ -11,7 +11,15 @@ async function open(tabUrl?: string) {
   const h = await harness({ tabUrl });
   const onBack = vi.fn();
   const onAdded = vi.fn();
-  renderUi(<AddAccount tabUrl={tabUrl} onBack={onBack} onAdded={onAdded} />, h.ui);
+  renderUi(
+    <AddAccount
+      tabUrl={tabUrl}
+      tabDomain={tabUrl ? (await h.ui.rpc("listAccounts", { pageUrl: tabUrl })).pageDomain : null}
+      onBack={onBack}
+      onAdded={onAdded}
+    />,
+    h.ui,
+  );
   return { ...h, onBack, onAdded };
 }
 
@@ -74,7 +82,8 @@ describe("AddAccount", () => {
     await userEvent.click(screen.getByText("Gelişmiş"));
     await userEvent.selectOptions(screen.getByLabelText("Tür"), "hotp");
     await userEvent.selectOptions(screen.getByLabelText("Algoritma"), "SHA256");
-    await userEvent.selectOptions(screen.getByLabelText("Hane"), "8");
+    await userEvent.clear(screen.getByLabelText("Hane"));
+    await userEvent.type(screen.getByLabelText("Hane"), "8");
     await userEvent.clear(screen.getByLabelText("Süre (sn)"));
     await userEvent.type(screen.getByLabelText("Süre (sn)"), "60");
     await userEvent.click(screen.getByRole("button", { name: "Hesabı ekle" }));
@@ -105,5 +114,68 @@ describe("AddAccount", () => {
     await userEvent.click(screen.getByRole("button", { name: "Geri" }));
     expect(screen.getByRole("heading", { name: "Hesap ekle." })).toBeTruthy();
     expect(h.onBack).not.toHaveBeenCalled();
+  });
+
+  async function fillSameName(h: Awaited<ReturnType<typeof open>>) {
+    await h.ui.rpc("addAccountManual", { draft: { secret: SECRET, issuer: "Bank", label: "me" } });
+    await userEvent.click(screen.getByRole("button", { name: /Elle gir/ }));
+    await userEvent.type(
+      screen.getByLabelText("Kurulum anahtarı veya otpauth:// bağlantısı"),
+      "GEZDGNBVGY3TQOJQ",
+    );
+    await userEvent.type(screen.getByLabelText("Servis"), "Bank");
+    await userEvent.type(screen.getByLabelText("Hesap"), "me");
+    await userEvent.click(screen.getByRole("button", { name: "Hesabı ekle" }));
+  }
+
+  it("asks before saving a second account with the same name", async () => {
+    const h = await open();
+    await fillSameName(h);
+    expect((await screen.findByRole("alert")).textContent).toContain("Bu adla başka bir hesap");
+    expect(h.onAdded).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: "Yine de kaydet" }));
+    await vi.waitFor(() => expect(h.onAdded).toHaveBeenCalledWith("Bank"));
+    expect(await accounts(h)).toHaveLength(2);
+  });
+
+  it("resets the same-name warning when a field changes", async () => {
+    const h = await open();
+    await fillSameName(h);
+    await screen.findByRole("button", { name: "Yine de kaydet" });
+    await userEvent.type(screen.getByLabelText("Hesap"), "2");
+    expect(screen.queryByRole("button", { name: "Yine de kaydet" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Hesabı ekle" })).toBeTruthy();
+    expect(screen.getByRole("alert").textContent).toBe("");
+  });
+
+  it("rejects out-of-range digits locally and opens Advanced", async () => {
+    const h = await open();
+    await userEvent.click(screen.getByRole("button", { name: /Elle gir/ }));
+    await userEvent.type(
+      screen.getByLabelText("Kurulum anahtarı veya otpauth:// bağlantısı"),
+      SECRET,
+    );
+    const digits = screen.getByLabelText("Hane");
+    fireEvent.change(digits, { target: { value: "9" } });
+    await userEvent.click(screen.getByRole("button", { name: "Hesabı ekle" }));
+    expect((await screen.findByRole("alert")).textContent).toBe("Hane veya süre değeri geçersiz.");
+    expect(document.querySelector("details")!.open).toBe(true);
+    await vi.waitFor(() => expect(document.activeElement).toBe(digits));
+    expect(await accounts(h)).toHaveLength(0);
+  });
+
+  it("rejects an out-of-range period locally", async () => {
+    const h = await open();
+    await userEvent.click(screen.getByRole("button", { name: /Elle gir/ }));
+    await userEvent.type(
+      screen.getByLabelText("Kurulum anahtarı veya otpauth:// bağlantısı"),
+      SECRET,
+    );
+    const period = screen.getByLabelText("Süre (sn)");
+    fireEvent.change(period, { target: { value: "301" } });
+    await userEvent.click(screen.getByRole("button", { name: "Hesabı ekle" }));
+    await screen.findByText("Hane veya süre değeri geçersiz.");
+    await vi.waitFor(() => expect(document.activeElement).toBe(period));
+    expect(await accounts(h)).toHaveLength(0);
   });
 });
