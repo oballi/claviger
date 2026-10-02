@@ -463,27 +463,8 @@ export const tr = {
   "setup.account.qrHint":
     "QR'ın olduğu sekmede eklenti simgesine tıklayıp tara ya da QR görselini içe aktar.",
   "setup.account.qrImport": "QR görselini içe aktar",
-  "scan.title": "QR tara.",
-  "scan.expired": "Görüntünün süresi doldu; taramayı tekrar başlat.",
-  "scan.scanning": "Görüntü taranıyor…",
-  "scan.failed": "Görüntü taranamadı.",
-  "scan.cropNone": "Bu alanda QR bulunamadı.",
-  "scan.frame": "Yakalanan ekran görüntüsü, QR seçim alanı",
-  "scan.imageAlt": "Yakalanan ekran görüntüsü",
-  "scan.draw": "QR'ın çevresine bir kutu çiz.",
   "scan.drawHint":
     "Fareyle ya da dokunarak çiz. Klavyede görüntüye odaklanıp ok tuşlarıyla kutuyu taşı, Shift ile boyutlandır.",
-  "scan.scanSelection": "Seçili alanı tara",
-  "scan.rescanAll": "Bütün görüntüyü tekrar tara",
-  "scan.selectArea": "Alan seçerek tara",
-  "scan.found": "Bu görüntüde {count} QR bulundu",
-  "scan.foundOne": "Bir QR bulundu.",
-  "scan.add": "Ekle",
-  "scan.preview": "Önizle ve içe aktar",
-  "scan.added": "{name} eklendi",
-  "scan.migrationName": "Çok hesaplı dışa aktarım",
-  "scan.sourceName": "Ekran görüntüsü",
-  "scan.done": "Eklendi. Bu sekmeyi kapatabilirsin.",
 } as const;
 
 export type MessageKey = keyof typeof tr;

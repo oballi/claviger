@@ -48,7 +48,7 @@ describe("capture", () => {
     const before = snapshotStorage(p);
     const { id } = await service.storeCapture(CAPTURE);
     expect(snapshotStorage(p)).toBe(before);
-    expect(before).not.toContain("AAAA");
+    expect(snapshotStorage(p)).not.toContain("AAAA");
     await service.takeCapture(id);
     expect(snapshotStorage(p)).toBe(before);
   });
@@ -78,5 +78,13 @@ describe("capture", () => {
     expect(bad).toMatchObject({ ok: false, error: { code: "forbidden" } });
     const good = await handleRpcMessage(service, message, TRUSTED, CTX);
     expect(good).toMatchObject({ ok: true });
+    const id = (good as { data: { id: string } }).data.id;
+    const take = { channel: RPC_CHANNEL, request: { type: "takeCapture", id } };
+    const popup = { id: "ext-id", url: "chrome-extension://ext-id/popup.html" };
+    expect(await handleRpcMessage(service, take, popup, CTX)).toMatchObject({
+      ok: false,
+      error: { code: "invalid-request" },
+    });
+    expect(await handleRpcMessage(service, take, TRUSTED, CTX)).toMatchObject({ ok: true });
   });
 });

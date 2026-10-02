@@ -39,7 +39,19 @@ export function isTrustedSender(sender: RpcSender, ctx: RpcContext): boolean {
   );
 }
 
-async function dispatch(service: VaultService, req: RpcRequest): Promise<unknown> {
+function isScanPage(sender: RpcSender): boolean {
+  try {
+    return new URL(sender.url ?? "").pathname === "/scan.html";
+  } catch {
+    return false;
+  }
+}
+
+async function dispatch(
+  service: VaultService,
+  req: RpcRequest,
+  sender: RpcSender,
+): Promise<unknown> {
   switch (req.type) {
     case "getState":
       return service.getState();
@@ -150,6 +162,8 @@ async function dispatch(service: VaultService, req: RpcRequest): Promise<unknown
     case "storeCapture":
       return service.storeCapture({ dataUrl: req.dataUrl, tabUrl: req.tabUrl });
     case "takeCapture":
+      // Only the scan page may take a capture; the popup never needs it.
+      if (!isScanPage(sender)) throw new ServiceError("invalid-request", "Not the scan page");
       return service.takeCapture(req.id);
     default: {
       const unreachable: never = req;
@@ -194,7 +208,7 @@ export async function handleRpcMessage(
     return { ok: false, error: { code: "invalid-request", message: "Malformed request" } };
   }
   try {
-    return { ok: true, data: await dispatch(service, parsed.data) };
+    return { ok: true, data: await dispatch(service, parsed.data, sender) };
   } catch (e) {
     return { ok: false, error: toErrorBody(e) };
   }

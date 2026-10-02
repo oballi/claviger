@@ -1,13 +1,12 @@
+import { registrableDomain } from "@otp-vault/core";
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
-import type { ServiceState } from "../../background/vaultService";
 import { QrImageTooLargeError } from "../../qr/limits";
 import { RpcError } from "../../rpc/client";
 import { Button } from "../components/Button";
-import { LockScreen } from "../components/LockScreen";
 import { errorMessage } from "../errors";
-import { useT } from "../i18n/i18n";
 import { ImportScreen } from "../manage/ImportScreen";
 import { useUi } from "../platform";
+import { useScanT } from "./messages";
 import { cropSelection, type Cropper } from "./crop";
 import { dataUrlToBlob, otpauthName } from "./dataUrl";
 import { defaultSelection, normalizeRect, nudgeSelection, type Rect, type Size } from "./selection";
@@ -16,10 +15,13 @@ const OTP_TEXT = /^otpauth(-migration)?:/i;
 const MIGRATION = /^otpauth-migration:/i;
 const NUDGE_PX = 10;
 const MIN_DRAG_PX = 8;
+const POLL_MS = 2000;
+// Hard cap on how long the screenshot and decoded secrets stay in this page.
+const PAGE_TTL_MS = 5 * 60_000;
 
 type Phase =
   | { kind: "loading" }
-  | { kind: "locked"; state: ServiceState }
+  | { kind: "locked" }
   | { kind: "expired" }
   | { kind: "failed"; message: string }
   | { kind: "ready" };
@@ -48,11 +50,13 @@ export function ScanApp({
   captureId: string;
   crop?: Cropper;
 }) {
-  const { rpc, decodeQr, openManage } = useUi();
-  const t = useT();
+  const { rpc, decodeQr } = useUi();
+  const t = useScanT();
   const [phase, setPhase] = useState<Phase>({ kind: "loading" });
   const [capture, setCapture] = useState<Capture | null>(null);
   const [domain, setDomain] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+  const [adding, setAdding] = useState(false);
   const [bind, setBind] = useState(true);
   const [results, setResults] = useState<string[] | null>(null);
   const [scanning, setScanning] = useState(false);
@@ -98,10 +102,7 @@ export function ScanApp({
       const taken = await rpc("takeCapture", { id: captureId });
       setCapture(taken);
       setPhase({ kind: "ready" });
-      rpc("listAccounts", { pageUrl: taken.tabUrl }).then(
-        (list) => setDomain(list.pageDomain ?? null),
-        () => {},
-      );
+      setDomain(registrableDomain(taken.tabUrl));
       await scan(() => dataUrlToBlob(taken.dataUrl), false);
     } catch (e) {
       if (e instanceof RpcError && (e.code === "not-found" || e.code === "locked")) {
@@ -115,7 +116,7 @@ export function ScanApp({
   async function begin() {
     try {
       const state = await rpc("getState", {});
-      if (state.status === "locked") setPhase({ kind: "locked", state });
+      if (state.status === "locked") setPhase({ kind: "locked" });
       else if (state.status === "unlocked") await load();
       else setPhase({ kind: "expired" });
     } catch (e) {
@@ -130,13 +131,56 @@ export function ScanApp({
     void begin();
   }, []);
 
+  function clearAll(next: Phase) {
+    setCapture(null);
+    setResults(null);
+    setAdded({});
+    setImporting(null);
+    setSel(null);
+    setNotice(null);
+    setError(null);
+    setPhase(next);
+  }
+
+  // The vault locking drops the background's copy; the page's copy must go too.
+  const holding = phase.kind === "ready" && !done;
+  useEffect(() => {
+    if (!holding) return;
+    const check = () => {
+      rpc("getState", {}).then(
+        (state) => {
+          if (state.status !== "unlocked") clearAll({ kind: "locked" });
+        },
+        () => {},
+      );
+    };
+    const id = setInterval(check, POLL_MS);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") check();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    const ttl = setTimeout(() => clearAll({ kind: "expired" }), PAGE_TTL_MS);
+    return () => {
+      clearInterval(id);
+      clearTimeout(ttl);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [holding, rpc]);
+
   const allAdded = results !== null && results.every((uri) => uri in added);
   useEffect(() => {
-    if (allAdded) setCapture(null);
+    if (!allAdded) return;
+    // Nothing decoded may outlive the success message.
+    setDone(true);
+    setCapture(null);
+    setResults(null);
+    setAdded({});
+    setImporting(null);
   }, [allAdded]);
 
   async function addOne(uri: string) {
     setError(null);
+    setAdding(true);
     try {
       const { name } = await rpc("addAccountUri", {
         uri,
@@ -148,6 +192,8 @@ export function ScanApp({
     } catch (e) {
       setSameName(e instanceof RpcError && e.code === "same-name" ? uri : null);
       setError(errorMessage(t, e));
+    } finally {
+      setAdding(false);
     }
   }
 
@@ -208,21 +254,15 @@ export function ScanApp({
     void scan(() => crop(capture.dataUrl, box, size), true);
   }
 
-  if (phase.kind === "locked") {
-    return (
-      <Frame>
-        <LockScreen
-          state={phase.state}
-          onUnlocked={() => void load()}
-          onForgot={() => openManage("recover")}
-        />
-      </Frame>
-    );
-  }
-
   let body: React.ReactNode;
   if (phase.kind === "loading") {
     body = <p className="m-0 text-sm text-muted">{t("common.loading")}</p>;
+  } else if (phase.kind === "locked") {
+    body = (
+      <p role="alert" className="m-0 text-sm leading-normal text-warn">
+        {t("scan.locked")}
+      </p>
+    );
   } else if (phase.kind === "expired") {
     body = (
       <p role="alert" className="m-0 text-sm leading-normal text-warn">
@@ -245,10 +285,12 @@ export function ScanApp({
             setImporting(null);
           }}
           onCancel={() => setImporting(null)}
+          embedded
+          doneLabel={t("scan.finish")}
         />
       </Frame>
     );
-  } else if (allAdded) {
+  } else if (done) {
     body = (
       <p role="status" className="m-0 text-sm leading-normal">
         {t("scan.done")}
@@ -357,7 +399,7 @@ export function ScanApp({
                     ) : migration ? (
                       <Button onClick={() => setImporting(uri)}>{t("scan.preview")}</Button>
                     ) : (
-                      <Button variant="primary" onClick={() => void addOne(uri)}>
+                      <Button variant="primary" disabled={adding} onClick={() => void addOne(uri)}>
                         {sameName === uri ? t("add.saveAnyway") : t("scan.add")}
                       </Button>
                     )}

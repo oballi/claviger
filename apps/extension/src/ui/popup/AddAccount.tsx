@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { AccountForm } from "../components/AccountForm";
 import { Icon } from "../components/Icon";
+import { RpcError } from "../../rpc/client";
 import { errorMessage } from "../errors";
 import { useT } from "../i18n/i18n";
 import { useUi } from "../platform";
@@ -83,7 +84,11 @@ export function AddAccount({
       const { id } = await rpc("storeCapture", capture);
       openScan(id);
     } catch (e) {
-      setScanNote(errorMessage(t, e));
+      setScanNote(
+        e instanceof RpcError && e.code === "invalid-request"
+          ? t("add.qrRestricted")
+          : errorMessage(t, e),
+      );
     }
   }
 

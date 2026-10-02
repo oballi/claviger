@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, screen } from "@testing-library/react";
+import { act, fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ScanApp } from "../src/ui/scan/ScanApp";
@@ -41,6 +41,10 @@ describe("ScanApp", () => {
     expect(await accounts(h)).toMatchObject([{ issuer: "GitHub", domains: ["github.com"] }]);
     // The screenshot is dropped from the page once everything is added.
     expect(screen.queryByRole("img")).toBeNull();
+    // No decoded secret stays in the rendered page.
+    expect(document.body.innerHTML).not.toContain(SECRET);
+    expect(document.body.innerHTML).not.toContain("otpauth");
+    expect(document.body.innerHTML).not.toContain("data:image");
   });
 
   it("does not link the site when the box is cleared", async () => {
@@ -99,7 +103,7 @@ describe("ScanApp", () => {
     const h = await open([[MIGRATION]]);
     await userEvent.click(await screen.findByRole("button", { name: "Önizle ve içe aktar" }));
     await userEvent.click(await screen.findByRole("button", { name: "2 hesabı ekle" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Hesaplara git" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Bitti" }));
     expect(await screen.findByText(/Bu sekmeyi kapatabilirsin/)).toBeTruthy();
     expect(await accounts(h)).toHaveLength(2);
   });
@@ -156,10 +160,36 @@ describe("ScanApp", () => {
     expect(await again.findByText(/Görüntünün süresi doldu/)).toBeTruthy();
   });
 
-  it("asks for the password first when the vault is locked", async () => {
+  it("shows the locked message instead of a password prompt when the vault is locked", async () => {
     await open([[URI_A]], "locked");
-    expect(await screen.findByLabelText("Ana parola")).toBeTruthy();
+    expect(await screen.findByText("Kasa kilitlendi; taramayı tekrar başlat.")).toBeTruthy();
+    expect(screen.queryByLabelText("Ana parola")).toBeNull();
     expect(screen.queryByRole("img")).toBeNull();
+  });
+
+  it("clears the screenshot and results when the vault locks while the page is open", async () => {
+    const h = await open([[URI_A, URI_B]]);
+    await screen.findByRole("heading", { name: "Bu görüntüde 2 QR bulundu" });
+    expect(screen.getByRole("img")).toBeTruthy();
+    await h.service.lock();
+    expect(await screen.findByText(/Kasa kilitlendi/, {}, { timeout: 5000 })).toBeTruthy();
+    expect(screen.queryByRole("img")).toBeNull();
+    expect(screen.queryByText("GitHub (me)")).toBeNull();
+  });
+
+  it("clears everything five minutes after the page loaded", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      await open([[URI_A]]);
+      await screen.findByRole("heading", { name: "Bir QR bulundu." });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5 * 60_000 + 10);
+      });
+      expect(screen.getByText(/süresi doldu/)).toBeTruthy();
+      expect(screen.queryByRole("img")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

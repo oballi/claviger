@@ -62,10 +62,14 @@ export function createBrowserUiPlatform(
     async captureTab() {
       if (context !== "popup") return null;
       try {
-        const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-        if (!tab?.url) return null;
+        const [before] = await browser.tabs.query({ active: true, currentWindow: true });
+        if (!before?.url) return null;
+        // Capture first: the activeTab grant and the rate limit favour the earliest call.
         const dataUrl = await browser.tabs.captureVisibleTab({ format: "png" });
-        return { dataUrl, tabUrl: tab.url };
+        const [after] = await browser.tabs.query({ active: true, currentWindow: true });
+        // A navigation in between would link the account to the wrong site.
+        if (after?.id !== before.id || after.url !== before.url) return null;
+        return { dataUrl, tabUrl: before.url };
       } catch {
         return null;
       }

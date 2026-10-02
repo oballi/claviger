@@ -12,6 +12,7 @@ import { PASSWORD } from "./service";
 
 const CTX = { extensionId: "ext-id", extensionOrigin: "chrome-extension://ext-id/" };
 const TAB_ID = 1;
+const SCAN_PAGE = { id: "ext-id", url: "chrome-extension://ext-id/scan.html#abc" };
 const TRUSTED = { id: "ext-id", url: "chrome-extension://ext-id/popup.html" };
 
 /** A UiPlatform wired to a real VaultService, so UI tests exercise real vault behaviour. */
@@ -39,7 +40,16 @@ export async function harness(
     if (status === "locked") await service.lock();
   }
   const ui = {
-    rpc: createRpcClient((message) => handleRpcMessage(service, message, TRUSTED, CTX)),
+    rpc: createRpcClient((message) =>
+      handleRpcMessage(
+        service,
+        message,
+        (message as { request?: { type?: string } }).request?.type === "takeCapture"
+          ? SCAN_PAGE
+          : TRUSTED,
+        CTX,
+      ),
+    ),
     isFirefox: false,
     copy: vi.fn(async (_text: string) => {}),
     openManage: vi.fn(),

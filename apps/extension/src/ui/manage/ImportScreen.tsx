@@ -23,10 +23,15 @@ type Stage =
 export function ImportScreen({
   source,
   onDone,
+  embedded,
+  doneLabel,
   onCancel,
 }: {
   source: ImportSource;
   onDone: () => void;
+  /** Scan tab: no manage breadcrumb, and the final button gets its own label. */
+  embedded?: boolean;
+  doneLabel?: string;
   onCancel: () => void;
 }) {
   const { rpc } = useUi();
@@ -150,7 +155,7 @@ export function ImportScreen({
           {t("import.result", { added: stage.added, duplicates: stage.duplicates })}
         </p>
         <Button variant="primary" onClick={onDone}>
-          {t("import.toAccounts")}
+          {doneLabel ?? t("import.toAccounts")}
         </Button>
       </div>
     );
@@ -286,16 +291,18 @@ export function ImportScreen({
 
   return (
     <div className="flex flex-col gap-10">
-      <nav
-        aria-label={t("import.breadcrumb")}
-        className="flex items-center gap-2 font-mono text-xs text-muted"
-      >
-        <a href="#/accounts" className="text-text">
-          {t("app.name")}
-        </a>
-        <span aria-hidden="true">/</span>
-        <span>{t("import.crumb")}</span>
-      </nav>
+      {embedded ? null : (
+        <nav
+          aria-label={t("import.breadcrumb")}
+          className="flex items-center gap-2 font-mono text-xs text-muted"
+        >
+          <a href="#/accounts" className="text-text">
+            {t("app.name")}
+          </a>
+          <span aria-hidden="true">/</span>
+          <span>{t("import.crumb")}</span>
+        </nav>
+      )}
       <div className="flex flex-wrap items-end justify-between gap-6">
         <div className="flex flex-col gap-3">
           <h1 className="m-0 text-[44px] leading-none font-medium tracking-tight">
