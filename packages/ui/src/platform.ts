@@ -10,7 +10,7 @@ export interface UiCapabilities {
   activeTab: boolean;
   /** The popup can capture the visible tab and open the QR scan page. */
   qrScan: boolean;
-  /** The platform can type a code into the page (`fillCode`). */
+  /** The platform can type a code into the page (context menu and shortcut; `fillCode` RPC). */
   autofill: boolean;
   /** The platform may ask for a network permission and read a server clock. */
   clockCheck: boolean;

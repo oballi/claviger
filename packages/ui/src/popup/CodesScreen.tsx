@@ -20,7 +20,7 @@ import { useLocale, useT } from "../i18n/i18n";
 import { useUi } from "../platform";
 import { iconButton } from "./iconButton";
 import { ThemeToggle } from "./ThemeToggle";
-import { AccountRow, type FillPrompt } from "./AccountRow";
+import { AccountRow } from "./AccountRow";
 import type { MenuItem } from "./RowMenu";
 import { AddAccount } from "./AddAccount";
 
@@ -75,9 +75,6 @@ export function CodesScreen({
   const locale = useLocale();
   const [tab, setTab] = useState<{ id: number; url: string } | undefined | null>(null);
   const pageUrl = tab === null ? null : tab?.url;
-  const [filling, setFilling] = useState(false);
-  const fillingRef = useRef(false);
-  const [fillPrompt, setFillPrompt] = useState<{ id: string; kind: FillPrompt } | null>(null);
   const { list, error, reload } = useAccountList(pageUrl, pollMs);
   const [query, setQuery] = useState("");
   const [toast, setToast] = useState<string | null>(null);
@@ -246,9 +243,7 @@ export function CodesScreen({
     );
   }
   const exact = new Set(list?.matches.exact ?? []);
-  const suggested = new Set(list?.matches.suggested ?? []);
-  const remembered = new Set(list?.matches.remembered ?? []);
-  const onSite = (a: AccountView) => exact.has(a.id) || suggested.has(a.id) || remembered.has(a.id);
+  const onSite = (a: AccountView) => exact.has(a.id);
   const q = query.trim().toLocaleLowerCase(locale);
   const filtered = q
     ? accounts.filter((a) =>
@@ -272,63 +267,8 @@ export function CodesScreen({
     rpc("clipboardCopied", {}).catch(() => {});
   }
 
-  async function fill(account: AccountView, confirmedDomain?: string) {
-    // The ref blocks a second click before the disabled state has rendered.
-    if (fillingRef.current) return;
-    fillingRef.current = true;
-    setFilling(true);
-    try {
-      await doFill(account, confirmedDomain);
-    } finally {
-      fillingRef.current = false;
-      setFilling(false);
-    }
-  }
-
-  async function doFill(account: AccountView, confirmedDomain?: string) {
-    setActionError(null);
-    setFillPrompt(null);
-    if (!tab) return;
-    try {
-      const { result, code } = await rpc("fillCode", {
-        id: account.id,
-        tabId: tab.id,
-        ...(confirmedDomain ? { confirmedDomain } : {}),
-      });
-      if (result === "filled") {
-        setToast(t("fill.done"));
-        // Only a confirmed fill on an unlinked site offers to link it.
-        if (confirmedDomain) setFillPrompt({ id: account.id, kind: "link" });
-        void reload();
-        return;
-      }
-      if (code === null) {
-        setActionError(t("codes.copyFailed"));
-        return;
-      }
-      try {
-        await copy(code);
-      } catch {
-        setActionError(t("codes.copyFailed"));
-        return;
-      }
-      rpc("clipboardCopied", {}).catch(() => {});
-      setToast(t(result === "copied-instead" ? "fill.copiedNoField" : "fill.copiedRefused"));
-    } catch (e) {
-      if (e instanceof RpcError && e.code === "not-linked") {
-        setFillPrompt({
-          id: account.id,
-          kind: state.fillOnlyLinked || !list?.pageDomain ? "blocked" : "confirm",
-        });
-        return;
-      }
-      setActionError(errorMessage(t, e));
-    }
-  }
-
   async function linkSite(account: AccountView) {
     setActionError(null);
-    setFillPrompt(null);
     const domain = list?.pageDomain;
     if (!domain) return;
     try {
@@ -336,7 +276,7 @@ export function CodesScreen({
         id: account.id,
         patch: { domains: [...new Set([...account.domains, domain])] },
       });
-      setToast(t("fill.linked"));
+      setToast(t("codes.linked"));
       await reload();
     } catch (e) {
       setActionError(errorMessage(t, e));
@@ -551,23 +491,7 @@ export function CodesScreen({
       key={account.id}
       account={account}
       large={large}
-      suggested={suggested.has(account.id)}
-      remembered={remembered.has(account.id)}
       pinnedMark={grouped}
-      fill={
-        large && tab && capabilities.autofill
-          ? {
-              prompt: fillPrompt?.id === account.id ? fillPrompt.kind : null,
-              busy: filling,
-              domain: list?.pageDomain ?? null,
-              onFill: (a) => void fill(a),
-              onConfirm: (a) => void fill(a, list?.pageDomain ?? undefined),
-              onCancel: () => setFillPrompt(null),
-              onLink: (a) => void linkSite(a),
-              onOpenSecurity: () => openManage("security"),
-            }
-          : undefined
-      }
       menu={menuFor(account)}
       confirmDelete={
         confirmDelete === account.id
