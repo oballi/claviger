@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { normalizeAccountInput } from "../src/account/account";
-import { parseOtpvaultExport } from "../src/exporters/otpvault";
+import { parseClavigerExport } from "../src/exporters/claviger";
 import { Vault } from "../src/vault/vault";
 import { asyncCodeOf } from "./helpers/errors";
 import { makeDeps } from "./helpers/vault";
@@ -75,7 +75,7 @@ describe("legacy otp-vault vault fixture", () => {
 
 describe("legacy .otpvault export fixture", () => {
   it("parses to the known accounts and group names", async () => {
-    const result = await parseOtpvaultExport(load("legacy-otp-vault-export.json"), PASSWORD);
+    const result = await parseClavigerExport(load("legacy-otp-vault-export.json"), PASSWORD);
     expect(result.accounts).toEqual(accounts);
     expect(result.issues).toEqual([]);
     expect(result.groups).toEqual(["Work"]);
@@ -84,6 +84,6 @@ describe("legacy .otpvault export fixture", () => {
 
   it("rejects a wrong export password", async () => {
     const json = load("legacy-otp-vault-export.json");
-    expect(await asyncCodeOf(parseOtpvaultExport(json, "nope-nope"))).toBe("wrong-password");
+    expect(await asyncCodeOf(parseClavigerExport(json, "nope-nope"))).toBe("wrong-password");
   });
 });

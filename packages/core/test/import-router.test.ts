@@ -2,7 +2,7 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { normalizeAccountInput } from "../src/account/account";
 import { isCoreError } from "../src/errors";
-import { exportOtpvault } from "../src/exporters/otpvault";
+import { exportClaviger } from "../src/exporters/claviger";
 import { parseImport } from "../src/importers";
 import { buildImportPreview } from "../src/importers/preview";
 import { aegisEncrypted, aegisPlain } from "./helpers/aegis";
@@ -47,8 +47,8 @@ describe("parseImport", () => {
       ["2fas", json(twofasEncrypted("pw")), "pw"],
       ["upstream-authenticator", json(v2Backup("pw")), "pw"],
       [
-        "otp-vault",
-        await exportOtpvault(
+        "claviger",
+        await exportClaviger(
           [normalizeAccountInput({ secret: "JBSWY3DPEHPK3PXP" })],
           "pw",
           makeDeps(),
@@ -64,11 +64,25 @@ describe("parseImport", () => {
     }
   });
 
+  it("routes legacy otp-vault-export files to the claviger format", async () => {
+    const exported = JSON.parse(
+      await exportClaviger(
+        [normalizeAccountInput({ secret: "JBSWY3DPEHPK3PXP" })],
+        "pw",
+        makeDeps(),
+      ),
+    );
+    expect(await parseImport(json({ ...exported, format: "otp-vault-export" }))).toEqual({
+      status: "needs-password",
+      format: "claviger",
+    });
+  });
+
   it("checks specific formats before the generic upstream heuristic", async () => {
     // The upstream detector accepts any value with a "secret" field; specific formats must come first.
     const lookalike = { secret: "JBSWY3DPEHPK3PXP", type: "totp" };
     const exported = JSON.parse(
-      await exportOtpvault(
+      await exportClaviger(
         [normalizeAccountInput({ secret: "JBSWY3DPEHPK3PXP" })],
         "pw",
         makeDeps(),
@@ -76,7 +90,7 @@ describe("parseImport", () => {
     );
     expect(await parseImport(json({ ...exported, extra: lookalike }))).toEqual({
       status: "needs-password",
-      format: "otp-vault",
+      format: "claviger",
     });
     expect(await parseImport(json({ ...aegisPlain(), extra: lookalike }))).toMatchObject({
       status: "ok",

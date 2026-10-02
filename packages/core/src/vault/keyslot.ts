@@ -48,7 +48,9 @@ export type PasswordKeyslot = z.infer<typeof passwordKeyslotSchema>;
 export type RecoveryKeyslot = z.infer<typeof recoveryKeyslotSchema>;
 export type Keyslot = z.infer<typeof keyslotSchema>;
 
+// legacy name; changing it breaks existing vaults
 const RECOVERY_INFO = "otp-vault/recovery/v1";
+// legacy name; changing it breaks existing vaults
 const slotAad = (kind: Keyslot["kind"], scope: string) => `otp-vault/v1/keyslot/${kind}/${scope}`;
 
 export async function createPasswordKeyslot(

@@ -41,15 +41,23 @@ describe("BackupScreen export", () => {
     expect(screen.getByText(/Bu cihazı kaybedersen 1 hesabın da gider/)).toBeTruthy();
   });
 
+  it("lets the file picker choose .claviger and legacy .otpvault files", async () => {
+    await open();
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const accept = input.accept.split(",");
+    expect(accept).toContain(".claviger");
+    expect(accept).toContain(".otpvault");
+  });
+
   it("downloads an encrypted backup protected by the vault password by default", async () => {
     const { ui, onChanged } = await open();
     const exporting = region("Dışa aktar");
-    expect(within(exporting).getByText(/^otp-vault-\d{4}-\d{2}-\d{2}\.otpvault$/)).toBeTruthy();
+    expect(within(exporting).getByText(/^claviger-\d{4}-\d{2}-\d{2}\.claviger$/)).toBeTruthy();
     await userEvent.click(within(exporting).getByRole("button", { name: "Yedeği indir" }));
     await confirmPassword(exporting, "İndir");
     expect(await screen.findByText("Yedek indirildi: 1 hesap.")).toBeTruthy();
     const [filename, content] = ui.download.mock.calls[0]!;
-    expect(filename).toMatch(/\.otpvault$/);
+    expect(filename).toMatch(/\.claviger$/);
     expect(await ui.rpc("importPreview", { text: content, password: PASSWORD })).toMatchObject({
       status: "ok",
     });
@@ -98,7 +106,7 @@ describe("BackupScreen export", () => {
     await userEvent.click(
       within(exporting).getByRole("radio", { name: "Düz metin otpauth listesi" }),
     );
-    expect(within(exporting).getByText(/^otp-vault-.*\.txt$/)).toBeTruthy();
+    expect(within(exporting).getByText(/^claviger-.*\.txt$/)).toBeTruthy();
     const download = within(exporting).getByRole("button", { name: "Yedeği indir" });
     expect(download).toHaveProperty("disabled", true);
     expect(within(exporting).queryByLabelText("Ana parola")).toBeNull();
@@ -344,14 +352,14 @@ describe("BackupScreen hardening", () => {
     const real = h.ui.rpc;
     h.ui.rpc = (async (type: string, payload: object) => {
       const result = await (real as (t: string, p: object) => Promise<object>)(type, payload);
-      return type === "exportVault" ? { ...result, filename: "from-service.otpvault" } : result;
+      return type === "exportVault" ? { ...result, filename: "from-service.claviger" } : result;
     }) as typeof h.ui.rpc;
     await open(h);
     const exporting = region("Dışa aktar");
     await userEvent.click(within(exporting).getByRole("button", { name: "Yedeği indir" }));
     await confirmPassword(exporting, "İndir");
     await screen.findByText("Yedek indirildi: 1 hesap.");
-    expect(h.ui.download.mock.calls[0]![0]).toBe("from-service.otpvault");
+    expect(h.ui.download.mock.calls[0]![0]).toBe("from-service.claviger");
   });
 
   it("clears typed backup passwords when the format changes", async () => {
@@ -365,7 +373,7 @@ describe("BackupScreen hardening", () => {
       within(exporting).getByRole("radio", { name: "Düz metin otpauth listesi" }),
     );
     await userEvent.click(
-      within(exporting).getByRole("radio", { name: /^Şifreli otp-vault yedeği/ }),
+      within(exporting).getByRole("radio", { name: /^Şifreli claviger yedeği/ }),
     );
     await userEvent.click(
       within(exporting).getByRole("radio", { name: "Farklı bir parola kullan" }),

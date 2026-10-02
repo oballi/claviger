@@ -365,7 +365,7 @@ describe("client", () => {
 
     const exported = await call("exportVault", {
       token: await token(),
-      format: "otpvault",
+      format: "claviger",
       exportPassword: "export password",
     });
     expect(exported).toMatchObject({ count: 2, skipped: 0 });

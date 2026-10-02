@@ -121,18 +121,18 @@ describe("ImportScreen", () => {
     const { token } = await source.ui.rpc("reauth", { password: PASSWORD });
     const backup = await source.ui.rpc("exportVault", {
       token,
-      format: "otpvault",
+      format: "claviger",
       exportPassword: "backup password",
     });
     await open(backup.content, backup.filename);
     const field = await screen.findByLabelText("Dosya parolası");
-    expect(screen.getByText("otp-vault yedeği parola ile korunuyor.")).toBeTruthy();
+    expect(screen.getByText("claviger yedeği parola ile korunuyor.")).toBeTruthy();
     await userEvent.type(field, "wrong password");
     await userEvent.click(screen.getByRole("button", { name: "Aç" }));
     await vi.waitFor(() => expect(screen.getByRole("alert").textContent).toBe("Parola yanlış."));
     await userEvent.type(field, "backup password");
     await userEvent.click(screen.getByRole("button", { name: "Aç" }));
-    expect(await screen.findByText(/· otp-vault yedeği · şifresi çözüldü$/)).toBeTruthy();
+    expect(await screen.findByText(/· claviger yedeği · şifresi çözüldü$/)).toBeTruthy();
   });
 
   it("explains unrecognized content and goes back", async () => {
@@ -179,7 +179,7 @@ describe("ImportScreen", () => {
     const { token } = await source.ui.rpc("reauth", { password: PASSWORD });
     const backup = await source.ui.rpc("exportVault", {
       token,
-      format: "otpvault",
+      format: "claviger",
       exportPassword: "backup password",
     });
     await open(backup.content, backup.filename);

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { normalizeAccountInput } from "../src/account/account";
 import { exportOtpauthText } from "../src/exporters/otpauthText";
-import { exportOtpvault, isOtpvaultExport, parseOtpvaultExport } from "../src/exporters/otpvault";
+import { exportClaviger, isClavigerExport, parseClavigerExport } from "../src/exporters/claviger";
 import { parseOtpauthText } from "../src/importers/otpauthText";
 import { sealBytes } from "../src/crypto/aes";
 import { utf8Encode } from "../src/encoding/bytes";
@@ -29,54 +29,54 @@ const accounts = [
   normalizeAccountInput({ secret: "MFRGGZDFMZTWQ2LK", type: "steam", label: "gamer" }),
 ];
 
-describe(".otpvault export", () => {
+describe(".claviger export", () => {
   it("round-trips accounts (including domains and order) with the export password", async () => {
-    const text = await exportOtpvault(accounts, "export-pw", makeDeps());
+    const text = await exportClaviger(accounts, "export-pw", makeDeps());
     const json = JSON.parse(text);
-    expect(isOtpvaultExport(json)).toBe(true);
+    expect(isClavigerExport(json)).toBe(true);
     expect(text).not.toContain("JBSWY3DPEHPK3PXP");
     expect(text).not.toContain("GitHub");
-    const result = await parseOtpvaultExport(json, "export-pw");
+    const result = await parseClavigerExport(json, "export-pw");
     expect(result).toEqual({ accounts, issues: [] });
   });
 
   it("strips vault-only fields from Account objects", async () => {
     const withIds = accounts.map((a, i) => ({ ...a, id: `id-${i}`, createdAt: 1, updatedAt: 2 }));
-    const result = await parseOtpvaultExport(
-      JSON.parse(await exportOtpvault(withIds, "pw", makeDeps())),
+    const result = await parseClavigerExport(
+      JSON.parse(await exportClaviger(withIds, "pw", makeDeps())),
       "pw",
     );
     expect(result.accounts).toEqual(accounts);
   });
 
   it("rejects a wrong password, tampering and absurd KDF parameters", async () => {
-    const json = JSON.parse(await exportOtpvault(accounts, "pw", makeDeps()));
-    expect(await asyncCodeOf(parseOtpvaultExport(json, "wrong"))).toBe("wrong-password");
+    const json = JSON.parse(await exportClaviger(accounts, "pw", makeDeps()));
+    expect(await asyncCodeOf(parseClavigerExport(json, "wrong"))).toBe("wrong-password");
     const tampered = structuredClone(json);
     tampered.payload.ct = tampered.payload.ct.replace(/^./, (c: string) => (c === "A" ? "B" : "A"));
-    expect(await asyncCodeOf(parseOtpvaultExport(tampered, "pw"))).toBe("corrupt-file");
+    expect(await asyncCodeOf(parseClavigerExport(tampered, "pw"))).toBe("corrupt-file");
     const evil = structuredClone(json);
     evil.keyslots[0].kdf.memoryKiB = 4_194_304;
-    expect(await asyncCodeOf(parseOtpvaultExport(evil, "pw"))).toBe("corrupt-file");
+    expect(await asyncCodeOf(parseClavigerExport(evil, "pw"))).toBe("corrupt-file");
     const tinySalt = structuredClone(json);
     tinySalt.keyslots[0].kdf.salt = "AAAA";
-    expect(await asyncCodeOf(parseOtpvaultExport(tinySalt, "pw"))).toBe("corrupt-file");
-    expect(await asyncCodeOf(parseOtpvaultExport({ format: "otp-vault-export" }, "pw"))).toBe(
+    expect(await asyncCodeOf(parseClavigerExport(tinySalt, "pw"))).toBe("corrupt-file");
+    expect(await asyncCodeOf(parseClavigerExport({ format: "otp-vault-export" }, "pw"))).toBe(
       "corrupt-file",
     );
   });
 
   it("binds the payload to the exportId", async () => {
-    const json = JSON.parse(await exportOtpvault(accounts, "pw", makeDeps()));
+    const json = JSON.parse(await exportClaviger(accounts, "pw", makeDeps()));
     const code = await asyncCodeOf(
-      parseOtpvaultExport({ ...json, exportId: webRandom.uuid() }, "pw"),
+      parseClavigerExport({ ...json, exportId: webRandom.uuid() }, "pw"),
     );
     expect(["wrong-password", "corrupt-file"]).toContain(code);
   });
 
   it("uses a fresh exportId, salt and iv for every export", async () => {
-    const one = JSON.parse(await exportOtpvault(accounts, "pw", makeDeps()));
-    const two = JSON.parse(await exportOtpvault(accounts, "pw", makeDeps()));
+    const one = JSON.parse(await exportClaviger(accounts, "pw", makeDeps()));
+    const two = JSON.parse(await exportClaviger(accounts, "pw", makeDeps()));
     expect(one.exportId).not.toBe(two.exportId);
     expect(one.keyslots[0].kdf.salt).not.toBe(two.keyslots[0].kdf.salt);
     expect(one.payload.iv).not.toBe(two.payload.iv);
@@ -100,22 +100,41 @@ describe(".otpvault export", () => {
       keyslots: [keyslot],
       payload,
     };
-    const error = await parseOtpvaultExport(file, "pw").catch((e: unknown) => e);
+    const error = await parseClavigerExport(file, "pw").catch((e: unknown) => e);
     expect(isCoreError(error, "corrupt-file")).toBe(true);
     expect((error as Error).cause).toBeUndefined();
     expect((error as Error).message).not.toContain("SECRET-PLAINTEXT");
   });
 
   it("reports an export from a newer version as unsupported, not corrupt", async () => {
-    const json = JSON.parse(await exportOtpvault(accounts, "pw", makeDeps()));
-    expect(await asyncCodeOf(parseOtpvaultExport({ ...json, version: 2 }, "pw"))).toBe(
+    const json = JSON.parse(await exportClaviger(accounts, "pw", makeDeps()));
+    expect(await asyncCodeOf(parseClavigerExport({ ...json, version: 2 }, "pw"))).toBe(
       "unsupported-format",
     );
   });
 
+  it("writes the claviger format string", async () => {
+    const out = JSON.parse(await exportClaviger(accounts, "pw", makeDeps()));
+    expect(out.format).toBe("claviger-export");
+  });
+
+  it("opens a new export relabelled with the legacy format string", async () => {
+    const json = JSON.parse(await exportClaviger(accounts, "pw", makeDeps()));
+    const relabelled = { ...json, format: "otp-vault-export" };
+    expect(isClavigerExport(relabelled)).toBe(true);
+    expect((await parseClavigerExport(relabelled, "pw")).accounts).toEqual(accounts);
+  });
+
+  it("rejects an unknown format label as corrupt", async () => {
+    const json = JSON.parse(await exportClaviger(accounts, "pw", makeDeps()));
+    const unknown = { ...json, format: "something-else" };
+    expect(isClavigerExport(unknown)).toBe(false);
+    expect(await asyncCodeOf(parseClavigerExport(unknown, "pw"))).toBe("corrupt-file");
+  });
+
   it("does not claim other JSON", () => {
-    expect(isOtpvaultExport({ version: 1 })).toBe(false);
-    expect(isOtpvaultExport(null)).toBe(false);
+    expect(isClavigerExport({ version: 1 })).toBe(false);
+    expect(isClavigerExport(null)).toBe(false);
   });
 });
 
@@ -127,7 +146,7 @@ describe("otpauth text export", () => {
   });
 });
 
-describe(".otpvault groups", () => {
+describe(".claviger groups", () => {
   const g = [
     { id: "g1", name: "Work" },
     { id: "g2", name: "Home" },
@@ -139,9 +158,9 @@ describe(".otpvault groups", () => {
   ];
 
   it("writes group names and ordered groups, dropping unknown group ids", async () => {
-    const text = await exportOtpvault(grouped, "pw", makeDeps(), g);
+    const text = await exportClaviger(grouped, "pw", makeDeps(), g);
     expect(text).not.toContain("Work");
-    const result = await parseOtpvaultExport(JSON.parse(text), "pw");
+    const result = await parseClavigerExport(JSON.parse(text), "pw");
     expect(result.groups).toEqual(["Work", "Home"]);
     expect(result.groupNames).toEqual(["Home", undefined, "Work"]);
     expect(result.accounts).toEqual(accounts);
@@ -149,8 +168,8 @@ describe(".otpvault groups", () => {
   });
 
   it("writes no group fields without groups", async () => {
-    const result = await parseOtpvaultExport(
-      JSON.parse(await exportOtpvault(accounts, "pw", makeDeps())),
+    const result = await parseClavigerExport(
+      JSON.parse(await exportClaviger(accounts, "pw", makeDeps())),
       "pw",
     );
     expect(result).toEqual({ accounts, issues: [] });
@@ -158,7 +177,7 @@ describe(".otpvault groups", () => {
 
   it("ignores a non-array groups value without failing the file", async () => {
     for (const groups of ["x", null, {}]) {
-      const result = await parseOtpvaultExport(
+      const result = await parseClavigerExport(
         await sealedFile({ accounts: [{ secret: "JBSWY3DPEHPK3PXP" }], groups }),
         "pw",
       );
@@ -177,7 +196,7 @@ describe(".otpvault groups", () => {
       ],
       groups: ["Ok", 7, "y".repeat(201)],
     });
-    const result = await parseOtpvaultExport(text, "pw");
+    const result = await parseClavigerExport(text, "pw");
     expect(result.accounts).toHaveLength(3);
     expect(result.groupNames).toEqual(["", "", "Ok"]);
     expect(result.groups).toEqual(["Ok"]);

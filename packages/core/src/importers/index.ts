@@ -1,4 +1,4 @@
-import { isOtpvaultExport, parseOtpvaultExport } from "../exporters/otpvault";
+import { isClavigerExport, parseClavigerExport } from "../exporters/claviger";
 import { aegisNeedsPassword, isAegisFile, parseAegis } from "./aegis";
 import { parseOtpauthText } from "./otpauthText";
 import { isTwofasFile, parseTwofas, twofasNeedsPassword } from "./twofas";
@@ -6,7 +6,7 @@ import type { ImportResult } from "./types";
 import { isUpstreamBackup, parseUpstreamBackup, upstreamNeedsPassword } from "./upstream";
 
 export type ImportFormat =
-  "otpauth" | "google-migration" | "upstream-authenticator" | "aegis" | "2fas" | "otp-vault";
+  "otpauth" | "google-migration" | "upstream-authenticator" | "aegis" | "2fas" | "claviger";
 
 export type ImportParseOutcome =
   | { status: "ok"; format: ImportFormat; result: ImportResult }
@@ -23,10 +23,10 @@ interface JsonFormat {
 // Order matters: the format with the most distinctive signature is tried first; upstream detection is the loosest, so it goes last.
 const JSON_FORMATS: JsonFormat[] = [
   {
-    format: "otp-vault",
-    detect: isOtpvaultExport,
+    format: "claviger",
+    detect: isClavigerExport,
     needsPassword: () => true,
-    parse: (j, p) => parseOtpvaultExport(j, p ?? ""),
+    parse: (j, p) => parseClavigerExport(j, p ?? ""),
   },
   { format: "aegis", detect: isAegisFile, needsPassword: aegisNeedsPassword, parse: parseAegis },
   { format: "2fas", detect: isTwofasFile, needsPassword: twofasNeedsPassword, parse: parseTwofas },
