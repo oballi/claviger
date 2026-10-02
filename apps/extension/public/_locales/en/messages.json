@@ -1,0 +1,4 @@
+{
+  "extName": { "message": "otp-vault" },
+  "extDescription": { "message": "Encrypted, open-source two-factor authentication codes." }
+}

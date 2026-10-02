@@ -83,8 +83,8 @@ describe("popup status screens", () => {
         throw new RpcError("no-response", "x");
       }),
     );
-    expect((await screen.findByRole("alert")).textContent).toBe(
-      "Eklentinin arka planına ulaşılamadı.",
+    await vi.waitFor(() =>
+      expect(screen.getByRole("alert").textContent).toBe("Eklentinin arka planına ulaşılamadı."),
     );
   });
 

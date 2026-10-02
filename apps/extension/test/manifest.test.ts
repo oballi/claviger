@@ -1,4 +1,6 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { CORE_VERSION } from "@otp-vault/core";
 import config from "../wxt.config";
 
 type ManifestFn = (env: {
@@ -16,6 +18,9 @@ const manifestFor = (browser: string) =>
     command: "build",
   });
 
+const versionOf = (path: string) =>
+  (JSON.parse(readFileSync(new URL(path, import.meta.url), "utf8")) as { version: string }).version;
+
 describe("manifest", () => {
   it.each(["chrome", "firefox"])("declares the spec's CSP for %s", (browser) => {
     const manifest = manifestFor(browser);
@@ -23,7 +28,6 @@ describe("manifest", () => {
     expect(manifest.content_security_policy).toEqual({
       extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",
     });
-    expect(manifest.version).toBe("0.0.1");
   });
 
   it("declares clipboard permissions per browser", () => {
@@ -36,7 +40,7 @@ describe("manifest", () => {
     expect(manifestFor("firefox").browser_specific_settings).toEqual({
       gecko: {
         id: "otp-vault@otp-vault.dev",
-        strict_min_version: "128.0",
+        strict_min_version: "140.0",
         data_collection_permissions: { required: ["none"] },
       },
     });
@@ -46,5 +50,33 @@ describe("manifest", () => {
   it("pins the minimum Chrome version", () => {
     expect(manifestFor("chrome").minimum_chrome_version).toBe("116");
     expect(manifestFor("chrome").browser_specific_settings).toBeUndefined();
+  });
+
+  it("localizes the name and description and leaves the version to package.json", () => {
+    const manifest = manifestFor("chrome");
+    expect(manifest.name).toBe("__MSG_extName__");
+    expect(manifest.description).toBe("__MSG_extDescription__");
+    expect(manifest.default_locale).toBe("en");
+    expect(manifest.version).toBeUndefined();
+  });
+
+  it("keeps one version across the repo", () => {
+    const root = versionOf("../../../package.json");
+    expect(versionOf("../package.json")).toBe(root);
+    expect(versionOf("../../../packages/core/package.json")).toBe(root);
+    expect(CORE_VERSION).toBe(root);
+  });
+
+  it("has the same message keys in every locale", () => {
+    const keys = (lang: string) =>
+      Object.keys(
+        JSON.parse(
+          readFileSync(
+            new URL(`../public/_locales/${lang}/messages.json`, import.meta.url),
+            "utf8",
+          ),
+        ) as object,
+      ).sort();
+    expect(keys("tr")).toEqual(keys("en"));
   });
 });

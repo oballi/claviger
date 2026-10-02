@@ -130,7 +130,9 @@ describe("AddAccount", () => {
   it("asks before saving a second account with the same name", async () => {
     const h = await open();
     await fillSameName(h);
-    expect((await screen.findByRole("alert")).textContent).toContain("Bu adla başka bir hesap");
+    await vi.waitFor(() =>
+      expect(screen.getByRole("alert").textContent).toContain("Bu adla başka bir hesap"),
+    );
     expect(h.onAdded).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole("button", { name: "Yine de kaydet" }));
     await vi.waitFor(() => expect(h.onAdded).toHaveBeenCalledWith("Bank"));
@@ -157,7 +159,9 @@ describe("AddAccount", () => {
     const digits = screen.getByLabelText("Hane");
     fireEvent.change(digits, { target: { value: "9" } });
     await userEvent.click(screen.getByRole("button", { name: "Hesabı ekle" }));
-    expect((await screen.findByRole("alert")).textContent).toBe("Hane veya süre değeri geçersiz.");
+    await vi.waitFor(() =>
+      expect(screen.getByRole("alert").textContent).toBe("Hane veya süre değeri geçersiz."),
+    );
     expect(document.querySelector("details")!.open).toBe(true);
     await vi.waitFor(() => expect(document.activeElement).toBe(digits));
     expect(await accounts(h)).toHaveLength(0);

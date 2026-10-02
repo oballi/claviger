@@ -13,9 +13,9 @@ export default defineConfig({
     },
   },
   manifest: ({ browser }) => ({
-    name: "otp-vault",
-    description: "Şifreli, açık kaynak iki adımlı doğrulama kodları.",
-    version: "0.0.1",
+    name: "__MSG_extName__",
+    description: "__MSG_extDescription__",
+    default_locale: "en",
     permissions: [
       "storage",
       "alarms",
@@ -33,7 +33,7 @@ export default defineConfig({
           browser_specific_settings: {
             gecko: {
               id: "otp-vault@otp-vault.dev",
-              strict_min_version: "128.0",
+              strict_min_version: "140.0",
               // AMO has required this for new extensions since Nov 2025; no data is collected.
               data_collection_permissions: { required: ["none"] },
             },

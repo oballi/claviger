@@ -13,7 +13,9 @@
     "test": "pnpm -r test",
     "coverage": "pnpm -r coverage",
     "lint": "eslint . && prettier --check .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "release": "node scripts/release.mjs",
+    "test:scripts": "node --test \"scripts/*.test.mjs\""
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
