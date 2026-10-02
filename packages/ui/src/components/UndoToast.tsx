@@ -8,6 +8,7 @@ import { useT } from "../i18n/i18n";
  */
 export function UndoToast({
   message,
+  token,
   autoFocus = false,
   onUndo,
   onDone,
@@ -15,6 +16,8 @@ export function UndoToast({
   timeoutMs = 8000,
 }: {
   message: string | null;
+  /** Identifies the offer, so a second delete with the same text restarts timer and focus. */
+  token?: string;
   autoFocus?: boolean;
   onUndo: () => void;
   onDone: () => void;
@@ -22,27 +25,30 @@ export function UndoToast({
   timeoutMs?: number;
 }) {
   const t = useT();
-  const [held, setHeld] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const held = hovered || focused;
   const button = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    setHeld(false);
+    setHovered(false);
+    setFocused(false);
     if (message && autoFocus) button.current?.focus();
-  }, [message, autoFocus]);
+  }, [message, token, autoFocus]);
 
   useEffect(() => {
     if (!message || held) return;
     const id = setTimeout(onDone, timeoutMs);
     return () => clearTimeout(id);
-  }, [message, held, onDone, timeoutMs]);
+  }, [message, token, held, onDone, timeoutMs]);
 
   return (
     <div
       role="status"
-      onMouseEnter={() => setHeld(true)}
-      onMouseLeave={() => setHeld(false)}
-      onFocus={() => setHeld(true)}
-      onBlur={() => setHeld(false)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
       onKeyDown={(e) => {
         if (e.key !== "Escape" || !message) return;
         e.preventDefault();

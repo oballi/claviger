@@ -9,10 +9,13 @@ export function Toast({
   message,
   onDone,
   timeoutMs = 2000,
+  raised = false,
 }: {
   message: string | null;
   onDone: () => void;
   timeoutMs?: number;
+  /** Sits above the undo toast instead of on top of it. */
+  raised?: boolean;
 }) {
   useEffect(() => {
     if (!message) return;
@@ -22,7 +25,7 @@ export function Toast({
   return (
     <div
       role="status"
-      className={`absolute bottom-[18px] left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full bg-btn px-4 py-2.5 text-xs whitespace-nowrap text-btn-text ${message ? "" : "sr-only"}`}
+      className={`absolute ${raised ? "bottom-[84px]" : "bottom-[18px]"} left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full bg-btn px-4 py-2.5 text-xs whitespace-nowrap text-btn-text ${message ? "" : "sr-only"}`}
     >
       {message ? <Icon name="check" size={14} /> : null}
       <span>{message ?? ""}</span>

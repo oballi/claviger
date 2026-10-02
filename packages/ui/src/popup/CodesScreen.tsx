@@ -108,6 +108,12 @@ export function CodesScreen({
     if (error instanceof RpcError && error.code === "locked") onLocked();
   }, [error, onLocked]);
 
+  // A stale offer must not reappear when the list view returns.
+  const away = adding || editing !== null;
+  useEffect(() => {
+    if (away) setUndo(null);
+  }, [away]);
+
   // "/" must work as soon as the popup opens, when focus is still on <body> (spec §6.2).
   useEffect(() => {
     if (adding || editing) return;
@@ -336,6 +342,7 @@ export function CodesScreen({
 
   async function removeAccount(account: AccountView) {
     const name = account.issuer || account.label;
+    const keyboard = viaKeyboard.current;
     setActionError(null);
     try {
       await rpc("deleteAccount", { id: account.id });
@@ -344,10 +351,10 @@ export function CodesScreen({
       // The bin is best effort: offer "Undo" only when the entry really is there.
       const binned = (await trash.reload()).some((i) => i.id === account.id);
       // The confirm button is gone; focus lands on "Undo" (keyboard) or the search field.
-      if (!(binned && viaKeyboard.current)) searchRef.current?.focus();
+      if (!(binned && keyboard)) searchRef.current?.focus();
       if (binned) {
         setToast(null);
-        setUndo({ id: account.id, name, focus: viaKeyboard.current });
+        setUndo({ id: account.id, name, focus: keyboard });
       } else {
         setToast(t("accounts.deleted", { name }));
       }
@@ -661,8 +668,9 @@ export function CodesScreen({
           </>
         )}
       </div>
-      <Toast message={toast} onDone={clearToast} />
+      <Toast message={toast} onDone={clearToast} raised={undo !== null} />
       <UndoToast
+        token={undo?.id}
         message={undo ? t("trash.deleted", { name: undo.name }) : null}
         autoFocus={undo?.focus}
         onUndo={() => void undoDelete()}
