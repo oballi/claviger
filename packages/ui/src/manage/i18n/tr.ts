@@ -364,6 +364,9 @@ export const manageTr = {
   "clock.hint":
     "Kodlar tutmuyorsa bilgisayarının saatini bir kez Google'ın sunucusuyla karşılaştırır. İstek Google'a gider ve yalnızca sen istediğinde çalışır.",
   "clock.check": "Kontrol et",
+  "security.lockShortcut": "Kilitleme kısayolu",
+  "security.lockShortcutHint":
+    'Varsayılan olarak atanmamış. Chrome: chrome://extensions/shortcuts adresinden; Firefox: Eklentiler sayfası, dişli simgesi, "Eklenti kısayollarını yönet" ile bir tuş atayın.',
   "clock.denied": "İzin verilmedi; kontrol yapılmadı.",
   "clock.ok": "Saatin doğru (fark {offset} sn). Kontrol kapatıldı.",
   "clock.applied": "Saatin {offset} sn farklı; kodlar buna göre düzeltildi.",

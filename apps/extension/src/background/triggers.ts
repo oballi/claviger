@@ -25,3 +25,12 @@ export async function handleUserTrigger(
   }
   if ((await run()) === "locked") await openPopup();
 }
+
+/** Lock shortcut: never opens a popup or the launcher, so it cannot leave a prompt over a locked vault. */
+export async function handleLockCommand(service: {
+  lock(): Promise<void>;
+  flashBadge(text: string): Promise<void>;
+}): Promise<void> {
+  await service.lock();
+  await service.flashBadge("LOCK");
+}

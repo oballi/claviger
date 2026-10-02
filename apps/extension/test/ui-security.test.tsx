@@ -449,6 +449,7 @@ describe("SecurityScreen", () => {
     expect(within(display).queryByText("Yalnızca bağlı sitede doldur")).toBeNull();
     expect(within(display).queryByText("Kullandığım siteleri hatırla")).toBeNull();
     expect(within(display).getByText("Klavye kısayolu: Alt+Shift+O")).toBeTruthy();
+    expect(within(display).getByText("Kilitleme kısayolu")).toBeTruthy();
   });
 
   it("changes clipboard clearing without a password", async () => {

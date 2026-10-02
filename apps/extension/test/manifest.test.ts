@@ -55,12 +55,34 @@ describe("manifest", () => {
   });
 
   it.each(["chrome", "firefox"])("declares the fill shortcut for %s", (browser) => {
-    expect(manifestFor(browser).commands).toEqual({
-      "fill-code": {
-        suggested_key: { default: "Alt+Shift+O" },
-        description: "__MSG_commandFill__",
-      },
+    expect((manifestFor(browser).commands as Record<string, unknown>)["fill-code"]).toEqual({
+      suggested_key: { default: "Alt+Shift+O" },
+      description: "__MSG_commandFill__",
     });
+  });
+
+  it.each(["chrome", "firefox"])(
+    "declares a lock command without a suggested key for %s",
+    (browser) => {
+      const commands = manifestFor(browser).commands as Record<
+        string,
+        { suggested_key?: unknown; description: string }
+      >;
+      expect(commands["lock-vault"]).toEqual({ description: "__MSG_commandLock__" });
+      expect(Object.values(commands).filter((c) => c.suggested_key).length).toBeLessThanOrEqual(4);
+    },
+  );
+
+  it("has a commandLock string in both locales", () => {
+    for (const [lang, text] of [
+      ["en", "Lock the vault"],
+      ["tr", "Kasay\u0131 kilitle"],
+    ] as const) {
+      const m = JSON.parse(
+        readFileSync(new URL(`../public/_locales/${lang}/messages.json`, import.meta.url), "utf8"),
+      );
+      expect(m.commandLock.message).toBe(text);
+    }
   });
 
   it("uses the claviger name, tagline and Firefox id", () => {

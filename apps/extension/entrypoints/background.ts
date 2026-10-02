@@ -1,7 +1,7 @@
 import "../src/zodConfig";
 import { browser } from "wxt/browser";
 import { defineBackground } from "wxt/utils/define-background";
-import { handleUserTrigger } from "../src/background/triggers";
+import { handleLockCommand, handleUserTrigger } from "../src/background/triggers";
 import { VaultService } from "../src/background/vaultService";
 import { createBrowserPlatform } from "../src/platform/browserPlatform";
 import { handleRpcMessage, isRpcEnvelope, isTrustedSender } from "../src/rpc/server";
@@ -66,6 +66,7 @@ export default defineBackground(() => {
 
   browser.commands.onCommand.addListener((command) => {
     if (command === "fill-code") runFillCommand().catch(logFailure);
+    if (command === "lock-vault") handleLockCommand(service).catch(logFailure);
   });
 
   if (__SMOKE__) {

@@ -291,7 +291,13 @@ export function SecurityScreen({
 
       <SettingsSection num="02" title={t("security.display")}>
         {capabilities.autofill ? (
-          <SettingsRow title={t("security.shortcut")} description={t("security.shortcutHint")} />
+          <>
+            <SettingsRow title={t("security.shortcut")} description={t("security.shortcutHint")} />
+            <SettingsRow
+              title={t("security.lockShortcut")}
+              description={t("security.lockShortcutHint")}
+            />
+          </>
         ) : null}
         {capabilities.clockCheck ? (
           <ClockRow state={state} disabled={codePending} onChanged={onChanged} />

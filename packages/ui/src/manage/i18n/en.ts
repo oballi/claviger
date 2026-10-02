@@ -369,6 +369,9 @@ export const manageEn: Record<ManageKey, string> = {
   "clock.hint":
     "If codes are rejected, compares your computer's clock once with Google's server. The request goes to Google and only runs when you ask.",
   "clock.check": "Check now",
+  "security.lockShortcut": "Lock shortcut",
+  "security.lockShortcutHint":
+    'Not assigned by default. Chrome: assign a key at chrome://extensions/shortcuts; Firefox: Add-ons page, gear icon, "Manage Extension Shortcuts".',
   "clock.denied": "Permission was not granted; nothing was checked.",
   "clock.ok": "Your clock is right (off by {offset} s). The check is turned off.",
   "clock.applied": "Your clock is off by {offset} s; codes are corrected accordingly.",
