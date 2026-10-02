@@ -628,6 +628,7 @@ export function CodesScreen({
         >
           <Icon name="settings" size={17} />
         </button>
+        <ThemeToggle theme={state.theme} onError={setActionError} />
         <button
           ref={sortToggle}
           type="button"
@@ -639,7 +640,6 @@ export function CodesScreen({
         >
           <Icon name="sort" size={17} />
         </button>
-        <ThemeToggle theme={state.theme} onError={setActionError} />
         <button
           type="button"
           aria-label={t("codes.add")}

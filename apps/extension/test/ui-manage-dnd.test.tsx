@@ -147,20 +147,27 @@ describe("manage drag between groups", () => {
     await screen.findByText("Beta → Kişisel");
   });
 
-  it("a failed refresh after a successful move still reports success", async () => {
+  it("a failed refresh after a move keeps the move and releases the drop lock", async () => {
     const s = await setup();
     const real = s.ui.rpc;
-    let moved = false;
+    let failNextList = false;
     const spy = vi.spyOn(s.ui, "rpc").mockImplementation(((type: string, ...rest: unknown[]) => {
-      if (type === "setAccountGroup") moved = true;
-      return moved && type === "listAccounts"
-        ? Promise.reject(new Error("boom"))
-        : (real as (...a: unknown[]) => unknown)(type, ...rest);
+      if (type === "setAccountGroup") failNextList = true;
+      if (failNextList && type === "listAccounts") {
+        failNextList = false;
+        return Promise.reject(new Error("boom"));
+      }
+      return (real as (...a: unknown[]) => unknown)(type, ...rest);
     }) as typeof s.ui.rpc);
     fireEvent.dragStart(s.handle("Alpha"), dt());
-    fireEvent.drop(s.groupLi("İş"), dt());
-    await screen.findByText("Alpha → İş");
-    expect(screen.queryByRole("alert")?.textContent ?? "").not.toContain("boom");
+    fireEvent.drop(s.groupLi("\u0130\u015f"), dt());
+    await screen.findByText("Alpha \u2192 \u0130\u015f");
+    await screen.findByText("Beklenmeyen bir hata olu\u015ftu.");
+    fireEvent.dragStart(s.handle("Beta"), dt());
+    fireEvent.drop(s.groupLi("Ki\u015fisel"), dt());
+    await waitFor(() =>
+      expect(spy.mock.calls.filter((c) => c[0] === "setAccountGroup")).toHaveLength(2),
+    );
     spy.mockRestore();
     expect(await s.groupOf(s.a)).toBe(s.g1.id);
   });
