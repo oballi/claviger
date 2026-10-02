@@ -1226,7 +1226,6 @@ export class VaultService {
   }
 
   // Not a backup: lastBackupAt stays untouched, and nothing is persisted.
-  // Not a backup: lastBackupAt stays untouched, and nothing is persisted.
   exportMigration(
     token: string,
     ids: string[],
