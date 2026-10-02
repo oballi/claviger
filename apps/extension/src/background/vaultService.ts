@@ -48,9 +48,11 @@ import {
   type SnapshotReason,
 } from "./snapshots";
 import { KeyCache, MANUAL_LOCK_KEY, PERSISTED_KEY } from "./keyCache";
+import { SAFE_SECURITY, SecurityStore, type DeviceSecurity } from "./securityStore";
 import {
   DEFAULT_SETTINGS,
   loadSettings,
+  MAX_CLOCK_OFFSET_SEC,
   saveSettings,
   type ClipboardClearSec,
   type LockPolicy,
@@ -83,7 +85,7 @@ export const CAPTURE_MAX_CHARS = 32_000_000;
 const CAPTURE_PREFIX = "data:image/png;base64,";
 /** A slower round trip makes the midpoint too uncertain. */
 export const MAX_CLOCK_SAMPLE_MS = 10_000;
-export const MAX_CLOCK_OFFSET_SEC = 12 * 3600;
+export { MAX_CLOCK_OFFSET_SEC };
 export const DAILY_CHECK_MS = 60 * 60_000;
 export const SYNC_QUOTA_BYTES = 102_400;
 export const SYNC_ITEM_QUOTA_BYTES = 8_192;
@@ -124,6 +126,7 @@ export function assertPassword(password: string): void {
 export class VaultService {
   protected vault: Vault | null = null;
   protected readonly keys: KeyCache;
+  protected readonly security: SecurityStore;
   protected readonly throttle: Throttle;
   protected readonly oldPasswordThrottle: Throttle;
   protected readonly snapshots: SnapshotStore;
@@ -150,6 +153,7 @@ export class VaultService {
 
   constructor(protected readonly p: Platform) {
     this.keys = new KeyCache(p);
+    this.security = new SecurityStore(p.local);
     this.throttle = new Throttle(p.local, p.clock);
     this.oldPasswordThrottle = new Throttle(p.local, p.clock, SNAPSHOT_ATTEMPTS_KEY);
     this.snapshots = new SnapshotStore(p.local, p.clock, p.random);
@@ -295,14 +299,22 @@ export class VaultService {
   private async loadFromCache(epoch: number): Promise<Vault | null> {
     // Adopts the right area first: an interrupted move must not make the cached key look wrong.
     const { settings } = await this.locateVault();
-    const { storageArea, lockPolicy } = settings;
-    const dek = await this.keys.load(lockPolicy);
-    if (!dek || epoch !== this.lockEpoch) return null;
+    const { storageArea } = settings;
+    const candidate = await this.keys.loadCandidate();
+    if (!candidate || epoch !== this.lockEpoch) return null;
     try {
       const vault = await Vault.fromKey(
         this.deps(this.area(this.effective(storageArea)), { trash: true }),
-        dek,
+        candidate.dek,
       );
+      if (epoch !== this.lockEpoch) return null;
+      // Read only: a cache load is not the place to migrate or re-seal.
+      const sealed = await this.security.read(vault);
+      if (sealed?.lockPolicy.kind !== "never") {
+        // Missing or unreadable seal counts as not never: no key may stay on disk.
+        if (epoch === this.lockEpoch && !this.vault) await this.keys.forgetPersisted();
+        if (candidate.source === "persisted") return null;
+      }
       if (epoch !== this.lockEpoch) return null;
       this.vault = vault;
       await this.clearPurgeMarker();
@@ -336,7 +348,10 @@ export class VaultService {
 
   /** In timeout mode every vault interaction restarts the countdown. */
   private async touch(): Promise<void> {
-    const { lockPolicy } = await this.settings();
+    const vault = this.vault;
+    const lockPolicy = vault
+      ? ((await this.security.read(vault)) ?? SAFE_SECURITY).lockPolicy
+      : SAFE_SECURITY.lockPolicy;
     if (lockPolicy.kind === "timeout")
       await this.p.alarms.create(AUTOLOCK_ALARM, lockPolicy.minutes);
   }
@@ -351,7 +366,10 @@ export class VaultService {
   }
 
   /** Returns false (and stays locked) if lock() ran since `epoch`; callers decide whether that is an error. */
-  private async activate(vault: Vault, policy: LockPolicy, epoch: number): Promise<boolean> {
+  private async activate(vault: Vault, epoch: number, known?: DeviceSecurity): Promise<boolean> {
+    if (epoch !== this.lockEpoch) return false;
+    // Resolved before the vault goes live: the DEK reaches disk only when the sealed policy says never.
+    const { lockPolicy: policy } = known ?? (await this.securityOf(vault));
     if (epoch !== this.lockEpoch) return false;
     this.vault = vault;
     await this.clearPurgeMarker();
@@ -360,6 +378,20 @@ export class VaultService {
     await this.throttle.reset();
     await this.scheduleAutolock(policy);
     return true;
+  }
+
+  /** Sealed value, or the fail-closed default; keeps the plaintext mirror in step for display. */
+  private async securityOf(vault: Vault): Promise<DeviceSecurity> {
+    const mirror = (await this.settings()).lockPolicy;
+    const { security } = await this.security.resolve(vault, mirror);
+    if (JSON.stringify(security.lockPolicy) !== JSON.stringify(mirror)) {
+      try {
+        await saveSettings(this.p.local, { lockPolicy: security.lockPolicy });
+      } catch {
+        // Display only; the sealed record decides.
+      }
+    }
+    return security;
   }
 
   /** KeyCache.store spans several writes; a lock that lands between them would be undone, so redo it. */
@@ -385,11 +417,12 @@ export class VaultService {
   async getState(): Promise<ServiceState> {
     const { settings, exists } = await this.locateVault();
     const base = {
+      // Locked: the plaintext mirror is for display only; no decision reads it.
       lockPolicy: settings.lockPolicy,
       storageArea: this.effective(settings.storageArea),
       clockOffsetSec: settings.clockOffsetSec,
       clockCheckEnabled: settings.clockCheckEnabled,
-      revealRequiresPassword: settings.revealRequiresPassword,
+      revealRequiresPassword: true,
       lastBackupAt: settings.lastBackupAt,
       viewMode: settings.viewMode,
       theme: settings.theme,
@@ -417,8 +450,11 @@ export class VaultService {
       return { ...base, status: info.status, ...none };
     }
     if (vault) {
+      const sealed = (await this.security.read(vault)) ?? SAFE_SECURITY;
       return {
         ...base,
+        lockPolicy: sealed.lockPolicy,
+        revealRequiresPassword: sealed.revealRequiresPassword,
         status: "unlocked",
         hasRecoveryCode: vault.hasRecoveryCode(),
         accountCount: info.accountCount,
@@ -490,7 +526,13 @@ export class VaultService {
       storageArea: opts.storageArea,
       recoveryCodeConfirmed: recoveryCode === null,
     });
-    await this.activate(vault, opts.lockPolicy, epoch);
+    const security = { lockPolicy: opts.lockPolicy, revealRequiresPassword: true };
+    try {
+      await this.security.write(vault, security);
+    } catch {
+      // Shared storage quota: setup must complete; a missing seal fails closed after a restart.
+    }
+    await this.activate(vault, epoch, security);
     return { recoveryCode };
   }
 
@@ -511,7 +553,7 @@ export class VaultService {
         throw e;
       }
       // A plain unlock persists nothing, so being overtaken by lock() is an error.
-      if (!(await this.activate(vault, settings.lockPolicy, epoch))) {
+      if (!(await this.activate(vault, epoch))) {
         throw new ServiceError("locked", "The vault was locked meanwhile");
       }
       await this.dailySnapshot();
@@ -551,7 +593,7 @@ export class VaultService {
       }
       await this.revokeInSnapshots(result.vault);
       await this.markRecoveryCodeUnconfirmed();
-      await this.activate(result.vault, settings.lockPolicy, epoch);
+      await this.activate(result.vault, epoch);
       await this.purgeLegacySiteMemory(result.vault);
       return { recoveryCode: result.recoveryCode };
     });
@@ -657,9 +699,21 @@ export class VaultService {
     state: "active" | "idle" | "locked",
     opts: { idleMeansLocked?: boolean } = {},
   ): Promise<void> {
-    const { lockPolicy } = await this.settings();
-    if (lockPolicy.kind !== "browser-close-or-screen-lock") return;
-    if (state === "locked" || (state === "idle" && opts.idleMeansLocked)) await this.lock();
+    if (!(state === "locked" || (state === "idle" && opts.idleMeansLocked))) return;
+    const SCREEN_LOCK = "browser-close-or-screen-lock";
+    // The service worker is usually suspended here, so the vault may not be loaded yet.
+    let vault = this.vault;
+    if (!vault) {
+      try {
+        vault = await this.ensureLoaded();
+      } catch {
+        vault = null;
+      }
+    }
+    const sealed = vault ? ((await this.security.read(vault)) ?? SAFE_SECURITY).lockPolicy : null;
+    // The plaintext mirror may only tighten (trigger a lock), never relax.
+    const mirror = (await this.settings()).lockPolicy;
+    if (sealed?.kind === SCREEN_LOCK || mirror.kind === SCREEN_LOCK) await this.lock();
   }
 
   async listAccounts(opts: { pageUrl?: string } = {}): Promise<AccountListView> {
@@ -991,19 +1045,23 @@ export class VaultService {
   }
 
   async revealSecret(token: string | undefined, id: string): Promise<{ uri: string }> {
-    const { revealRequiresPassword } = await this.settings();
     // A token that is passed is always spent, even when the setting would let it be omitted.
-    const vault =
-      token === undefined && !revealRequiresPassword
-        ? await this.requireVault()
-        : await this.spendToken(token ?? "");
+    let vault: Vault;
+    if (token === undefined) {
+      vault = await this.requireVault();
+      const { revealRequiresPassword } = (await this.security.read(vault)) ?? SAFE_SECURITY;
+      if (revealRequiresPassword) await this.spendToken("");
+    } else {
+      vault = await this.spendToken(token);
+    }
     return { uri: toOtpauthUri(await vault.getAccount(id)) };
   }
 
   setRevealRequiresPassword(token: string, value: boolean): Promise<void> {
     return this.exclusive(async () => {
-      await this.spendToken(token);
-      await saveSettings(this.p.local, { revealRequiresPassword: value });
+      const vault = await this.spendToken(token);
+      const cur = (await this.security.read(vault)) ?? SAFE_SECURITY;
+      await this.security.write(vault, { ...cur, revealRequiresPassword: value });
     });
   }
 
@@ -1073,6 +1131,9 @@ export class VaultService {
     return this.exclusive(async () => {
       const epoch = this.lockEpoch;
       const vault = await this.spendToken(token);
+      const cur = (await this.security.read(vault)) ?? SAFE_SECURITY;
+      // Seal first and strictly: if it throws, nothing else has changed.
+      await this.security.write(vault, { ...cur, lockPolicy: policy });
       await saveSettings(this.p.local, { lockPolicy: policy });
       await this.keys.store(vault.exportKey(), policy);
       if (await this.relockIfOvertaken(epoch)) return;
@@ -1119,6 +1180,7 @@ export class VaultService {
       // Only once the vault is gone: a marker next to a surviving vault would later wipe quarantine.
       await this.p.local.set({ [PURGE_PENDING_KEY]: true });
       await this.keys.forget();
+      await this.security.clear();
       await this.p.session.remove([MANUAL_LOCK_KEY]);
       await Promise.all([this.throttle.reset(), this.oldPasswordThrottle.reset()]);
       await this.p.alarms.clear(AUTOLOCK_ALARM);

@@ -46,6 +46,7 @@ import {
   normalizeGroupName,
   withoutGroup,
 } from "./groups";
+import type { z } from "zod";
 import { decryptRecord, encryptRecord, recordAad } from "./records";
 import { TrashStore, trashItemOf, type TrashItem } from "./trash";
 import { generateRecoveryCode, parseRecoveryCode } from "./recovery";
@@ -100,6 +101,10 @@ function cleanGroupName(raw: string): string | undefined {
     if (isCoreError(e, "invalid-group-name")) return undefined;
     throw e;
   }
+}
+
+function assertDeviceKey(key: string): void {
+  if (!key.startsWith("lock:")) throw new Error("Device records must use a lock: key");
 }
 
 export class Vault {
@@ -319,6 +324,19 @@ export class Vault {
 
   exportKey(): Uint8Array {
     return this.dek.slice();
+  }
+
+  /** Device-local record sealed under this vault's DEK. Only `lock:` keys: the AAD namespace is shared with trash. */
+  async sealDeviceRecord(key: string, value: unknown): Promise<EncryptedRecord> {
+    assertDeviceKey(key);
+    return encryptRecord(this.dek, key, value, this.deps.clock.now(), this.deps.random);
+  }
+
+  /** Every failure (junk, other DEK, other key, schema) is null; the caller fails closed. */
+  async openDeviceRecord<T>(key: string, raw: unknown, schema: z.ZodType<T>): Promise<T | null> {
+    assertDeviceKey(key);
+    const record = encryptedRecordSchema.safeParse(raw);
+    return record.success ? decryptRecord(this.dek, key, record.data, schema) : null;
   }
 
   protected static async readHeader(storage: StoragePort): Promise<VaultHeader> {

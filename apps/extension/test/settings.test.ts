@@ -15,7 +15,6 @@ describe("settings", () => {
       storageArea: "local",
       clockOffsetSec: 0,
       clockCheckEnabled: false,
-      revealRequiresPassword: true,
       lastBackupAt: null,
       viewMode: "normal",
       theme: "system",
@@ -49,16 +48,25 @@ describe("settings", () => {
     await local.set({
       [SETTINGS_KEY]: { storageArea: "sync", clockOffsetSec: 5, clockCheckEnabled: true },
     });
-    expect(await loadSettings(local)).toMatchObject({
-      revealRequiresPassword: true,
-      lastBackupAt: null,
-      clockOffsetSec: 5,
-    });
+    expect(await loadSettings(local)).toMatchObject({ lastBackupAt: null, clockOffsetSec: 5 });
     await local.set({ [SETTINGS_KEY]: { revealRequiresPassword: false, lastBackupAt: 1.5 } });
-    expect(await loadSettings(local)).toMatchObject({
-      revealRequiresPassword: false,
-      lastBackupAt: null,
-    });
+    const loaded = await loadSettings(local);
+    expect(loaded.lastBackupAt).toBeNull();
+    expect("revealRequiresPassword" in loaded).toBe(false);
+  });
+
+  it("bounds clockOffsetSec to 12 hours on read", async () => {
+    const local = new MemoryStorage();
+    for (const [value, expected] of [
+      [10_000_000, 0],
+      [43_200, 43_200],
+      [43_201, 0],
+      [-43_200, -43_200],
+      [-43_201, 0],
+    ] as const) {
+      await local.set({ [SETTINGS_KEY]: { clockOffsetSec: value } });
+      expect((await loadSettings(local)).clockOffsetSec).toBe(expected);
+    }
   });
 
   it("loads defaults for the 0.0.1 object without the new fields", async () => {

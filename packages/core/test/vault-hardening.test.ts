@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import { normalizeAccountInput } from "../src/account/account";
 import { accountKey, HEADER_KEY } from "../src/vault/format";
 import { Vault } from "../src/vault/vault";
@@ -54,5 +55,22 @@ describe("vault hardening", () => {
     expect(failed).toHaveLength(1);
     expect(failed[0]!.reason).toMatchObject({ code: "invalid-recovery-code" });
     await Vault.unlockWithRecovery(deps, ok[0]!.value.recoveryCode, "again-pass");
+  });
+
+  it("seals a device record under the DEK", async () => {
+    const create = async () =>
+      (await Vault.create(makeDeps(), { password: "pw-123456", createRecoveryCode: false })).vault;
+    const a = await create();
+    const b = await create();
+    const schema = z.object({ n: z.number() });
+    const sealed = await a.sealDeviceRecord("lock:policy", { n: 1 });
+    expect(await a.openDeviceRecord("lock:policy", sealed, schema)).toEqual({ n: 1 });
+    expect(await a.openDeviceRecord("lock:other", sealed, schema)).toBeNull();
+    expect(await a.openDeviceRecord("lock:policy", { ...sealed, ct: "AAAA" }, schema)).toBeNull();
+    expect(await a.openDeviceRecord("lock:policy", "junk", schema)).toBeNull();
+    expect(await b.openDeviceRecord("lock:policy", sealed, schema)).toBeNull();
+    await expect(a.sealDeviceRecord("vault:acct:x", { n: 1 })).rejects.toThrow();
+    await expect(a.sealDeviceRecord("trash:x", { n: 1 })).rejects.toThrow();
+    await expect(a.openDeviceRecord("trash:x", sealed, schema)).rejects.toThrow();
   });
 });
