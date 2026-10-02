@@ -30,7 +30,13 @@ export class FakeTabs implements TabsPort {
   /** What tabs.get reports at fill time; null follows activeTab. */
   liveUrl: string | null | undefined = undefined;
   next: FillResult | null = "filled";
-  fills: { tabId: number; frameId: number | undefined; code: string; explicit: boolean }[] = [];
+  fills: {
+    tabId: number;
+    frameId: number | undefined;
+    code: string;
+    explicit: boolean;
+    expectedDomain: string;
+  }[] = [];
   badge = "";
   badges: string[] = [];
   popupOpens = true;
@@ -48,9 +54,15 @@ export class FakeTabs implements TabsPort {
     return this.activeTab && this.activeTab.id === tabId ? this.activeTab.url : null;
   }
 
-  async fill(tabId: number, frameId: number | undefined, code: string, explicit: boolean) {
+  async fill(
+    tabId: number,
+    frameId: number | undefined,
+    code: string,
+    explicit: boolean,
+    expectedDomain: string,
+  ) {
     this.calls.push("fill");
-    this.fills.push({ tabId, frameId, code, explicit });
+    this.fills.push({ tabId, frameId, code, explicit, expectedDomain });
     return this.next;
   }
 

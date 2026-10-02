@@ -1,7 +1,18 @@
-export type FillResult = "filled" | "no-field";
+export type FillResult = "filled" | "no-field" | "wrong-site";
 
 // Serialized by executeScript: must stay self-contained (no imports, no closures).
-export function fillOtp(code: string, explicit = false): FillResult {
+export function fillOtp(code: string, explicit: boolean, expectedDomain: string): FillResult {
+  // The tab may have navigated since the background checked it; the page re-verifies where it is.
+  const secure =
+    location.protocol === "https:" ||
+    (location.protocol === "http:" &&
+      (location.hostname === "localhost" || location.hostname === "127.0.0.1"));
+  if (
+    !secure ||
+    !expectedDomain ||
+    !(location.hostname === expectedDomain || location.hostname.endsWith("." + expectedDomain))
+  )
+    return "wrong-site";
   // Steam codes are 5 alphanumerics; anything else is not a code we should type.
   if (!/^[0-9A-Z]{4,10}$/.test(code)) return "no-field";
   // Deny-list keeps coupon/zip style fields from being treated as OTP inputs.

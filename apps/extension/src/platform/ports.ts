@@ -21,6 +21,7 @@ export interface TabsPort {
     frameId: number | undefined,
     code: string,
     explicit: boolean,
+    expectedDomain: string,
   ): Promise<FillResult | null>;
   setBadge(text: string): Promise<void>;
   openPopup(): Promise<boolean>;

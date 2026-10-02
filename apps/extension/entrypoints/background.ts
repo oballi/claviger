@@ -1,6 +1,7 @@
 import "../src/zodConfig";
 import { browser } from "wxt/browser";
 import { defineBackground } from "wxt/utils/define-background";
+import { handleUserTrigger } from "../src/background/triggers";
 import { VaultService } from "../src/background/vaultService";
 import { createBrowserPlatform } from "../src/platform/browserPlatform";
 import { handleRpcMessage, isRpcEnvelope } from "../src/rpc/server";
@@ -15,7 +16,8 @@ const logFailure = (e: unknown) =>
   console.error("background task failed:", e instanceof Error ? e.name : "error");
 
 export default defineBackground(() => {
-  const service = new VaultService(createBrowserPlatform());
+  const platform = createBrowserPlatform();
+  const service = new VaultService(platform);
   const ctx = {
     extensionId: browser.runtime.id,
     // URL.origin can be "null" for Firefox's moz-extension: scheme, so derive the prefix directly.
@@ -39,26 +41,32 @@ export default defineBackground(() => {
     service.handleIdleState(state, { idleMeansLocked: import.meta.env.FIREFOX }).catch(logFailure);
   });
 
+  // The menu title comes from _locales, so it follows the browser language, not the in-app language.
   // removeAll first: create() fails on a duplicate id, and onInstalled also fires on every update.
   const registerMenu = () => {
-    void browser.contextMenus.removeAll().then(() => {
-      browser.contextMenus.create({
-        id: MENU_ID,
-        title: browser.i18n.getMessage("menuFill"),
-        contexts: ["editable"],
-      });
-    });
+    browser.contextMenus
+      .removeAll()
+      .then(() => {
+        browser.contextMenus.create({
+          id: MENU_ID,
+          title: browser.i18n.getMessage("menuFill"),
+          contexts: ["editable"],
+        });
+      })
+      .catch(logFailure);
   };
 
   browser.commands.onCommand.addListener((command) => {
-    if (command === "fill-code") service.fillFromCommand().catch(logFailure);
+    if (command === "fill-code")
+      handleUserTrigger(service, platform.tabs, () => service.fillFromCommand()).catch(logFailure);
   });
 
   browser.contextMenus.onClicked.addListener((info, tab) => {
     if (info.menuItemId !== MENU_ID || tab?.id === undefined || !tab.url) return;
-    service
-      .fillFromMenu({ id: tab.id, url: tab.url }, info.frameId, info.frameUrl)
-      .catch(logFailure);
+    const target = { id: tab.id, url: tab.url };
+    handleUserTrigger(service, platform.tabs, () =>
+      service.fillFromMenu(target, info.frameId, info.frameUrl),
+    ).catch(logFailure);
   });
 
   browser.runtime.onStartup.addListener(registerMenu);

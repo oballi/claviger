@@ -1162,7 +1162,7 @@ export class VaultService {
     tabId: number;
     frameId?: number;
     frameUrl?: string;
-    confirmed?: boolean;
+    confirmedDomain?: string;
     explicit?: boolean;
     requireLinked?: boolean;
   }): Promise<{ result: FillOutcome; code: string | null }> {
@@ -1172,33 +1172,55 @@ export class VaultService {
     const account = (await vault.listAccounts()).accounts.find((a) => a.id === opts.id);
     if (!account) throw new ServiceError("not-found", "No such account");
 
-    let generated = await generateCode(account, this.p.clock.now(), settings.clockOffsetSec);
-    if (generated.remaining !== null && generated.remaining < MIN_FILL_REMAINING_SEC) {
-      await this.sleep((generated.remaining + 0.05) * 1000);
-      generated = await generateCode(account, this.p.clock.now(), settings.clockOffsetSec);
+    const generate = () => generateCode(account, this.p.clock.now(), settings.clockOffsetSec);
+    let generated = await generate();
+    if (generated.period !== null) {
+      const periodMs = generated.period * 1000;
+      const t = this.p.clock.now() + settings.clockOffsetSec * 1000;
+      const remainingMs = periodMs - (((t % periodMs) + periodMs) % periodMs);
+      if (remainingMs < MIN_FILL_REMAINING_SEC * 1000) {
+        await this.sleep(remainingMs + 50);
+        generated = await generate();
+      }
     }
     if (epoch !== this.lockEpoch) throw new ServiceError("locked", "The vault is locked");
 
-    const tabUrl = await this.p.tabs.url(opts.tabId);
-    const targetUrl = opts.frameId ? opts.frameUrl : tabUrl;
-    const refused = (): { result: FillOutcome; code: string | null } => ({
-      result: "refused",
-      code: generated.code,
-    });
-    if (!tabUrl || !targetUrl || !fillableUrl(tabUrl) || !fillableUrl(targetUrl)) return refused();
-    const domain = registrableDomain(targetUrl);
-    if (!domain) return refused();
-    if (opts.frameId && registrableDomain(tabUrl) !== domain) return refused();
-    const linked = account.domains.includes(domain);
-    if (!linked && (opts.requireLinked || settings.fillOnlyLinked || opts.confirmed !== true)) {
-      throw new ServiceError("not-linked", "Account is not linked to this site");
-    }
+    // Runs twice: once before HOTP advances and once right before injection, since the tab can
+    // navigate during the wait. Returns null for a refusal; throws not-linked.
+    const check = async (): Promise<{ domain: string; linked: boolean } | null> => {
+      const tabUrl = await this.p.tabs.url(opts.tabId);
+      const targetUrl = opts.frameId ? opts.frameUrl : tabUrl;
+      if (!tabUrl || !targetUrl || !fillableUrl(tabUrl) || !fillableUrl(targetUrl)) return null;
+      const domain = registrableDomain(targetUrl);
+      if (!domain) return null;
+      if (opts.frameId && registrableDomain(tabUrl) !== domain) return null;
+      const linked = account.domains.includes(domain);
+      // Confirmation counts only for the domain the user was shown, and never when fillOnlyLinked is on.
+      const confirmed = opts.confirmedDomain === domain;
+      if (!linked && (opts.requireLinked || settings.fillOnlyLinked || !confirmed)) {
+        throw new ServiceError("not-linked", "Account is not linked to this site");
+      }
+      return { domain, linked };
+    };
+    const refused = { result: "refused" as const, code: generated.code };
 
-    // HOTP advances only after every check, so a refused fill never burns a counter value.
+    if (!(await check())) return refused;
+    // HOTP advances only after the first check, so a refused fill never burns a counter value.
     const code = account.type === "hotp" ? await this.advanceHotp(opts.id) : generated.code;
-    const result = await this.p.tabs.fill(opts.tabId, opts.frameId, code, opts.explicit === true);
+    const target = await check();
+    if (!target) return { result: "refused", code };
+    const result = await this.p.tabs.fill(
+      opts.tabId,
+      opts.frameId,
+      code,
+      opts.explicit === true,
+      target.domain,
+    );
     if (result === "filled") {
-      if (settings.siteMemory) await this.rememberBestEffort(vault, domain, opts.id);
+      // Re-read: the setting may have been switched off during the wait. Linked domains need no hint.
+      if (!target.linked && (await this.settings()).siteMemory) {
+        await this.rememberBestEffort(vault, target.domain, opts.id);
+      }
       return { result: "filled", code: null };
     }
     return { result: result === "no-field" ? "copied-instead" : "refused", code };
@@ -1221,16 +1243,24 @@ export class VaultService {
     }
   }
 
-  fillCode(opts: {
+  async fillCode(opts: {
     id: string;
     tabId: number;
-    confirmed?: boolean;
+    confirmedDomain?: string;
   }): Promise<{ result: FillOutcome; code: string | null }> {
+    // Only the tab the user is looking at; a stale or forged id must not reach another tab.
+    if ((await this.p.tabs.active())?.id !== opts.tabId) {
+      throw new ServiceError("invalid-request", "Not the active tab");
+    }
     // Top frame only: the popup has no frame URL to check, so it never targets subframes.
-    return this.fillInto({ id: opts.id, tabId: opts.tabId, confirmed: opts.confirmed });
+    return this.fillInto({
+      id: opts.id,
+      tabId: opts.tabId,
+      confirmedDomain: opts.confirmedDomain,
+    });
   }
 
-  private async flashBadge(text: string): Promise<void> {
+  async flashBadge(text: string): Promise<void> {
     try {
       await this.p.tabs.setBadge(text);
       await this.sleep(BADGE_CLEAR_MS);
@@ -1239,9 +1269,9 @@ export class VaultService {
     }
   }
 
-  /** Locked: open the popup first, while the user gesture is still alive. */
-  private async openPopupOrBadge(): Promise<void> {
-    if (!(await this.p.tabs.openPopup())) await this.flashBadge("?");
+  /** Synchronous on purpose: listeners use it to open the popup before any await (Firefox user gesture). */
+  isUnlockedInMemory(): boolean {
+    return this.vault !== null;
   }
 
   private async tryLoaded(): Promise<Vault | null> {
@@ -1284,7 +1314,8 @@ export class VaultService {
   }
 
   async fillFromCommand(): Promise<void> {
-    if (!(await this.tryLoaded())) return this.openPopupOrBadge();
+    // Locked: the listener already asked for the popup.
+    if (!(await this.tryLoaded())) return;
     const tab = await this.p.tabs.active();
     if (!tab) return this.flashBadge("?");
     await this.fillFromPage(tab, undefined, undefined, false);
@@ -1295,7 +1326,7 @@ export class VaultService {
     frameId: number | undefined,
     frameUrl: string | undefined,
   ): Promise<void> {
-    if (!(await this.tryLoaded())) return this.openPopupOrBadge();
+    if (!(await this.tryLoaded())) return;
     await this.fillFromPage(tab, frameId, frameUrl, true);
   }
 }

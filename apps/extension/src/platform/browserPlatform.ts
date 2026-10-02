@@ -57,12 +57,12 @@ export function createBrowserPlatform(): Platform {
           return null;
         }
       },
-      async fill(tabId, frameId, code, explicit) {
+      async fill(tabId, frameId, code, explicit, expectedDomain) {
         try {
           const [result] = await browser.scripting.executeScript({
             target: frameId === undefined ? { tabId } : { tabId, frameIds: [frameId] },
             func: fillOtp,
-            args: [code, explicit],
+            args: [code, explicit, expectedDomain],
           });
           return (result?.result as FillResult | undefined) ?? null;
         } catch {

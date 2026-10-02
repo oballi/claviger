@@ -1,5 +1,6 @@
 import { generateCode } from "@otp-vault/core";
 import { describe, expect, it } from "vitest";
+import { handleUserTrigger } from "../src/background/triggers";
 import { saveSettings } from "../src/background/settings";
 import { MIN_FILL_REMAINING_SEC } from "../src/background/vaultService";
 import { codeOf, unlockedService } from "./helpers/service";
@@ -28,20 +29,85 @@ const totpNow = (ms: number) =>
   );
 
 describe("fillCode", () => {
-  it("fills a linked account and reports no code", async () => {
+  it("fills a linked account and remembers nothing new for an already linked domain", async () => {
     const { p, service, id } = await setup();
     const r = await service.fillCode({ id, tabId: TAB });
     expect(r).toEqual({ result: "filled", code: null });
     expect(p.tabs.fills).toHaveLength(1);
     expect(p.tabs.fills[0]).toMatchObject({ tabId: TAB, explicit: false });
     expect(p.tabs.fills[0]?.code).toBe((await totpNow(p.clock.now())).code);
+    expect(p.tabs.fills[0]?.expectedDomain).toBe("bank.com");
+    const vault = (service as unknown as { vault: { getSiteMemory(): Promise<object> } }).vault;
+    expect(await vault.getSiteMemory()).toEqual({});
+  });
+
+  it("refuses a tab that is not the active one", async () => {
+    const { p, service, id } = await setup();
+    expect(await codeOf(service.fillCode({ id, tabId: 99 }))).toBe("invalid-request");
+    p.tabs.activeTab = null;
+    expect(await codeOf(service.fillCode({ id, tabId: TAB }))).toBe("invalid-request");
+    expect(p.tabs.fills).toHaveLength(0);
+  });
+
+  it("binds a confirmation to the domain the user saw", async () => {
+    const { p, service, id } = await setup();
+    await service.setFillOnlyLinked(false);
+    p.tabs.activeTab = { id: TAB, url: "https://other.com/" };
+    expect(await codeOf(service.fillCode({ id, tabId: TAB, confirmedDomain: "bank.com" }))).toBe(
+      "not-linked",
+    );
+    expect(p.tabs.fills).toHaveLength(0);
+  });
+
+  it("treats a wrong-site answer from the page as refused and writes no memory", async () => {
+    const { p, service, id } = await setup();
+    await service.setFillOnlyLinked(false);
+    p.tabs.activeTab = { id: TAB, url: "https://other.com/" };
+    p.tabs.next = "wrong-site";
+    const r = await service.fillCode({ id, tabId: TAB, confirmedDomain: "other.com" });
+    expect(r.result).toBe("refused");
+    expect(r.code).toBe(p.tabs.fills[0]?.code);
+    p.tabs.next = "filled";
+    expect(
+      (await service.listAccounts({ pageUrl: "https://other.com/" })).matches.remembered,
+    ).toEqual([]);
+  });
+
+  it("re-reads the tab url again after the wait, right before injecting", async () => {
+    const { p, service, id } = await setup();
+    const urls = [BANK, "https://evil.io/"];
+    p.tabs.url = async () => urls.shift() ?? "https://evil.io/";
+    expect(await codeOf(service.fillCode({ id, tabId: TAB }))).toBe("not-linked");
+    expect(p.tabs.fills).toHaveLength(0);
+  });
+
+  it("refuses when the second read shows a non-https page", async () => {
+    const { p, service, id } = await setup();
+    const urls = [BANK, "http://bank.com/"];
+    p.tabs.url = async () => urls.shift() ?? "http://bank.com/";
+    expect((await service.fillCode({ id, tabId: TAB })).result).toBe("refused");
+    expect(p.tabs.fills).toHaveLength(0);
+  });
+
+  it("does not advance HOTP when the first check refuses", async () => {
+    const { p, service, id } = await setup({ type: "hotp" });
+    p.tabs.activeTab = { id: TAB, url: "http://bank.com/" };
+    await service.fillCode({ id, tabId: TAB });
+    const view = await service.listAccounts();
+    const c5 = await generateCode(
+      { type: "hotp", secret: SECRET, algorithm: "SHA1", digits: 6, period: 30, counter: 5 },
+      0,
+    );
+    expect(view.accounts[0]?.code).toBe(c5.code);
   });
 
   it("refuses an unlinked site while fillOnlyLinked is on", async () => {
     const { p, service, id } = await setup();
     p.tabs.activeTab = { id: TAB, url: "https://other.com/" };
     expect(await codeOf(service.fillCode({ id, tabId: TAB }))).toBe("not-linked");
-    expect(await codeOf(service.fillCode({ id, tabId: TAB, confirmed: true }))).toBe("not-linked");
+    expect(await codeOf(service.fillCode({ id, tabId: TAB, confirmedDomain: "other.com" }))).toBe(
+      "not-linked",
+    );
     expect(p.tabs.fills).toHaveLength(0);
   });
 
@@ -51,7 +117,9 @@ describe("fillCode", () => {
     p.tabs.activeTab = { id: TAB, url: "https://other.com/" };
     expect(await codeOf(service.fillCode({ id, tabId: TAB }))).toBe("not-linked");
     expect(p.tabs.fills).toHaveLength(0);
-    expect((await service.fillCode({ id, tabId: TAB, confirmed: true })).result).toBe("filled");
+    expect((await service.fillCode({ id, tabId: TAB, confirmedDomain: "other.com" })).result).toBe(
+      "filled",
+    );
     expect(p.tabs.fills).toHaveLength(1);
   });
 
@@ -90,8 +158,8 @@ describe("fillCode", () => {
 
   it("waits for the next code when under two seconds remain", async () => {
     const { p, service, id } = await setup();
-    // 29 s into the period: 1 s remaining.
-    p.clock.ms = Math.floor(p.clock.ms / 30_000) * 30_000 + 29_000;
+    // 28.5 s into the period: 1.5 s remaining.
+    p.clock.ms = Math.floor(p.clock.ms / 30_000) * 30_000 + 28_500;
     const before = (await totpNow(p.clock.now())).code;
     expect(MIN_FILL_REMAINING_SEC).toBe(2);
     const r = await service.fillCode({ id, tabId: TAB });
@@ -99,6 +167,14 @@ describe("fillCode", () => {
     const typed = p.tabs.fills[0]?.code;
     expect(typed).toBe((await totpNow(p.clock.now())).code);
     expect(typed).not.toBe(before);
+  });
+
+  it("does not wait when two seconds or more remain", async () => {
+    const { p, service, id } = await setup();
+    p.clock.ms = Math.floor(p.clock.ms / 30_000) * 30_000 + 27_900;
+    const t0 = p.clock.now();
+    await service.fillCode({ id, tabId: TAB });
+    expect(p.clock.now()).toBe(t0);
   });
 
   it("increments an HOTP counter exactly once per fill", async () => {
@@ -162,7 +238,7 @@ describe("site memory", () => {
     const { p, service, id } = await setup();
     await service.setFillOnlyLinked(false);
     p.tabs.activeTab = { id: TAB, url: "https://other.com/" };
-    await service.fillCode({ id, tabId: TAB, confirmed: true });
+    await service.fillCode({ id, tabId: TAB, confirmedDomain: "other.com" });
     const view = await service.listAccounts({ pageUrl: "https://other.com/x" });
     expect(view.matches.exact).toEqual([]);
     expect(view.matches.remembered).toEqual([id]);
@@ -199,7 +275,7 @@ describe("site memory", () => {
     const { p, service, id } = await setup();
     await service.setFillOnlyLinked(false);
     p.tabs.activeTab = { id: TAB, url: "https://other.com/" };
-    await service.fillCode({ id, tabId: TAB, confirmed: true });
+    await service.fillCode({ id, tabId: TAB, confirmedDomain: "other.com" });
     await service.setSiteMemory(false);
     await service.setSiteMemory(true);
     expect(
@@ -211,7 +287,7 @@ describe("site memory", () => {
     const { p, service, id } = await setup();
     await service.setFillOnlyLinked(false);
     p.tabs.activeTab = { id: TAB, url: "https://other.com/" };
-    await service.fillCode({ id, tabId: TAB, confirmed: true });
+    await service.fillCode({ id, tabId: TAB, confirmedDomain: "other.com" });
     await service.lock();
     await service.setSiteMemory(false);
     await service.setSiteMemory(true);
@@ -232,7 +308,7 @@ describe("site memory", () => {
       if (Object.keys(items).some((k) => k.includes("sitemem"))) throw new Error("QUOTA_BYTES");
       return real(items);
     };
-    const r = await service.fillCode({ id, tabId: TAB, confirmed: true });
+    const r = await service.fillCode({ id, tabId: TAB, confirmedDomain: "other.com" });
     p.local.set = orig;
     expect(r.result).toBe("filled");
     expect(p.tabs.fills).toHaveLength(1);
@@ -270,17 +346,13 @@ describe("command", () => {
     expect(p.tabs.badges).toEqual([]);
   });
 
-  it("opens the popup as its first action when locked, and badges when it cannot", async () => {
+  it("does nothing itself when locked (the listener opens the popup)", async () => {
     const { p, service } = await setup();
     await service.lock();
     p.tabs.calls.length = 0;
     await service.fillFromCommand();
-    expect(p.tabs.calls[0]).toBe("openPopup");
+    expect(p.tabs.calls).toEqual([]);
     expect(p.tabs.fills).toHaveLength(0);
-    expect(p.tabs.badges).toEqual([]);
-    p.tabs.popupOpens = false;
-    await service.fillFromCommand();
-    expect(p.tabs.badges).toEqual(["?", ""]);
   });
 
   it("badges ? for no match and for an ambiguous match, then clears after 3 s", async () => {
@@ -364,10 +436,54 @@ describe("menu", () => {
     expect(p.tabs.fills).toHaveLength(0);
   });
 
-  it("opens the popup when locked", async () => {
+  it("does nothing itself when locked", async () => {
     const { p, service } = await setup();
     await service.lock();
     await service.fillFromMenu({ id: TAB, url: BANK }, 0, undefined);
-    expect(p.tabs.popupOpened).toBe(1);
+    expect(p.tabs.calls).toEqual([]);
+  });
+});
+
+describe("user trigger", () => {
+  it("opens the popup synchronously, before any storage access, when locked in memory", async () => {
+    const { p, service } = await setup();
+    await service.lock();
+    const order: string[] = [];
+    const get = p.session.get.bind(p.session);
+    p.session.get = (async (k?: string[]) => {
+      order.push("storage");
+      return get(k as string[]);
+    }) as typeof p.session.get;
+    p.tabs.openPopup = async () => {
+      order.push("openPopup");
+      return true;
+    };
+    const done = handleUserTrigger(service, p.tabs, () => service.fillFromCommand());
+    // Nothing has been awaited yet: the popup request is already made.
+    expect(order).toEqual(["openPopup"]);
+    await done;
+    expect(order[0]).toBe("openPopup");
+  });
+
+  it("does not open the popup when unlocked, and badges when opening fails", async () => {
+    const { p, service } = await setup();
+    await handleUserTrigger(service, p.tabs, async () => undefined);
+    expect(p.tabs.popupOpened).toBe(0);
+    await service.lock();
+    p.tabs.popupOpens = false;
+    await handleUserTrigger(service, p.tabs, async () => undefined);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(p.tabs.badges).toEqual(["?", ""]);
+  });
+
+  it("swallows a rejected openPopup", async () => {
+    const { p, service } = await setup();
+    await service.lock();
+    p.tabs.openPopup = async () => {
+      throw new Error("no gesture");
+    };
+    await expect(
+      handleUserTrigger(service, p.tabs, async () => undefined),
+    ).resolves.toBeUndefined();
   });
 });

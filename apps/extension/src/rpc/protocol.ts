@@ -126,7 +126,7 @@ export const rpcRequestSchema = z.discriminatedUnion("type", [
     type: z.literal("fillCode"),
     id,
     tabId: z.number().int().nonnegative(),
-    confirmed: z.boolean().optional(),
+    confirmedDomain: z.string().max(253).optional(),
   }),
   z.object({ type: z.literal("setFillOnlyLinked"), value: z.boolean() }),
   z.object({ type: z.literal("setSiteMemory"), value: z.boolean() }),

@@ -136,7 +136,11 @@ async function dispatch(service: VaultService, req: RpcRequest): Promise<unknown
       await service.setClockCheckEnabled(req.enabled);
       return null;
     case "fillCode":
-      return service.fillCode({ id: req.id, tabId: req.tabId, confirmed: req.confirmed });
+      return service.fillCode({
+        id: req.id,
+        tabId: req.tabId,
+        confirmedDomain: req.confirmedDomain,
+      });
     case "setFillOnlyLinked":
       await service.setFillOnlyLinked(req.value);
       return null;
