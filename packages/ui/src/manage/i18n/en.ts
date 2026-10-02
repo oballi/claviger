@@ -116,7 +116,7 @@ export const manageEn: Record<ManageKey, string> = {
   "account.revealSubmit": "Show",
   "account.delete": "Delete",
   "account.deleteConfirm":
-    "Delete {name}? This can't be undone; make sure you have another way to sign in.",
+    "Delete {name}? It stays in Recently deleted for 30 days, then is removed from the list; make sure you have another way to sign in.",
   "account.deleteYes": "Yes, delete",
   "account.qrLabel": "QR code for {name}",
   "account.secret": "Secret key",

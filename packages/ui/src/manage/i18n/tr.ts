@@ -113,7 +113,7 @@ export const manageTr = {
   "account.revealSubmit": "Göster",
   "account.delete": "Sil",
   "account.deleteConfirm":
-    "{name} hesabı silinsin mi? Bu işlem geri alınamaz; hesaba girebilmek için başka bir yolun olduğundan emin ol.",
+    "{name} hesabı silinsin mi? 30 gün Son silinenler'de kalır, sonra buradan kaldırılır; hesaba girebilmek için başka bir yolun olduğundan emin ol.",
   "account.deleteYes": "Evet, sil",
   "account.qrLabel": "{name} için QR kodu",
   "account.secret": "Gizli anahtar",

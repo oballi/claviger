@@ -13,6 +13,7 @@ import { RpcError } from "../rpc/client";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { Toast } from "../components/Toast";
+import { UndoToast } from "../components/UndoToast";
 import { errorMessage } from "../errors";
 import { useAccountList } from "../hooks";
 import { useLocale, useT } from "../i18n/i18n";
@@ -23,6 +24,7 @@ import { AddAccount } from "./AddAccount";
 
 import { GroupSection } from "./GroupSection";
 import { useCollapsed } from "./useCollapsed";
+import { useTrash } from "./useTrash";
 import { NO_GROUP_KEY, sectionsOf } from "../groups";
 import { neighbourOf, swapOrder } from "../reorder";
 
@@ -89,6 +91,11 @@ export function CodesScreen({
   const deleting = useRef(false);
   const listRef = useRef<HTMLDivElement>(null);
   const clearToast = useCallback(() => setToast(null), []);
+  const [undo, setUndo] = useState<{ id: string; name: string; focus: boolean } | null>(null);
+  const trash = useTrash();
+  // Last input modality: only a keyboard delete moves focus to "Undo" (the confirm button is gone).
+  const viaKeyboard = useRef(false);
+  const clearUndo = useCallback(() => setUndo(null), []);
 
   useEffect(() => {
     (capabilities.activeTab ? activeTab() : Promise.resolve(undefined)).then(setTab, () =>
@@ -293,6 +300,7 @@ export function CodesScreen({
   }
 
   function onListKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    viaKeyboard.current = true;
     if (event.key === "Escape" && query) {
       event.preventDefault();
       setQuery("");
@@ -323,6 +331,43 @@ export function CodesScreen({
       if (focusId) setRefocus(focusId);
     } catch (e) {
       setActionError(errorMessage(t, e));
+    }
+  }
+
+  async function removeAccount(account: AccountView) {
+    const name = account.issuer || account.label;
+    setActionError(null);
+    try {
+      await rpc("deleteAccount", { id: account.id });
+      setConfirmDelete(null);
+      await reload();
+      // The bin is best effort: offer "Undo" only when the entry really is there.
+      const binned = (await trash.reload()).some((i) => i.id === account.id);
+      // The confirm button is gone; focus lands on "Undo" (keyboard) or the search field.
+      if (!(binned && viaKeyboard.current)) searchRef.current?.focus();
+      if (binned) {
+        setToast(null);
+        setUndo({ id: account.id, name, focus: viaKeyboard.current });
+      } else {
+        setToast(t("accounts.deleted", { name }));
+      }
+    } catch (e) {
+      setActionError(errorMessage(t, e));
+    }
+  }
+
+  async function undoDelete() {
+    if (!undo) return;
+    const { id, name } = undo;
+    setUndo(null);
+    searchRef.current?.focus();
+    try {
+      await rpc("restoreTrash", { id });
+      setToast(t("trash.restored", { name }));
+      await Promise.all([reload(), trash.reload()]);
+    } catch (e) {
+      setActionError(errorMessage(t, e));
+      void trash.reload();
     }
   }
 
@@ -441,14 +486,7 @@ export function CodesScreen({
               onConfirm: () => {
                 if (deleting.current) return;
                 deleting.current = true;
-                void act(
-                  async () => {
-                    await rpc("deleteAccount", { id: account.id });
-                    setConfirmDelete(null);
-                    searchRef.current?.focus();
-                  },
-                  t("accounts.deleted", { name: account.issuer || account.label }),
-                ).finally(() => {
+                void removeAccount(account).finally(() => {
                   deleting.current = false;
                 });
               },
@@ -472,7 +510,11 @@ export function CodesScreen({
   const otherRows = accounts.filter((a) => !a.pinned && !onSite(a));
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col" onKeyDown={onListKeyDown}>
+    <div
+      className="relative flex min-h-0 flex-1 flex-col"
+      onKeyDown={onListKeyDown}
+      onPointerDown={() => (viaKeyboard.current = false)}
+    >
       <header className="flex items-center pt-2 pr-3 pl-7">
         <div className="flex-1 font-mono text-xs tracking-wide">{t("app.name")}</div>
         <button
@@ -620,6 +662,16 @@ export function CodesScreen({
         )}
       </div>
       <Toast message={toast} onDone={clearToast} />
+      <UndoToast
+        message={undo ? t("trash.deleted", { name: undo.name }) : null}
+        autoFocus={undo?.focus}
+        onUndo={() => void undoDelete()}
+        onDone={clearUndo}
+        onDismiss={() => {
+          setUndo(null);
+          searchRef.current?.focus();
+        }}
+      />
     </div>
   );
 }

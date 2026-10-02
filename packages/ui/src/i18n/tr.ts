@@ -95,7 +95,7 @@ export const tr = {
   "menu.moveToGroup": "Gruba taşı",
   "menu.delete": "Sil…",
   "codes.deleteConfirm":
-    "Bu hesap silinsin mi? Bu sitenin kodunu artık üretemezsin. Silmeden önce otomatik bir kopya alınır.",
+    "Bu hesap silinsin mi? 30 gün boyunca Son silinenler'den geri yükleyebilirsin. Silmeden önce otomatik bir kopya alınır.",
   "menu.deleteYes": "Sil",
   "group.none": "Grupsuz",
   "group.new": "+ Yeni grup",
@@ -198,5 +198,10 @@ export const tr = {
   "error.snapshot-password-required": "Bu kopya başka bir kasaya ait; parolasını gir.",
   "add.qrRestricted":
     "Bu sayfada tarama yapılamaz; QR'ın ekran görüntüsünü dosya olarak içe aktar.",
+  "trash.deleted": "{name} silindi",
+  "trash.undo": "Geri al",
+  "trash.restored": "{name} geri yüklendi",
+  "error.trash-entry-not-found": "Bu hesap artık son silinenlerde değil.",
+  "error.trash-corrupt": "Bu kayıt okunamadı. Listeden kaldırabilirsin.",
 } as const;
 export type PopupKey = keyof typeof tr;

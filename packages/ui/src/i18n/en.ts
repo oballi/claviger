@@ -97,7 +97,7 @@ export const en: Record<PopupKey, string> = {
   "menu.moveToGroup": "Move to group",
   "menu.delete": "Delete…",
   "codes.deleteConfirm":
-    "Delete this account? You won't be able to generate its codes any more. A backup copy is taken first.",
+    "Delete this account? You can restore it from Recently deleted for 30 days. A backup copy is taken first.",
   "menu.deleteYes": "Delete",
   "group.none": "Ungrouped",
   "group.new": "+ New group",
@@ -201,4 +201,9 @@ export const en: Record<PopupKey, string> = {
   "error.snapshot-password-required": "This copy belongs to another vault; enter its password.",
   "add.qrRestricted":
     "This page can't be scanned; import a screenshot of the QR code as a file instead.",
+  "trash.deleted": "{name} deleted",
+  "trash.undo": "Undo",
+  "trash.restored": "{name} restored",
+  "error.trash-entry-not-found": "This account is no longer in Recently deleted.",
+  "error.trash-corrupt": "This entry could not be read. You can remove it from the list.",
 };

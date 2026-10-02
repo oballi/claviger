@@ -124,7 +124,7 @@ describe("codes screen", () => {
     renderUi(<PopupApp pollMs={0} />, ui);
     await userEvent.click(await screen.findByRole("button", { name: /^GitHub kodunu kopyala/ }));
     expect(ui.copy).toHaveBeenCalledWith(githubCode);
-    expect(screen.getByRole("status").textContent).toBe("GitHub kodu kopyalandı");
+    expect(screen.getByText("GitHub kodu kopyalandı").closest('[role="status"]')).toBeTruthy();
   });
 
   it("shows an error instead of failing silently when copying is refused", async () => {
