@@ -13,18 +13,9 @@ async function findManageTab(): Promise<{ tabId: number; windowId: number } | nu
     }
   };
   // No documentUrls filter: it matches the exact URL, so a tab on a hash route would be missed.
-  if (browser.runtime.getContexts) {
-    const contexts = await browser.runtime.getContexts({ contextTypes: ["TAB"] });
-    const ctx = contexts.find((c) => isManage(c.documentUrl) && c.tabId >= 0);
-    return ctx ? { tabId: ctx.tabId, windowId: ctx.windowId } : null;
-  }
-  type View = { location: Location };
-  for (const view of browser.extension.getViews({ type: "tab" }) as unknown as View[]) {
-    if (view.location.pathname !== "/manage.html") continue;
-    const [tab] = await browser.tabs.query({ url: `${origin}/manage.html*` });
-    if (tab?.id !== undefined) return { tabId: tab.id, windowId: tab.windowId };
-  }
-  return null;
+  const contexts = await browser.runtime.getContexts({ contextTypes: ["TAB"] });
+  const ctx = contexts.find((c) => isManage(c.documentUrl) && c.tabId >= 0);
+  return ctx ? { tabId: ctx.tabId, windowId: ctx.windowId } : null;
 }
 
 async function openOrFocusManage(hash: string): Promise<void> {

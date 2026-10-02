@@ -270,7 +270,10 @@ export function CodesScreen({
                 onClick={() => openManage("backup")}
                 className="justify-start text-[13px]"
               >
-                {t("snapshots.offer", { count: state.snapshotOffer.accountCount })}
+                {t(
+                  state.snapshotOffer.accountCount === 1 ? "snapshots.offerOne" : "snapshots.offer",
+                  { count: state.snapshotOffer.accountCount },
+                )}
               </Button>
             ) : null}
             <Button variant="primary" onClick={() => setAdding(true)}>

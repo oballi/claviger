@@ -175,6 +175,55 @@ describe("automatic copies section", () => {
     await screen.findByText("1 hesap eklendi, 0 zaten vardı.");
     expect((await fresh.listAccounts()).accounts).toHaveLength(1);
   });
+
+  it("blocks submit while the old password is empty and the field is shown", async () => {
+    const h = await withCopy();
+    await h.p.local.set({ "vault:header": { format: 1, nope: true } });
+    await h.service.quarantineVault();
+    const fresh = new VaultService(h.p);
+    await fresh.setup({
+      password: NEW_PASSWORD,
+      createRecoveryCode: false,
+      lockPolicy: { kind: "browser-close" },
+      storageArea: "local",
+    });
+    let reauths = 0;
+    const rpc: UiPlatform["rpc"] = async (type, payload) => {
+      if (type === "reauth") reauths++;
+      return createRpcClient((m) =>
+        handleRpcMessage(
+          fresh,
+          m,
+          { id: "ext-id", url: "chrome-extension://ext-id/popup.html" },
+          { extensionId: "ext-id", extensionOrigin: "chrome-extension://ext-id/" },
+        ),
+      )(type, payload);
+    };
+    renderUi(
+      <BackupScreen state={await fresh.getState()} onChanged={() => {}} onImport={() => {}} />,
+      { ...h.ui, rpc },
+    );
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: ROW }));
+    await screen.findByLabelText("Bu kopyanın parolası");
+    await user.type(screen.getByLabelText("Ana parola"), NEW_PASSWORD);
+    const submit = screen.getByRole("button", { name: "Geri yükle" });
+    expect((submit as HTMLButtonElement).disabled).toBe(true);
+    await user.type(screen.getByLabelText("Ana parola"), "{Enter}");
+    expect(reauths).toBe(0);
+    await user.type(screen.getByLabelText("Bu kopyanın parolası"), "x");
+    expect((submit as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("keeps the result region in the accessibility tree while empty", async () => {
+    const h = await withCopy();
+    await backup(h, h.ui);
+    await screen.findByRole("button", { name: ROW });
+    const statuses = screen.getAllByRole("status");
+    expect(statuses.some((el) => el.className.includes("min-h-4") && el.textContent === "")).toBe(
+      true,
+    );
+  });
 });
 
 describe("empty vault offer", () => {

@@ -69,6 +69,26 @@ describe("service snapshots", () => {
     expect((await service.listAccounts()).accounts).toHaveLength(0);
   });
 
+  it("still imports when the snapshot cannot be stored", async () => {
+    const { service, p } = await unlockedService();
+    const preview = await service.importPreview(URI);
+    if (preview.status !== "ok") throw new Error("unexpected");
+    await p.local.remove(await snapKeys(p));
+    p.local.failNextSet = new Error("QUOTA_BYTES quota exceeded");
+    await expect(service.importCommit(preview.previewId, [0])).resolves.toMatchObject({ added: 1 });
+    expect((await service.listAccounts()).accounts).toHaveLength(1);
+  });
+
+  it("still moves the vault when the snapshot cannot be stored", async () => {
+    const { service, p } = await unlockedService();
+    await service.addAccount({ uri: URI });
+    const { token } = await service.reauth(PASSWORD);
+    await p.local.remove(await snapKeys(p));
+    p.local.failNextSet = new Error("QUOTA_BYTES quota exceeded");
+    await expect(service.setStorageArea(token, "sync")).resolves.toBeUndefined();
+    expect((await service.listAccounts()).accounts).toHaveLength(1);
+  });
+
   it("takes a daily copy from getState at most once per hour, even while locked", async () => {
     const { service, p } = await unlockedService();
     await service.lock();

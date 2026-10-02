@@ -44,7 +44,7 @@ import {
   type Settings,
   type ViewMode,
 } from "./settings";
-import { Throttle } from "./throttle";
+import { SNAPSHOT_ATTEMPTS_KEY, Throttle } from "./throttle";
 
 export const AUTOLOCK_ALARM = "autolock";
 export const CLIPBOARD_ALARM = "clipboard-clear";
@@ -154,6 +154,7 @@ export class VaultService {
   protected vault: Vault | null = null;
   protected readonly keys: KeyCache;
   protected readonly throttle: Throttle;
+  protected readonly oldPasswordThrottle: Throttle;
   protected readonly snapshots: SnapshotStore;
   // In memory only: a restart repeats the check, and dedupe makes a second copy harmless.
   private lastDailyCheck: number | null = null;
@@ -168,6 +169,7 @@ export class VaultService {
   constructor(protected readonly p: Platform) {
     this.keys = new KeyCache(p);
     this.throttle = new Throttle(p.local, p.clock);
+    this.oldPasswordThrottle = new Throttle(p.local, p.clock, SNAPSHOT_ATTEMPTS_KEY);
     this.snapshots = new SnapshotStore(p.local, p.clock, p.random);
   }
 
@@ -770,14 +772,23 @@ export class VaultService {
           );
         }
         this.checkTokenValid(token);
-        await this.checkThrottle();
+        const wait = await this.oldPasswordThrottle.retryAfterMs();
+        if (wait > 0)
+          throw new ServiceError("throttled", "Too many wrong attempts; try again later", wait);
         try {
           opened = await Vault.unlockWithPassword(deps, password);
         } catch (e) {
-          if (isCoreError(e, "wrong-password")) return this.failAttempt();
+          if (isCoreError(e, "wrong-password")) {
+            await this.oldPasswordThrottle.recordFailure();
+            throw new ServiceError(
+              "wrong-password",
+              "Wrong password",
+              await this.oldPasswordThrottle.retryAfterMs(),
+            );
+          }
           throw e;
         }
-        // Not throttle.reset(): the old password is not this vault's password.
+        await this.oldPasswordThrottle.reset();
         vault = await this.spendToken(token);
       }
       const listing = await opened.listAccounts();

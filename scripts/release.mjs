@@ -2,12 +2,17 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const args = process.argv.slice(2);
 const cwdIndex = args.indexOf("--cwd");
-const root = cwdIndex >= 0 ? args[cwdIndex + 1] : new URL("..", import.meta.url).pathname;
 const dryRun = args.includes("--dry-run");
 const version = args.find((a, i) => /^\d+\.\d+\.\d+$/.test(a) && args[i - 1] !== "--cwd");
+if (cwdIndex >= 0 && (!args[cwdIndex + 1] || args[cwdIndex + 1].startsWith("--"))) {
+  console.error("release: --cwd needs a directory");
+  process.exit(1);
+}
+const root = cwdIndex >= 0 ? args[cwdIndex + 1] : fileURLToPath(new URL("..", import.meta.url));
 
 const git = (...a) => execFileSync("git", a, { cwd: root, encoding: "utf8" }).trim();
 const fail = (msg) => {
@@ -21,17 +26,27 @@ const cmp = (a, b) => {
 };
 
 if (!version) fail("usage: release.mjs <x.y.z> [--dry-run]");
+const branch = git("rev-parse", "--abbrev-ref", "HEAD");
+if (branch !== "master" && branch !== "main")
+  fail(`releases are cut from master or main, not ${branch}`);
 if (git("status", "--porcelain")) fail("working tree is not clean");
 const PKGS = ["package.json", "apps/extension/package.json", "packages/core/package.json"];
 const current = JSON.parse(readFileSync(join(root, PKGS[0]), "utf8")).version;
 if (cmp(version, current) <= 0) fail(`${version} is not greater than ${current}`);
 if (git("tag", "--list", `v${version}`)) fail(`tag v${version} already exists`);
 
+const indexPath = join(root, "packages/core/src/index.ts");
+const indexSource = readFileSync(indexPath, "utf8");
+const bumped = indexSource.replace(/CORE_VERSION = "[^"]+"/, `CORE_VERSION = "${version}"`);
+// Checked before any write so a failure leaves the tree untouched.
+if (bumped === indexSource) fail("CORE_VERSION was not found in packages/core/src/index.ts");
+
 let lastTag = "";
 try {
   lastTag = git("describe", "--tags", "--abbrev=0", "--match", "v*");
-} catch {
-  // First release: take the whole history.
+} catch (e) {
+  // Only "no tags yet" means a first release; anything else is a real failure.
+  if (!/No names found|No tags can describe/i.test(String(e.stderr))) throw e;
 }
 const subjects = git("log", "--format=%s", lastTag ? `${lastTag}..HEAD` : "HEAD")
   .split("\n")
@@ -57,11 +72,7 @@ for (const file of PKGS) {
   pkg.version = version;
   writeFileSync(path, `${JSON.stringify(pkg, null, 2)}\n`);
 }
-const indexPath = join(root, "packages/core/src/index.ts");
-writeFileSync(
-  indexPath,
-  readFileSync(indexPath, "utf8").replace(/CORE_VERSION = "[^"]+"/, `CORE_VERSION = "${version}"`),
-);
+writeFileSync(indexPath, bumped);
 const changelogPath = join(root, "CHANGELOG.md");
 const previous = existsSync(changelogPath)
   ? readFileSync(changelogPath, "utf8").replace(/^# Changelog\n+/, "")

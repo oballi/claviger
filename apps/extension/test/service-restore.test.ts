@@ -1,7 +1,7 @@
 import { Vault } from "@otp-vault/core";
 import { describe, expect, it, vi } from "vitest";
 import { VaultService } from "../src/background/vaultService";
-import { ATTEMPTS_KEY, FREE_ATTEMPTS } from "../src/background/throttle";
+import { ATTEMPTS_KEY, FREE_ATTEMPTS, SNAPSHOT_ATTEMPTS_KEY } from "../src/background/throttle";
 import type { TestPlatform } from "./helpers/platform";
 import { codeOf, PASSWORD, unlockedService } from "./helpers/service";
 
@@ -97,6 +97,24 @@ describe("restoreSnapshot", () => {
       );
     }
     expect(await codeOf(fresh.restoreSnapshot(token, snap.id, PASSWORD))).toBe("throttled");
+  });
+
+  it("keeps throttling old-password guesses across fresh reauths", async () => {
+    const { fresh, p, snap } = await withForeignSnapshot();
+    for (let i = 0; i < FREE_ATTEMPTS; i++) {
+      const { token } = await fresh.reauth(NEW_PASSWORD);
+      expect(await codeOf(fresh.restoreSnapshot(token, snap.id, "wrong password!"))).toBe(
+        "wrong-password",
+      );
+    }
+    const { token } = await fresh.reauth(NEW_PASSWORD);
+    expect(await codeOf(fresh.restoreSnapshot(token, snap.id, PASSWORD))).toBe("throttled");
+    const keys = Object.keys(await p.local.get());
+    expect(keys).toContain(SNAPSHOT_ATTEMPTS_KEY);
+    expect(SNAPSHOT_ATTEMPTS_KEY).not.toBe(ATTEMPTS_KEY);
+    p.clock.advance(60_000);
+    expect((await fresh.restoreSnapshot(token, snap.id, PASSWORD)).added).toBe(2);
+    expect((await p.local.get([SNAPSHOT_ATTEMPTS_KEY]))[SNAPSHOT_ATTEMPTS_KEY]).toBeUndefined();
   });
 
   it("refuses a damaged copy without spending the token", async () => {

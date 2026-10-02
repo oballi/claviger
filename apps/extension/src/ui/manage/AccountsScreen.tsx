@@ -269,7 +269,12 @@ export function AccountsScreen({
                       onClick={() => openManage("backup")}
                       className="mt-3 block justify-start text-[13px]"
                     >
-                      {t("snapshots.offer", { count: state.snapshotOffer.accountCount })}
+                      {t(
+                        state.snapshotOffer.accountCount === 1
+                          ? "snapshots.offerOne"
+                          : "snapshots.offer",
+                        { count: state.snapshotOffer.accountCount },
+                      )}
                     </Button>
                   ) : null}
                 </td>

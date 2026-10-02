@@ -3,6 +3,8 @@ import type { ClockPort, StoragePort } from "@otp-vault/core";
 import { z } from "zod";
 
 export const ATTEMPTS_KEY = "lock:attempts";
+// Old-password guesses for restoring another vault's copy; unlock success must not reset them.
+export const SNAPSHOT_ATTEMPTS_KEY = "lock:snapshotAttempts";
 export const FREE_ATTEMPTS = 3;
 export const MAX_DELAY_MS = 60_000;
 
@@ -21,10 +23,11 @@ export class Throttle {
   constructor(
     private readonly storage: StoragePort,
     private readonly clock: ClockPort,
+    private readonly key: string = ATTEMPTS_KEY,
   ) {}
 
   private async read(): Promise<z.infer<typeof attemptsSchema>> {
-    const parsed = attemptsSchema.safeParse((await this.storage.get([ATTEMPTS_KEY]))[ATTEMPTS_KEY]);
+    const parsed = attemptsSchema.safeParse((await this.storage.get([this.key]))[this.key]);
     return parsed.success ? parsed.data : { failures: 0, lastFailureAt: 0 };
   }
 
@@ -34,7 +37,7 @@ export class Throttle {
     const now = this.clock.now();
     if (state.lastFailureAt <= now) return state;
     const clamped = { failures: state.failures, lastFailureAt: now };
-    await this.storage.set({ [ATTEMPTS_KEY]: clamped });
+    await this.storage.set({ [this.key]: clamped });
     return clamped;
   }
 
@@ -46,11 +49,11 @@ export class Throttle {
   async recordFailure(): Promise<void> {
     const { failures } = await this.readClamped();
     await this.storage.set({
-      [ATTEMPTS_KEY]: { failures: failures + 1, lastFailureAt: this.clock.now() },
+      [this.key]: { failures: failures + 1, lastFailureAt: this.clock.now() },
     });
   }
 
   async reset(): Promise<void> {
-    await this.storage.remove([ATTEMPTS_KEY]);
+    await this.storage.remove([this.key]);
   }
 }

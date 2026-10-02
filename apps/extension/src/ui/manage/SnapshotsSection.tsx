@@ -85,7 +85,7 @@ export function SnapshotsSection({ num, onChanged }: { num: string; onChanged: (
       <p className="m-0 border-b border-hair py-4 text-[13px] leading-normal text-muted">
         {t("snapshots.body")}
       </p>
-      <p role="status" className="m-0 text-[13px] text-muted empty:hidden">
+      <p role="status" className="m-0 min-h-4 text-[13px] text-muted">
         {message}
       </p>
       {error ? (
@@ -100,7 +100,10 @@ export function SnapshotsSection({ num, onChanged }: { num: string; onChanged: (
       ) : null}
       {(items ?? []).map((item) => {
         const reason = snapshotReasonLabel(t, item.reason);
-        const base = t("snapshots.row", { reason, count: item.accountCount });
+        const base = t(item.accountCount === 1 ? "snapshots.rowOne" : "snapshots.row", {
+          reason,
+          count: item.accountCount,
+        });
         return (
           <SettingsRow
             key={item.id}
@@ -141,6 +144,7 @@ export function SnapshotsSection({ num, onChanged }: { num: string; onChanged: (
                 ) : null}
                 <ReauthForm
                   autoFocus={!needsOld}
+                  disabled={needsOld && oldPassword === ""}
                   submitLabel={t("snapshots.restore")}
                   errorKeys={{ [WRONG_OLD]: "snapshots.wrongOldPassword" }}
                   onConfirmed={(token) => restore(item, token)}

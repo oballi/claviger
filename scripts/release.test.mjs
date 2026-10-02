@@ -18,7 +18,7 @@ const commit = (dir, msg) => {
 
 function makeRepo() {
   const dir = mkdtempSync(join(tmpdir(), "release-test-"));
-  git(dir, "init", "-q");
+  git(dir, "init", "-q", "-b", "main");
   git(dir, "config", "user.name", "Test");
   git(dir, "config", "user.email", "test@example.com");
   git(dir, "config", "commit.gpgsign", "false");
@@ -80,4 +80,30 @@ test("refuses an existing tag", () => {
   const dir = makeRepo();
   git(dir, "tag", "v0.1.0");
   assert.notEqual(run(dir, "0.1.0").status, 0);
+});
+
+test("refuses a branch other than master or main", () => {
+  const dir = makeRepo();
+  git(dir, "checkout", "-q", "-b", "feat/x");
+  const res = run(dir, "0.1.0");
+  assert.notEqual(res.status, 0);
+  assert.match(res.stderr, /master or main/);
+  assert.equal(git(dir, "tag"), "");
+});
+
+test("fails without touching files when CORE_VERSION is missing", () => {
+  const dir = makeRepo();
+  write(dir, "packages/core/src/index.ts", "export {};\n");
+  git(dir, "commit", "-qam", "chore: drop constant");
+  const res = run(dir, "0.1.0");
+  assert.notEqual(res.status, 0);
+  assert.match(res.stderr, /CORE_VERSION/);
+  assert.equal(git(dir, "status", "--porcelain"), "");
+  assert.equal(git(dir, "tag"), "");
+});
+
+test("fails when --cwd has no value", () => {
+  const res = spawnSync("node", [script, "0.1.0", "--cwd"], { encoding: "utf8" });
+  assert.notEqual(res.status, 0);
+  assert.match(res.stderr, /--cwd needs a directory/);
 });

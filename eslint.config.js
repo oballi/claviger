@@ -126,6 +126,17 @@ export default defineConfig(
               allowTypeImports: true,
               message: "Popup bundle: import background modules as types only.",
             },
+            {
+              group: [
+                "**/rpc/protocol",
+                "**/rpc/server",
+                "**/zodConfig",
+                "**/platform/browserPlatform",
+                "**/manage/**",
+              ],
+              allowTypeImports: true,
+              message: "Popup bundle: these modules belong to the background or manage pages.",
+            },
           ],
         },
       ],
