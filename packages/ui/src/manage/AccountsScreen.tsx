@@ -332,8 +332,12 @@ export function AccountsScreen({
             {list && rows.length === 0 ? (
               <tr>
                 <td colSpan={7} className="py-6 text-muted">
-                  {q ? t("accounts.noMatch") : t("codes.empty")}
-                  {!q && state.snapshotOffer ? (
+                  {q
+                    ? t("accounts.noMatch")
+                    : effective !== "all" && accounts.length > 0
+                      ? t("groups.empty")
+                      : t("codes.empty")}
+                  {!q && effective === "all" && state.snapshotOffer ? (
                     <Button
                       variant="link"
                       onClick={() => openManage("backup")}
@@ -454,7 +458,7 @@ export function AccountsScreen({
       ) : null}
 
       {creating ? (
-        <Dialog title={t("group.new")} onClose={() => setCreating(false)}>
+        <Dialog title={t("group.new")} onClose={() => !savingGroup && setCreating(false)}>
           <form onSubmit={(e) => void createGroup(e)} className="flex flex-col gap-5">
             <TextField
               id="new-group-name"

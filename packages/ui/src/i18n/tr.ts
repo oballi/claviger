@@ -226,6 +226,7 @@ export const tr = {
   "accounts.unbound": "bağlı değil",
   "accounts.pinnedBadge": "sabit",
   "accounts.edit": "{name} hesabını düzenle",
+  "groups.empty": "Bu grupta hesap yok.",
   "accounts.noMatch": "Aramana uyan hesap yok.",
   "accounts.summary.lock": "Kilit",
   "accounts.summary.storage": "Depolama",

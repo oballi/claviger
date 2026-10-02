@@ -230,6 +230,7 @@ export const en: Record<MessageKey, string> = {
   "accounts.unbound": "not linked",
   "accounts.pinnedBadge": "pinned",
   "accounts.edit": "Edit {name}",
+  "groups.empty": "No accounts in this group.",
   "accounts.noMatch": "No account matches your search.",
   "accounts.summary.lock": "Lock",
   "accounts.summary.storage": "Storage",
