@@ -26,8 +26,13 @@ describe("setup", () => {
       clockCheckEnabled: false,
       revealRequiresPassword: true,
       lastBackupAt: null,
+      backupReminderDays: 30,
+      backupReminder: null,
       viewMode: "normal",
       theme: "system",
+      language: "system",
+      openMode: "popup",
+      popupSize: "medium",
       clipboardClearSec: 0,
       recoveryCodeConfirmed: true,
     });

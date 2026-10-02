@@ -1,12 +1,20 @@
 import "../zodConfig";
 import type { StoragePort } from "@claviger/core";
 import {
+  backupReminderDaysSchema,
   clipboardClearSchema,
+  languageSchema,
   lockPolicySchema,
+  openModeSchema,
+  popupSizeSchema,
   themeSchema,
   viewModeSchema,
+  type BackupReminderDays,
   type ClipboardClearSec,
+  type Language,
   type LockPolicy,
+  type OpenMode,
+  type PopupSize,
   type Theme,
   type ViewMode,
 } from "@claviger/ui/protocol";
@@ -14,8 +22,26 @@ import { z } from "zod";
 
 export const MAX_CLOCK_OFFSET_SEC = 12 * 3600;
 
-export { clipboardClearSchema, lockPolicySchema, themeSchema, viewModeSchema };
-export type { ClipboardClearSec, LockPolicy, Theme, ViewMode };
+export {
+  backupReminderDaysSchema,
+  clipboardClearSchema,
+  languageSchema,
+  lockPolicySchema,
+  openModeSchema,
+  popupSizeSchema,
+  themeSchema,
+  viewModeSchema,
+};
+export type {
+  BackupReminderDays,
+  ClipboardClearSec,
+  Language,
+  LockPolicy,
+  OpenMode,
+  PopupSize,
+  Theme,
+  ViewMode,
+};
 
 export const settingsSchema = z.object({
   // Display mirror and legacy migration input only; the sealed lock:policy record is authoritative.
@@ -24,8 +50,14 @@ export const settingsSchema = z.object({
   clockOffsetSec: z.number().int().min(-MAX_CLOCK_OFFSET_SEC).max(MAX_CLOCK_OFFSET_SEC),
   clockCheckEnabled: z.boolean(),
   lastBackupAt: z.number().int().nullable(),
+  backupReminderDays: backupReminderDaysSchema,
+  backupReminderSince: z.number().int().nullable(),
+  backupReminderSnoozedUntil: z.number().int().nullable(),
   viewMode: viewModeSchema,
   theme: themeSchema,
+  language: languageSchema,
+  openMode: openModeSchema,
+  popupSize: popupSizeSchema,
   clipboardClearSec: clipboardClearSchema,
   recoveryCodeConfirmed: z.boolean(),
 });
@@ -41,8 +73,14 @@ export const DEFAULT_SETTINGS: Settings = {
   clockOffsetSec: 0,
   clockCheckEnabled: false,
   lastBackupAt: null,
+  backupReminderDays: 30,
+  backupReminderSince: null,
+  backupReminderSnoozedUntil: null,
   viewMode: "normal",
   theme: "system",
+  language: "system",
+  openMode: "popup",
+  popupSize: "medium",
   clipboardClearSec: 0,
   // 0.0.1 users already confirmed their code during setup.
   recoveryCodeConfirmed: true,

@@ -10,5 +10,8 @@
   },
   "commandFill": {
     "message": "Bu sitenin 2FA kodunu doldur"
+  },
+  "commandLock": {
+    "message": "Kasayı kilitle"
   }
 }

@@ -146,8 +146,23 @@ async function dispatch(
     case "setTheme":
       await service.setTheme(req.theme);
       return null;
+    case "setLanguage":
+      await service.setLanguage(req.language);
+      return null;
+    case "setOpenMode":
+      await service.setOpenMode(req.mode);
+      return null;
+    case "setPopupSize":
+      await service.setPopupSize(req.size);
+      return null;
     case "setClipboardClear":
       await service.setClipboardClear(req.seconds);
+      return null;
+    case "setBackupReminder":
+      await service.setBackupReminder(req.days);
+      return null;
+    case "dismissBackupReminder":
+      await service.dismissBackupReminder();
       return null;
     case "confirmRecoveryCode":
       await service.confirmRecoveryCode();

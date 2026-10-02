@@ -16,8 +16,14 @@ describe("settings", () => {
       clockOffsetSec: 0,
       clockCheckEnabled: false,
       lastBackupAt: null,
+      backupReminderDays: 30,
+      backupReminderSince: null,
+      backupReminderSnoozedUntil: null,
       viewMode: "normal",
       theme: "system",
+      language: "system",
+      openMode: "popup",
+      popupSize: "medium",
       clipboardClearSec: 0,
       recoveryCodeConfirmed: true,
     });
@@ -82,6 +88,24 @@ describe("settings", () => {
     });
   });
 
+  it("falls back to system for an unknown language and keeps the other settings", async () => {
+    const local = new MemoryStorage();
+    await local.set({ [SETTINGS_KEY]: { language: "de", theme: "dark" } });
+    expect(await loadSettings(local)).toMatchObject({ language: "system", theme: "dark" });
+  });
+
+  it("falls back per field for a bad openMode or popupSize", async () => {
+    const local = new MemoryStorage();
+    await local.set({
+      [SETTINGS_KEY]: { openMode: "tab", popupSize: "huge", theme: "dark" },
+    });
+    expect(await loadSettings(local)).toMatchObject({
+      openMode: "popup",
+      popupSize: "medium",
+      theme: "dark",
+    });
+  });
+
   it("falls back to the default for an invalid clipboard value without touching other fields", async () => {
     const local = new MemoryStorage();
     await local.set({
@@ -91,6 +115,18 @@ describe("settings", () => {
       clipboardClearSec: 0,
       viewMode: "compact",
       storageArea: "sync",
+    });
+  });
+
+  it("falls back to the default for an invalid backup reminder value without touching other fields", async () => {
+    const local = new MemoryStorage();
+    await local.set({
+      [SETTINGS_KEY]: { backupReminderDays: 7, backupReminderSince: "x", viewMode: "compact" },
+    });
+    expect(await loadSettings(local)).toMatchObject({
+      backupReminderDays: 30,
+      backupReminderSince: null,
+      viewMode: "compact",
     });
   });
 

@@ -1,5 +1,6 @@
 import "./zodConfig";
 import { z } from "zod";
+import { LANGUAGE_VALUES } from "../i18n/locales";
 
 export const lockPolicySchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("browser-close") }),
@@ -18,8 +19,25 @@ export type ViewMode = z.infer<typeof viewModeSchema>;
 export const themeSchema = z.enum(["system", "light", "dark"]);
 export type Theme = z.infer<typeof themeSchema>;
 
+export const languageSchema = z.enum(LANGUAGE_VALUES);
+export type Language = z.infer<typeof languageSchema>;
+
+export const openModeSchema = z.enum(["popup", "window", "panel"]);
+export type OpenMode = z.infer<typeof openModeSchema>;
+
+export const popupSizeSchema = z.enum(["small", "medium", "large"]);
+export type PopupSize = z.infer<typeof popupSizeSchema>;
+
 export const clipboardClearSchema = z.union([z.literal(0), z.literal(30), z.literal(60)]);
 export type ClipboardClearSec = z.infer<typeof clipboardClearSchema>;
+
+export const backupReminderDaysSchema = z.union([
+  z.literal(0),
+  z.literal(14),
+  z.literal(30),
+  z.literal(90),
+]);
+export type BackupReminderDays = z.infer<typeof backupReminderDaysSchema>;
 
 export const SNAPSHOT_REASONS = [
   "daily",

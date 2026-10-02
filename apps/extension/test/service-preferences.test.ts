@@ -12,6 +12,88 @@ describe("view mode", () => {
   });
 });
 
+describe("language", () => {
+  it("defaults to system and persists a change, also while locked", async () => {
+    const { service } = await unlockedService();
+    expect((await service.getState()).language).toBe("system");
+    await service.setLanguage("tr");
+    await service.lock();
+    expect((await service.getState()).language).toBe("tr");
+  });
+});
+
+describe("open mode and popup size", () => {
+  const withHook = (impl: (mode: string) => Promise<void>) => {
+    const calls: string[] = [];
+    const service = new VaultService(memoryPlatform(), async (mode) => {
+      calls.push(mode);
+      await impl(mode);
+    });
+    return { service, calls };
+  };
+
+  it("defaults to popup/medium and persists changes, also while locked", async () => {
+    const { service } = await unlockedService();
+    expect(await service.getState()).toMatchObject({ openMode: "popup", popupSize: "medium" });
+    await service.setOpenMode("window");
+    await service.setPopupSize("large");
+    await service.lock();
+    expect(await service.getState()).toMatchObject({ openMode: "window", popupSize: "large" });
+  });
+
+  it("applies the mode in the browser before saving it", async () => {
+    const { service, calls } = withHook(async () => {});
+    await service.setOpenMode("panel");
+    expect(calls).toEqual(["panel"]);
+    expect((await service.getState()).openMode).toBe("panel");
+  });
+
+  it("keeps the old mode when the browser refuses the new one", async () => {
+    const { service, calls } = withHook(async (mode) => {
+      if (mode === "panel") throw new Error("unsupported");
+    });
+    await expect(service.setOpenMode("panel")).rejects.toMatchObject({
+      code: "unsupported-open-mode",
+    });
+    expect(calls).toEqual(["panel"]);
+    expect((await service.getState()).openMode).toBe("popup");
+  });
+
+  it("rolls the browser back when saving fails", async () => {
+    const p = memoryPlatform();
+    const calls: string[] = [];
+    const service = new VaultService(p, async (mode) => {
+      calls.push(mode);
+    });
+    const set = p.local.set.bind(p.local);
+    p.local.set = async () => {
+      throw new Error("disk full");
+    };
+    await expect(service.setOpenMode("window")).rejects.toThrow("disk full");
+    p.local.set = set;
+    expect(calls).toEqual(["window", "popup"]);
+  });
+
+  it("serialises concurrent mode changes", async () => {
+    const order: string[] = [];
+    const { service } = withHook(async (mode) => {
+      order.push(`start ${mode}`);
+      await new Promise((r) => setTimeout(r, 5));
+      order.push(`end ${mode}`);
+    });
+    await Promise.all([service.setOpenMode("window"), service.setOpenMode("panel")]);
+    expect(order).toEqual(["start window", "end window", "start panel", "end panel"]);
+  });
+
+  it("re-applies the stored mode on wake-up", async () => {
+    const { service, calls } = withHook(async () => {});
+    await service.setOpenMode("window");
+    calls.length = 0;
+    await service.reapplyOpenMode();
+    expect(calls).toEqual(["window"]);
+  });
+});
+
 describe("clipboard clearing", () => {
   it("does nothing while the setting is off", async () => {
     const { service, p } = await unlockedService();
@@ -127,5 +209,120 @@ describe("recovery code confirmation", () => {
     const result = await service.unlockWithRecovery(recoveryCode!, "another password 1");
     expect(failed).toBe(2);
     expect(result.recoveryCode).toBeTruthy();
+  });
+});
+
+describe("backup reminder", () => {
+  const DAY = 86_400_000;
+  const add = (service: VaultService) =>
+    service.addAccount({ uri: "otpauth://totp/a?secret=JBSWY3DPEHPK3PXP&issuer=A" });
+  const reminder = async (service: VaultService) => (await service.getState()).backupReminder;
+
+  it("never shows for an empty vault or when off", async () => {
+    const { service, p } = await unlockedService();
+    expect((await service.getState()).backupReminderDays).toBe(30);
+    p.clock.advance(31 * DAY);
+    expect(await reminder(service)).toBeNull();
+    await add(service);
+    await service.getState();
+    await service.setBackupReminder(0);
+    p.clock.advance(60 * DAY);
+    expect(await reminder(service)).toBeNull();
+  });
+
+  it("counts from the first account when never backed up", async () => {
+    const { service, p } = await unlockedService();
+    await add(service);
+    expect(await reminder(service)).toBeNull();
+    p.clock.advance(29 * DAY);
+    expect(await reminder(service)).toBeNull();
+    p.clock.advance(DAY);
+    expect(await reminder(service)).toEqual({ daysSince: null });
+    await service.setBackupReminder(90);
+    expect(await reminder(service)).toBeNull();
+  });
+
+  it("is cleared by a file export and quiet for 7 days after dismissal", async () => {
+    const { service, p } = await unlockedService();
+    await add(service);
+    await service.getState();
+    p.clock.advance(31 * DAY);
+    expect(await reminder(service)).toEqual({ daysSince: null });
+    await service.dismissBackupReminder();
+    expect(await reminder(service)).toBeNull();
+    p.clock.advance(6 * DAY);
+    expect(await reminder(service)).toBeNull();
+    p.clock.advance(DAY);
+    expect(await reminder(service)).toEqual({ daysSince: null });
+    const { token } = await service.reauth(PASSWORD);
+    await service.exportVault(token, "otpauth");
+    expect(await reminder(service)).toBeNull();
+    p.clock.advance(31 * DAY);
+    expect(await reminder(service)).toEqual({ daysSince: 31 });
+  });
+
+  it.each([
+    ["claviger", "other password 123"],
+    ["aegis", "other password 123"],
+    ["aegis-plain", undefined],
+    ["otpauth", undefined],
+  ] as const)("counts a %s export as a backup", async (format, pw) => {
+    const { service } = await unlockedService();
+    await add(service);
+    const { token } = await service.reauth(PASSWORD);
+    await service.exportVault(token, format, pw);
+    expect((await service.getState()).lastBackupAt).not.toBeNull();
+  });
+
+  it("does not count a failed export or a migration export", async () => {
+    const { service } = await unlockedService();
+    await add(service);
+    const { token } = await service.reauth(PASSWORD);
+    await expect(service.exportVault(token, "aegis", PASSWORD)).rejects.toThrow();
+    expect((await service.getState()).lastBackupAt).toBeNull();
+    const t2 = (await service.reauth(PASSWORD)).token;
+    await service.exportMigration(t2, []);
+    expect((await service.getState()).lastBackupAt).toBeNull();
+  });
+
+  it("does not show when the clock moves backwards", async () => {
+    const { service, p } = await unlockedService();
+    await add(service);
+    await service.getState();
+    p.clock.advance(-DAY);
+    expect(await reminder(service)).toBeNull();
+    p.clock.advance(DAY + 29 * DAY);
+    expect(await reminder(service)).toBeNull();
+  });
+
+  it("starts fresh for a new vault after a reset", async () => {
+    const { service, p } = await unlockedService();
+    await add(service);
+    await service.getState();
+    p.clock.advance(31 * DAY);
+    expect(await reminder(service)).not.toBeNull();
+    const { token } = await service.reauth(PASSWORD);
+    await service.deleteVault(token);
+    await service.setup({
+      password: PASSWORD,
+      createRecoveryCode: false,
+      lockPolicy: { kind: "browser-close" },
+      storageArea: "local",
+    });
+    await add(service);
+    expect(await reminder(service)).toBeNull();
+    p.clock.advance(29 * DAY);
+    expect(await reminder(service)).toBeNull();
+    p.clock.advance(DAY);
+    expect(await reminder(service)).toEqual({ daysSince: null });
+  });
+
+  it("is not shown while locked", async () => {
+    const { service, p } = await unlockedService();
+    await add(service);
+    await service.getState();
+    p.clock.advance(40 * DAY);
+    await service.lock();
+    expect(await reminder(service)).toBeNull();
   });
 });

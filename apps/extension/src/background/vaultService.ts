@@ -62,12 +62,17 @@ import {
   loadSettings,
   MAX_CLOCK_OFFSET_SEC,
   saveSettings,
+  type BackupReminderDays,
   type ClipboardClearSec,
+  type Language,
+  type OpenMode,
+  type PopupSize,
   type LockPolicy,
   type Settings,
   type Theme,
   type ViewMode,
 } from "./settings";
+import { backupReminderFor, needsReminderStamp, SNOOZE_DAYS } from "./backupReminder";
 import { SNAPSHOT_ATTEMPTS_KEY, Throttle } from "./throttle";
 
 export type {
@@ -161,7 +166,11 @@ export class VaultService {
     }
   >();
 
-  constructor(protected readonly p: Platform) {
+  constructor(
+    protected readonly p: Platform,
+    // Applies an open mode in the browser; the real launcher is wired in by the background entry.
+    private readonly onOpenModeChange: (mode: OpenMode) => Promise<void> = async () => {},
+  ) {
     this.keys = new KeyCache(p);
     this.security = new SecurityStore(p.local);
     this.throttle = new Throttle(p.local, p.clock);
@@ -435,8 +444,13 @@ export class VaultService {
       clockCheckEnabled: settings.clockCheckEnabled,
       revealRequiresPassword: true,
       lastBackupAt: settings.lastBackupAt,
+      backupReminderDays: settings.backupReminderDays,
+      backupReminder: null as ServiceState["backupReminder"],
       viewMode: settings.viewMode,
       theme: settings.theme,
+      language: settings.language,
+      openMode: settings.openMode,
+      popupSize: settings.popupSize,
       clipboardClearSec: settings.clipboardClearSec,
       recoveryCodeConfirmed: settings.recoveryCodeConfirmed,
       retryAfterMs: await this.throttle.retryAfterMs(),
@@ -464,6 +478,7 @@ export class VaultService {
       const sealed = (await this.security.read(vault)) ?? SAFE_SECURITY;
       return {
         ...base,
+        backupReminder: await this.backupReminder(info.accountCount),
         lockPolicy: sealed.lockPolicy,
         revealRequiresPassword: sealed.revealRequiresPassword,
         status: "unlocked",
@@ -480,6 +495,22 @@ export class VaultService {
       accountCount: info.accountCount,
       snapshotOffer: null,
     };
+  }
+
+  private async backupReminder(
+    accountCount: number | null,
+  ): Promise<ServiceState["backupReminder"]> {
+    let settings = await this.settings();
+    // First account seen without any backup: the clock starts here, once (queued against races).
+    // A date from a clock that ran ahead restarts it too.
+    if (accountCount && needsReminderStamp(settings, this.p.clock.now())) {
+      settings = await this.exclusive(async () => {
+        const cur = await this.settings();
+        if (!needsReminderStamp(cur, this.p.clock.now())) return cur;
+        return saveSettings(this.p.local, { backupReminderSince: this.p.clock.now() });
+      });
+    }
+    return backupReminderFor(settings, accountCount, this.p.clock.now());
   }
 
   private async snapshotOffer(): Promise<ServiceState["snapshotOffer"]> {
@@ -536,6 +567,10 @@ export class VaultService {
       lockPolicy: opts.lockPolicy,
       storageArea: opts.storageArea,
       recoveryCodeConfirmed: recoveryCode === null,
+      // A new vault starts its own reminder clock; an older vault's backup does not cover it.
+      lastBackupAt: null,
+      backupReminderSince: null,
+      backupReminderSnoozedUntil: null,
     });
     const security = { lockPolicy: opts.lockPolicy, revealRequiresPassword: true };
     try {
@@ -688,10 +723,68 @@ export class VaultService {
     });
   }
 
+  setLanguage(language: Language): Promise<void> {
+    return this.exclusive(async () => {
+      await saveSettings(this.p.local, { language });
+    });
+  }
+
+  /** Applies the mode in the browser first; a failed apply leaves the stored setting untouched. */
+  setOpenMode(mode: OpenMode): Promise<void> {
+    return this.exclusive(async () => {
+      const previous = (await this.settings()).openMode;
+      try {
+        await this.onOpenModeChange(mode);
+      } catch {
+        throw new ServiceError("unsupported-open-mode", "The browser refused this open mode");
+      }
+      try {
+        await saveSettings(this.p.local, { openMode: mode });
+      } catch (e) {
+        await this.onOpenModeChange(previous).catch(() => {});
+        throw e;
+      }
+    });
+  }
+
+  /** For wake-ups: setPopup does not survive a browser restart, so the stored mode is applied again. */
+  async reapplyOpenMode(): Promise<void> {
+    await this.onOpenModeChange((await this.settings()).openMode);
+  }
+
+  setPopupSize(size: PopupSize): Promise<void> {
+    return this.exclusive(async () => {
+      await saveSettings(this.p.local, { popupSize: size });
+    });
+  }
+
   setClipboardClear(seconds: ClipboardClearSec): Promise<void> {
     return this.exclusive(async () => {
       await saveSettings(this.p.local, { clipboardClearSec: seconds });
       if (seconds === 0) await this.p.alarms.clear(CLIPBOARD_ALARM);
+    });
+  }
+
+  // Device-local and not secret: allowed while locked, like the theme.
+  setBackupReminder(days: BackupReminderDays): Promise<void> {
+    return this.exclusive(async () => {
+      await saveSettings(this.p.local, { backupReminderDays: days });
+    });
+  }
+
+  dismissBackupReminder(): Promise<void> {
+    return this.exclusive(async () => {
+      await saveSettings(this.p.local, {
+        backupReminderSnoozedUntil: this.p.clock.now() + SNOOZE_DAYS * 86_400_000,
+      });
+    });
+  }
+
+  // Only for file exports that leave the vault; on-screen QR codes are not backups.
+  private async markBackup(): Promise<void> {
+    await saveSettings(this.p.local, {
+      lastBackupAt: this.p.clock.now(),
+      backupReminderSnoozedUntil: null,
     });
   }
 
@@ -1157,6 +1250,10 @@ export class VaultService {
       this.onLock();
       await this.keys.forget();
       await this.p.alarms.clear(AUTOLOCK_ALARM);
+      await saveSettings(this.p.local, {
+        backupReminderSince: null,
+        backupReminderSnoozedUntil: null,
+      });
       return { moved };
     });
   }
@@ -1228,7 +1325,7 @@ export class VaultService {
             return { filename: `claviger-${date}.txt`, content: exportOtpauthText(accounts) };
         }
       })();
-      await saveSettings(this.p.local, { lastBackupAt: this.p.clock.now() });
+      await this.markBackup();
       return { ...result, count: accounts.length, skipped: unreadable.length };
     });
   }

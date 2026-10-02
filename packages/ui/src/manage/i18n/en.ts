@@ -187,6 +187,10 @@ export const manageEn: Record<ManageKey, string> = {
   "security.recoveryCreated": "New recovery code saved.",
   "security.lock": "Lock",
   "security.lockHint": "When the vault should lock on its own.",
+  "language.label": "Language",
+  "language.system": "System",
+  "language.hint":
+    "The app language. Texts in the browser menu and shortcut descriptions follow your browser language and are not changed here.",
   "theme.section": "Appearance",
   "theme.label": "Theme",
   "theme.system": "System",
@@ -200,7 +204,17 @@ export const manageEn: Record<ManageKey, string> = {
   "view.normal": "Normal",
   "view.compact": "Compact",
   "view.hidden": "Hidden",
-  "view.hiddenHint": "Codes stay hidden and are copied on click.",
+  "view.hiddenHint": "Codes stay hidden; the eye icon shows one for {seconds} s, clicking copies.",
+  "security.openMode": "Open as",
+  "security.openModeHint": "A window or side panel stays open when you copy a code.",
+  "openMode.popup": "Popup",
+  "openMode.window": "Window",
+  "openMode.panel": "Side panel",
+  "security.popupSize": "Popup size",
+  "security.popupSizeHint": "Applies to the popup only, from the next time it opens.",
+  "popupSize.small": "Small",
+  "popupSize.medium": "Medium",
+  "popupSize.large": "Large",
   "security.clipboard": "Clear clipboard",
   "security.clipboardHint":
     "A copied code is wiped from the clipboard after this time. Anything else you copy in the meantime is wiped too.",
@@ -281,6 +295,11 @@ export const manageEn: Record<ManageKey, string> = {
   "backup.toLocal": "Keep on this device only",
   "backup.move": "Move",
   "backup.moved": "Vault moved.",
+  "backup.reminder.title": "Backup reminder",
+  "backup.reminder.hint":
+    "A small notice appears after this time. Snapshots do not count as backups (they live on the same device).",
+  "backup.reminder.off": "Off",
+  "backup.reminder.days": "{days} days",
   "error.target-has-vault": "The target storage already holds a vault. Remove it there first.",
   "backup.syncRemoval":
     "The vault is removed from browser sync and disappears from your other synced devices.",
@@ -365,6 +384,9 @@ export const manageEn: Record<ManageKey, string> = {
   "security.shortcut": "Keyboard shortcut: Alt+Shift+O",
   "security.shortcutHint":
     'Change it at chrome://extensions/shortcuts in Chrome, or in Firefox via Add-ons > gear > "Manage Extension Shortcuts".',
+  "security.lockShortcut": "Lock shortcut",
+  "security.lockShortcutHint":
+    'Not assigned by default. Chrome: assign a key at chrome://extensions/shortcuts; Firefox: Add-ons page, gear icon, "Manage Extension Shortcuts".',
   "clock.title": "Clock check",
   "clock.hint":
     "If codes are rejected, compares your computer's clock once with Google's server. The request goes to Google and only runs when you ask.",

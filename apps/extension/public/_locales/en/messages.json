@@ -10,5 +10,8 @@
   },
   "commandFill": {
     "message": "Fill this site's 2FA code"
+  },
+  "commandLock": {
+    "message": "Lock the vault"
   }
 }

@@ -16,7 +16,7 @@ export function withStatus(ui: UiPlatform, status: "unsupported" | "corrupt"): U
 export function renderUi(node: ReactNode, ui: UiPlatform, locale: Locale = "tr") {
   return render(
     <UiProvider value={ui}>
-      <LocaleProvider locale={locale} extra={manageMessages}>
+      <LocaleProvider locale={locale} extra={manageMessages} systemLanguages={[locale]}>
         {node}
       </LocaleProvider>
     </UiProvider>,

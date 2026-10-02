@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { AccountView, ServiceState, StorageUsageView, TrashItemView } from "../contract/views";
 import { RpcError } from "../rpc/client";
+import { BackupReminder } from "../components/BackupReminder";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { Toast } from "../components/Toast";
@@ -19,6 +20,7 @@ import { useAccountList } from "../hooks";
 import { useLocale, useT } from "../i18n/i18n";
 import { useUi } from "../platform";
 import { iconButton } from "./iconButton";
+import { REVEAL_SECONDS } from "./reveal";
 import { ThemeToggle } from "./ThemeToggle";
 import { AccountRow } from "./AccountRow";
 import type { MenuItem } from "./RowMenu";
@@ -70,7 +72,7 @@ export function CodesScreen({
   pollMs: number;
   onLocked: () => void;
 }) {
-  const { rpc, copy, activeTab, openManage, capabilities } = useUi();
+  const { rpc, copy, activeTab, onActiveTabChange, openManage, capabilities } = useUi();
   const t = useT();
   const locale = useLocale();
   const [tab, setTab] = useState<{ id: number; url: string } | undefined | null>(null);
@@ -98,13 +100,63 @@ export function CodesScreen({
   // Last input modality: only a keyboard delete moves focus to "Undo" (the confirm button is gone).
   const viaKeyboard = useRef(false);
   const clearUndo = useCallback(() => setUndo(null), []);
+  const [revealedId, setRevealedId] = useState<string | null>(null);
+  const [announced, setAnnounced] = useState(false);
+  const toggleReveal = (a: AccountView) => {
+    setAnnounced(true);
+    setRevealedId((id) => (id === a.id ? null : a.id));
+  };
 
   useEffect(() => {
-    (capabilities.activeTab ? activeTab() : Promise.resolve(undefined)).then(setTab, () =>
-      setTab(undefined),
-    );
+    if (!revealedId) return;
+    const timer = setTimeout(() => {
+      // The code button turns back into a mask; keep focus from falling to <body>.
+      const active = document.activeElement;
+      if (active?.matches("[data-code-button]"))
+        active.closest("li")?.querySelector<HTMLElement>("[data-reveal-button]")?.focus();
+      setRevealedId(null);
+    }, REVEAL_SECONDS * 1000);
+    const onHidden = () => {
+      if (document.visibilityState === "hidden") setRevealedId(null);
+    };
+    document.addEventListener("visibilitychange", onHidden);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onHidden);
+    };
+  }, [revealedId]);
+
+  useEffect(() => {
+    if (!capabilities.activeTab) {
+      setTab(undefined);
+      return;
+    }
+    let current = true;
+    let latest = 0;
+    // Always re-resolved, never reused: a stale "this site" would be a false trust signal.
+    const resolve = () => {
+      const mine = ++latest;
+      const apply = (next: { id: number; url: string } | undefined) =>
+        current && mine === latest && setTab(next);
+      return activeTab().then(apply, () => apply(undefined));
+    };
+    void resolve();
+    const unsubscribe = onActiveTabChange?.(() => {
+      // Back to "unknown": until the new tab resolves the old match must not show, and the
+      // list must wait instead of loading once for "no tab".
+      latest++;
+      setTab(null);
+      void resolve();
+    });
+    return () => {
+      current = false;
+      unsubscribe?.();
+    };
+  }, [activeTab, onActiveTabChange, capabilities.activeTab]);
+
+  useEffect(() => {
     rpc("storageUsage", {}).then(setUsage, () => setUsage(null));
-  }, [activeTab, capabilities.activeTab, rpc]);
+  }, [rpc]);
 
   useEffect(() => {
     if (error instanceof RpcError && error.code === "locked") onLocked();
@@ -113,8 +165,16 @@ export function CodesScreen({
   // A stale offer must not reappear when the list view returns.
   const away = adding || editing !== null || showTrash || sorting;
   useEffect(() => {
-    if (away) setUndo(null);
+    if (away) {
+      setUndo(null);
+      setRevealedId(null);
+    }
   }, [away]);
+
+  // A revealed code must not survive a switch away from Hidden mode and back.
+  useEffect(() => {
+    if (state.viewMode !== "hidden") setRevealedId(null);
+  }, [state.viewMode]);
 
   // Another view replaces the list, so the mode must not survive the round trip.
   useEffect(() => {
@@ -295,6 +355,7 @@ export function CodesScreen({
 
   async function lock() {
     setActionError(null);
+    setRevealedId(null);
     try {
       await rpc("lock", {});
       onLocked();
@@ -513,6 +574,8 @@ export function CodesScreen({
       mode={state.viewMode}
       onCopy={(a) => void copyCode(a)}
       onNextHotp={(a) => void nextHotp(a)}
+      revealed={revealedId === account.id}
+      onToggleReveal={toggleReveal}
     />
   );
 
@@ -542,6 +605,14 @@ export function CodesScreen({
       onKeyDown={onListKeyDown}
       onPointerDown={() => (viaKeyboard.current = false)}
     >
+      {/* Announces the state only; the code itself must never reach a live region. */}
+      <div aria-live="polite" className="sr-only">
+        {revealedId
+          ? t("codes.revealedAnnounce", { seconds: REVEAL_SECONDS })
+          : announced
+            ? t("codes.hiddenAnnounce")
+            : ""}
+      </div>
       <header className="flex items-center pt-2 pr-3 pl-7">
         <div className="flex-1 font-mono text-xs tracking-wide">{t("app.name")}</div>
         <button
@@ -591,6 +662,9 @@ export function CodesScreen({
             {t("clock.popupNote", { offset: state.clockOffsetSec })}
           </Button>
         </div>
+      ) : null}
+      {state.backupReminder && !sorting ? (
+        <BackupReminder daysSince={state.backupReminder.daysSince} className="px-7 pt-1" />
       ) : null}
       {sorting ? null : (
         <div className="px-7 pt-1">

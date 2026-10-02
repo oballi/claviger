@@ -16,6 +16,8 @@ export function AccountRow({
   mode,
   onCopy,
   onNextHotp,
+  revealed = false,
+  onToggleReveal,
 }: {
   account: AccountView;
   /** "This site" rows use the large code layout from the design. */
@@ -28,12 +30,16 @@ export function AccountRow({
   mode: ViewMode;
   onCopy: (account: AccountView) => void;
   onNextHotp: (account: AccountView) => void;
+  /** Hidden mode only: the code is shown in clear until the owner hides it again. */
+  revealed?: boolean;
+  onToggleReveal?: (account: AccountView) => void;
 }) {
   const t = useT();
   const name = account.issuer || account.label;
   const hidden = mode === "hidden";
   const compact = mode === "compact";
-  const code = hidden ? maskCode(account.digits) : formatCode(account.code);
+  const masked = hidden && !revealed;
+  const code = masked ? maskCode(account.digits) : formatCode(account.code);
   // Convenience only: the code button stays the keyboard/screen-reader control, so the row has no role.
   const copyFromRow = (e: MouseEvent<HTMLLIElement>) => {
     if (window.getSelection()?.toString()) return;
@@ -83,7 +89,7 @@ export function AccountRow({
       type="button"
       data-code-button=""
       aria-label={
-        hidden ? t("codes.copyHidden", { issuer: name }) : t("codes.copy", { issuer: name, code })
+        masked ? t("codes.copyHidden", { issuer: name }) : t("codes.copy", { issuer: name, code })
       }
       onClick={() => onCopy(account)}
       className={`shrink-0 cursor-pointer whitespace-nowrap border-0 bg-transparent p-0 text-left font-mono tracking-wide ${large ? (compact ? "min-h-11 text-2xl leading-tight" : "min-h-11 text-[34px] leading-tight") : `${showLabel ? hitDown : "min-h-11"} ${compact ? "text-base" : "text-xl"}`} ${critical ? "text-critical" : urgent ? "text-warn" : "text-text"}`}
@@ -91,6 +97,19 @@ export function AccountRow({
       {code}
     </button>
   );
+  const eyeButton =
+    hidden && onToggleReveal ? (
+      <button
+        type="button"
+        data-reveal-button=""
+        aria-pressed={revealed}
+        aria-label={t(revealed ? "codes.hide" : "codes.reveal", { issuer: name })}
+        onClick={() => onToggleReveal(account)}
+        className={`${showLabel ? `-mx-[13px] w-11 ${hitDown}` : "-m-[13px] h-11 w-11"} flex shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-0 text-muted`}
+      >
+        <Icon name={revealed ? "eye-off" : "eye"} />
+      </button>
+    ) : null;
   const tail =
     account.type === "hotp" ? (
       <button
@@ -119,6 +138,7 @@ export function AccountRow({
         <div className="flex items-end justify-between gap-4">
           {copyButton}
           <div className="flex items-center gap-1 pb-3">
+            {eyeButton}
             {tail}
             {menuButton}
           </div>
@@ -144,6 +164,7 @@ export function AccountRow({
           ) : null}
         </div>
         {copyButton}
+        {eyeButton}
         {tail}
         {menuButton}
       </div>

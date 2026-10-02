@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
-import { fireEvent, screen, within } from "@testing-library/react";
+import { act, fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { useState } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { formatCode, maskCode } from "@claviger/ui";
 import type { UiPlatform } from "@claviger/ui";
-import { CodesScreen } from "@claviger/ui/popup";
+import { CodesScreen, REVEAL_SECONDS } from "@claviger/ui/popup";
 import { harness, renderUi } from "./helpers/ui";
 
+const B = "otpauth://totp/Beta:b@x?secret=GEZDGNBVGY3TQOJQ&issuer=Beta";
 const A = "otpauth://totp/Acme:a@x?secret=JBSWY3DPEHPK3PXP&issuer=Acme";
 
 async function popupWith(
@@ -217,5 +219,130 @@ describe("maskCode", () => {
     const digitsText = "1234567890".slice(0, digits);
     expect(maskCode(digits)).toBe(formatCode(digitsText).replace(/\d/g, "\u2022"));
     expect(maskCode(digits)).not.toMatch(/\d/);
+  });
+});
+
+describe("tap to reveal (hidden mode)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true });
+  });
+
+  const spaced = (code: string) => `${code.slice(0, 3)} ${code.slice(3)}`;
+  const absent = (container: HTMLElement, code: string) => {
+    expect(container.innerHTML).not.toContain(code);
+    expect(container.innerHTML).not.toContain(spaced(code));
+  };
+
+  it("reveals on the eye button, copies on code click, hides after REVEAL_SECONDS", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const { h, container, code } = await popupWith("hidden");
+    const eye = await screen.findByRole("button", { name: "Acme kodunu g\u00f6ster" });
+    expect(eye.getAttribute("aria-pressed")).toBe("false");
+    absent(container, code);
+    await user.click(eye);
+    expect(container.innerHTML).toContain(spaced(code));
+    expect(eye.getAttribute("aria-pressed")).toBe("true");
+    expect(eye.getAttribute("aria-label")).toBe("Acme kodunu gizle");
+    await user.click(screen.getByRole("button", { name: /kodunu kopyala|Kopyala|kopyala/ }));
+    expect(h.ui.copy).toHaveBeenCalledWith(code);
+    expect(container.innerHTML).toContain(spaced(code));
+    act(() => void vi.advanceTimersByTime(REVEAL_SECONDS * 1000));
+    absent(container, code);
+    expect(eye.getAttribute("aria-pressed")).toBe("false");
+    expect(document.activeElement).toBe(eye);
+  });
+
+  it("the announcement region never contains the code", async () => {
+    const user = userEvent.setup();
+    const { container, code } = await popupWith("hidden");
+    await user.click(await screen.findByRole("button", { name: "Acme kodunu g\u00f6ster" }));
+    const live = container.querySelector("[aria-live]")!;
+    expect(live.textContent).toContain(String(REVEAL_SECONDS));
+    expect(live.textContent).not.toContain(code.slice(0, 3));
+    expect(live.innerHTML).not.toContain(code);
+  });
+
+  it("only one row is revealed at a time", async () => {
+    const user = userEvent.setup();
+    const { container, h } = await popupWith("hidden", { extra: B });
+    const [a, b] = (await h.service.listAccounts()).accounts;
+    await user.click(await screen.findByRole("button", { name: "Acme kodunu g\u00f6ster" }));
+    expect(container.innerHTML).toContain(spaced(a!.code));
+    await user.click(screen.getByRole("button", { name: "Beta kodunu g\u00f6ster" }));
+    absent(container, a!.code);
+    expect(container.innerHTML).toContain(spaced(b!.code));
+  });
+
+  it("normal mode has no eye button", async () => {
+    await popupWith("normal");
+    await screen.findByText("Acme");
+    expect(screen.queryByRole("button", { name: /kodunu g\u00f6ster/ })).toBeNull();
+  });
+
+  it("hides on lock", async () => {
+    const user = userEvent.setup();
+    const { container, code } = await popupWith("hidden");
+    await user.click(await screen.findByRole("button", { name: "Acme kodunu g\u00f6ster" }));
+    expect(container.innerHTML).toContain(spaced(code));
+    await user.click(screen.getByRole("button", { name: "Kilitle" }));
+    absent(container, code);
+  });
+
+  it("hides when the tab becomes hidden", async () => {
+    const user = userEvent.setup();
+    const { container, code } = await popupWith("hidden");
+    await user.click(await screen.findByRole("button", { name: "Acme kodunu g\u00f6ster" }));
+    Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true });
+    act(() => void document.dispatchEvent(new Event("visibilitychange")));
+    absent(container, code);
+  });
+
+  it("hides when the view mode leaves Hidden and stays hidden on return", async () => {
+    const user = userEvent.setup();
+    const h = await harness({});
+    await h.service.addAccount({ uri: A }, {});
+    await h.service.setViewMode("hidden");
+    const state = await h.service.getState();
+    let setMode: (m: "normal" | "hidden") => void = () => {};
+    function Host() {
+      const [m, s] = useState<"normal" | "hidden">("hidden");
+      setMode = s;
+      return <CodesScreen state={{ ...state, viewMode: m }} pollMs={0} onLocked={() => {}} />;
+    }
+    const { container } = renderUi(<Host />, h.ui);
+    const code = (await h.service.listAccounts()).accounts[0]!.code;
+    await user.click(await screen.findByRole("button", { name: "Acme kodunu g\u00f6ster" }));
+    expect(container.innerHTML).toContain(spaced(code));
+    act(() => setMode("normal"));
+    act(() => setMode("hidden"));
+    absent(container, code);
+  });
+
+  it("hides when the user leaves the list view and returns", async () => {
+    const user = userEvent.setup();
+    const { container, h } = await popupWith("hidden", { extra: B });
+    const [a] = (await h.service.listAccounts()).accounts;
+    await user.click(await screen.findByRole("button", { name: "Acme kodunu g\u00f6ster" }));
+    expect(container.innerHTML).toContain(spaced(a!.code));
+    await user.click(screen.getByRole("button", { name: "S\u0131rala" }));
+    await user.click(await screen.findByRole("button", { name: "Bitti" }));
+    await screen.findByRole("button", { name: "Acme kodunu g\u00f6ster" });
+    absent(container, a!.code);
+  });
+
+  it("the copy button label names the code only while it is revealed", async () => {
+    const user = userEvent.setup();
+    const { code } = await popupWith("hidden");
+    const row = (await screen.findByText("Acme")).closest("li")!;
+    const copyLabel = () =>
+      [...row.querySelectorAll("button")]
+        .map((b) => b.getAttribute("aria-label") ?? "")
+        .filter((l) => /kopyala/i.test(l));
+    expect(copyLabel().length).toBeGreaterThan(0);
+    for (const l of copyLabel()) expect(l).not.toContain(code);
+    await user.click(screen.getByRole("button", { name: "Acme kodunu g\u00f6ster" }));
+    expect(copyLabel().some((l) => l.includes(code) || l.includes(spaced(code)))).toBe(true);
   });
 });

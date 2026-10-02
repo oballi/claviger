@@ -184,6 +184,10 @@ export const manageTr = {
   "security.recoveryCreated": "Yeni kurtarma kodu kaydedildi.",
   "security.lock": "Kilit",
   "security.lockHint": "Kasa ne zaman kendiliğinden kilitlensin.",
+  "language.label": "Dil",
+  "language.system": "Sistem",
+  "language.hint":
+    "Uygulamanın dili. Tarayıcı menüsündeki ve kısayol açıklamalarındaki metinler tarayıcınızın diline bağlıdır ve buradan değişmez.",
   "theme.section": "Görünüm",
   "theme.label": "Tema",
   "theme.system": "Sistem",
@@ -197,7 +201,18 @@ export const manageTr = {
   "view.normal": "Normal",
   "view.compact": "Kompakt",
   "view.hidden": "Gizli",
-  "view.hiddenHint": "Kodlar gizli kalır, tıklayınca kopyalanır.",
+  "view.hiddenHint":
+    "Kodlar gizli kalır; göz simgesi {seconds} sn gösterir, tıklayınca kopyalanır.",
+  "security.openMode": "Açılış biçimi",
+  "security.openModeHint": "Pencere ve yan panel, kod kopyalarken kapanmaz.",
+  "openMode.popup": "Pop-up",
+  "openMode.window": "Pencere",
+  "openMode.panel": "Yan panel",
+  "security.popupSize": "Pop-up boyutu",
+  "security.popupSizeHint": "Yalnızca pop-up biçiminde geçerlidir; sonraki açılışta uygulanır.",
+  "popupSize.small": "Küçük",
+  "popupSize.medium": "Orta",
+  "popupSize.large": "Büyük",
   "security.clipboard": "Panoyu temizle",
   "security.clipboardHint":
     "Kopyalanan kod bu süre sonunda panodan silinir. Bu sürede başka bir şey kopyalarsan o da silinir.",
@@ -276,6 +291,11 @@ export const manageTr = {
   "backup.toLocal": "Yalnızca bu cihaza taşı",
   "backup.move": "Taşı",
   "backup.moved": "Kasa taşındı.",
+  "backup.reminder.title": "Yedek hatırlatması",
+  "backup.reminder.hint":
+    "Belirlenen süre geçince küçük bir bildirim gösterilir. Anlık görüntüler yedek sayılmaz (aynı cihazdadır).",
+  "backup.reminder.off": "Kapalı",
+  "backup.reminder.days": "{days} gün",
   "error.target-has-vault": "Hedef alanda zaten bir kasa var. Önce oradaki kasayı kaldır.",
   "backup.syncRemoval":
     "Kasa senkronizasyondan kaldırılır; eşitlenen diğer cihazlarında artık görünmez.",
@@ -359,6 +379,9 @@ export const manageTr = {
   "security.shortcut": "Klavye kısayolu: Alt+Shift+O",
   "security.shortcutHint":
     "Chrome'da chrome://extensions/shortcuts adresinden, Firefox'ta eklenti yönetimi > dişli > \"Eklenti kısayollarını yönet\" ile değiştirilir.",
+  "security.lockShortcut": "Kilitleme kısayolu",
+  "security.lockShortcutHint":
+    'Varsayılan olarak atanmamış. Chrome: chrome://extensions/shortcuts adresinden; Firefox: Eklentiler sayfası, dişli simgesi, "Eklenti kısayollarını yönet" ile bir tuş atayın.',
   "clock.title": "Saat kontrolü",
   "clock.hint":
     "Kodlar tutmuyorsa bilgisayarının saatini bir kez Google'ın sunucusuyla karşılaştırır. İstek Google'a gider ve yalnızca sen istediğinde çalışır.",

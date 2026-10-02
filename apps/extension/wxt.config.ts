@@ -47,6 +47,8 @@ export default defineConfig({
         suggested_key: { default: "Alt+Shift+O" },
         description: "__MSG_commandFill__",
       },
+      // No suggested_key: Chrome allows only 4 suggested shortcuts; the user assigns one.
+      "lock-vault": { description: "__MSG_commandLock__" },
     },
     content_security_policy: {
       extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",

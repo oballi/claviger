@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CORE_VERSION } from "@claviger/core";
 import config from "../wxt.config";
@@ -55,12 +55,34 @@ describe("manifest", () => {
   });
 
   it.each(["chrome", "firefox"])("declares the fill shortcut for %s", (browser) => {
-    expect(manifestFor(browser).commands).toEqual({
-      "fill-code": {
-        suggested_key: { default: "Alt+Shift+O" },
-        description: "__MSG_commandFill__",
-      },
+    expect((manifestFor(browser).commands as Record<string, unknown>)["fill-code"]).toEqual({
+      suggested_key: { default: "Alt+Shift+O" },
+      description: "__MSG_commandFill__",
     });
+  });
+
+  it.each(["chrome", "firefox"])(
+    "declares a lock command without a suggested key for %s",
+    (browser) => {
+      const commands = manifestFor(browser).commands as Record<
+        string,
+        { suggested_key?: unknown; description: string }
+      >;
+      expect(commands["lock-vault"]).toEqual({ description: "__MSG_commandLock__" });
+      expect(Object.values(commands).filter((c) => c.suggested_key).length).toBeLessThanOrEqual(4);
+    },
+  );
+
+  it("has a commandLock string in both locales", () => {
+    for (const [lang, text] of [
+      ["en", "Lock the vault"],
+      ["tr", "Kasay\u0131 kilitle"],
+    ] as const) {
+      const m = JSON.parse(
+        readFileSync(new URL(`../public/_locales/${lang}/messages.json`, import.meta.url), "utf8"),
+      );
+      expect(m.commandLock.message).toBe(text);
+    }
   });
 
   it("uses the claviger name, tagline and Firefox id", () => {
@@ -157,5 +179,46 @@ describe("manifest", () => {
       expect(svg).toContain('viewBox="0 0 32 32"');
       expect(svg).toContain("#19191B");
     }
+  });
+});
+
+describe("side panel entrypoint", () => {
+  it("tells Firefox not to open the sidebar at install", () => {
+    const html = readFileSync(
+      new URL("../entrypoints/sidepanel/index.html", import.meta.url),
+      "utf8",
+    );
+    expect(html).toContain('<meta name="manifest.open_at_install" content="false" />');
+  });
+
+  it("does not declare sidePanel by hand (WXT adds it for the Chrome entrypoint)", () => {
+    expect(manifestFor("chrome").permissions).not.toContain("sidePanel");
+    expect(manifestFor("firefox").permissions).not.toContain("sidePanel");
+  });
+
+  type Built = {
+    permissions?: string[];
+    side_panel?: { default_path?: string };
+    sidebar_action?: { default_panel?: string; open_at_install?: boolean };
+  };
+  const built = (dir: string) => new URL(`../.output/${dir}/manifest.json`, import.meta.url);
+
+  describe.skipIf(!existsSync(built("chrome-mv3")))("built Chrome manifest", () => {
+    const manifest = JSON.parse(readFileSync(built("chrome-mv3"), "utf8")) as Built;
+    it("has the side panel page and permission, and no sidebar_action", () => {
+      expect(manifest.side_panel?.default_path).toBe("sidepanel.html");
+      expect(manifest.permissions).toContain("sidePanel");
+      expect(manifest.sidebar_action).toBeUndefined();
+    });
+  });
+
+  describe.skipIf(!existsSync(built("firefox-mv3")))("built Firefox manifest", () => {
+    const manifest = JSON.parse(readFileSync(built("firefox-mv3"), "utf8")) as Built;
+    it("has a sidebar that does not open at install, and no sidePanel permission", () => {
+      expect(manifest.sidebar_action?.default_panel).toBe("sidepanel.html");
+      expect(manifest.sidebar_action?.open_at_install).toBe(false);
+      expect(manifest.permissions).not.toContain("sidePanel");
+      expect(manifest.side_panel).toBeUndefined();
+    });
   });
 });

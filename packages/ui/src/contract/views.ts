@@ -1,14 +1,27 @@
+import type { Language } from "../i18n/locales";
 import type { Account, ImportFormat, ImportIssue } from "@claviger/core";
 import type {
+  BackupReminderDays,
   ClipboardClearSec,
   LockPolicy,
+  OpenMode,
+  PopupSize,
   SnapshotReason,
   Theme,
   ViewMode,
 } from "../protocol/schemas";
 
 export type StorageAreaName = "local" | "sync";
-export type { ClipboardClearSec, LockPolicy, SnapshotReason, Theme, ViewMode };
+export type {
+  BackupReminderDays,
+  ClipboardClearSec,
+  LockPolicy,
+  OpenMode,
+  PopupSize,
+  SnapshotReason,
+  Theme,
+  ViewMode,
+};
 
 export type ServiceStatus = "no-vault" | "locked" | "unlocked" | "unsupported" | "corrupt";
 
@@ -25,9 +38,17 @@ export interface ServiceState {
   clockCheckEnabled: boolean;
   revealRequiresPassword: boolean;
   lastBackupAt: number | null;
+  backupReminderDays: BackupReminderDays;
+  /** Set only while unlocked and a reminder is due; daysSince null = never backed up. Not a secret. */
+  backupReminder: { daysSince: number | null } | null;
   viewMode: ViewMode;
   /** Not a secret: readable while locked so the lock screen is themed too. */
   theme: Theme;
+  /** Not a secret: readable while locked so the lock screen speaks the chosen language. */
+  language: Language;
+  /** Not a secret: the popup reads it to cache its size for the next open. */
+  openMode: OpenMode;
+  popupSize: PopupSize;
   clipboardClearSec: ClipboardClearSec;
   recoveryCodeConfirmed: boolean;
   /** Set only when the unlocked vault is empty and a non-empty local copy exists. */
