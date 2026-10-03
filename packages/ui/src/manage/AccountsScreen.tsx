@@ -511,25 +511,7 @@ export function AccountsScreen({
               {list && rows.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-6 text-muted">
-                    {q
-                      ? t("accounts.noMatch")
-                      : effective !== "all" && accounts.length > 0
-                        ? t("groups.empty")
-                        : t("codes.empty")}
-                    {!q && effective === "all" && state.snapshotOffer ? (
-                      <Button
-                        variant="link"
-                        onClick={() => openManage("backup")}
-                        className="mt-3 block justify-start text-[13px]"
-                      >
-                        {t(
-                          state.snapshotOffer.accountCount === 1
-                            ? "snapshots.offerOne"
-                            : "snapshots.offer",
-                          { count: state.snapshotOffer.accountCount },
-                        )}
-                      </Button>
-                    ) : null}
+                    {q ? t("accounts.noMatch") : t("groups.empty")}
                   </td>
                 </tr>
               ) : null}

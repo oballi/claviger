@@ -133,6 +133,7 @@ export const tr = {
   "codes.copyFailed": "Kopyalanamadı.",
   "codes.fillNotLinked": "Bu hesap bu siteye bağlı değil.",
   "codes.fillRefused": "Bu sayfaya doldurulamadı.",
+  "codes.filled": "Kod dolduruldu.",
   "codes.fillCopied": "Alan bulunamadı, kod kopyalandı.",
   "codes.added": "{issuer} eklendi",
   "codes.next": "{issuer} için yeni kod üret",
