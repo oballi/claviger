@@ -10,7 +10,7 @@ const STEPS: MessageKey[] = [
   "setup.step.account",
 ];
 
-/** Setup layout: step sidebar, the current step, and a bottom bar for navigation (design Setup*). */
+/** Setup layout: step sidebar, the current step, and an in-card action row (design Setup*). */
 export function WizardFrame({
   step,
   children,
@@ -18,15 +18,15 @@ export function WizardFrame({
 }: {
   step: number;
   children: ReactNode;
-  footer: ReactNode;
+  footer?: ReactNode;
 }) {
   const t = useT();
   return (
-    <div className="flex min-h-screen flex-col bg-bg font-sans text-text">
-      <div className="flex flex-1 flex-wrap">
+    <div className="flex min-h-screen items-start justify-center bg-bg font-sans text-text md:items-center md:px-6 md:py-10">
+      <div className="flex w-full max-w-[960px] flex-col overflow-hidden border-hair md:flex-row md:rounded-[20px] md:border">
         <nav
           aria-label={t("setup.stepsLabel")}
-          className="flex w-full flex-col gap-10 border-hair px-10 pt-9 pb-6 md:w-[280px] md:border-r"
+          className="flex w-full shrink-0 flex-col gap-10 border-hair px-10 pt-9 pb-6 md:w-[240px] md:border-r md:px-7 md:py-8"
         >
           <div className="font-mono text-[13px] tracking-wide">{t("app.name")}</div>
           <ol className="m-0 flex list-none flex-col gap-1 p-0">
@@ -53,15 +53,19 @@ export function WizardFrame({
             })}
           </ol>
         </nav>
-        <main className="flex max-w-[720px] flex-[1_1_480px] flex-col gap-10 px-[clamp(20px,6vw,96px)] pt-[72px] pb-10">
-          <div className="font-mono text-xs text-muted">
-            {String(step + 1).padStart(2, "0")} / {String(STEPS.length).padStart(2, "0")}
+        <main className="flex min-w-0 flex-1 flex-col gap-10 px-[clamp(20px,6vw,48px)] pt-10 pb-8">
+          <div className="flex max-w-[560px] flex-col gap-10">
+            <div className="font-mono text-xs text-muted">
+              {String(step + 1).padStart(2, "0")} / {String(STEPS.length).padStart(2, "0")}
+            </div>
+            {children}
+            {footer ? (
+              <div className="flex items-center justify-between gap-4 border-t border-hair pt-5">
+                {footer}
+              </div>
+            ) : null}
           </div>
-          {children}
         </main>
-      </div>
-      <div className="flex items-center justify-between gap-4 border-t border-hair px-10 py-4">
-        {footer}
       </div>
     </div>
   );
