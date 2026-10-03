@@ -44,9 +44,12 @@ export function ThemePicker({ theme, onSaved }: { theme: Theme; onSaved: () => v
 
   return (
     <div className="flex flex-col gap-2.5 border-b border-hair py-[22px]">
+      <div id="theme-label" className="text-[15px] font-medium">
+        {t("theme.label")}
+      </div>
       <div
         role="radiogroup"
-        aria-label={t("theme.label")}
+        aria-labelledby="theme-label"
         onKeyDown={onKeyDown}
         className="flex max-w-md gap-1.5 rounded-full border border-ring p-1"
       >

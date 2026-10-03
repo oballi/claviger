@@ -38,9 +38,9 @@ describe("language", () => {
     expect(await screen.findByRole("button", { name: "Unlock" })).toBeTruthy();
   });
 
-  it("the picker in Security switches the language and persists it", async () => {
+  it("the picker in Preferences switches the language and persists it", async () => {
     const h = await harness();
-    window.location.hash = "#/security";
+    window.location.hash = "#/preferences";
     renderUi(<ManageApp pollMs={10} />, h.ui);
     const group = await screen.findByRole("radiogroup", { name: "Dil" });
     expect(group).toBeTruthy();

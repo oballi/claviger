@@ -3,11 +3,11 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { PopupApp } from "@claviger/ui/popup";
-import { SecurityScreen } from "@claviger/ui/manage";
+import { PreferencesScreen } from "@claviger/ui/manage";
 import { harness, renderUi, type Harness } from "./helpers/ui";
 
 async function open(h: Harness) {
-  renderUi(<SecurityScreen state={await h.ui.rpc("getState", {})} onChanged={() => {}} />, h.ui);
+  renderUi(<PreferencesScreen state={await h.ui.rpc("getState", {})} onChanged={() => {}} />, h.ui);
 }
 
 const sampleAt = (h: Harness, skewSec: number) => {
@@ -153,6 +153,6 @@ describe("clock check", () => {
     await h.ui.rpc("applyClockSample", sampleAt(h, 120));
     renderUi(<PopupApp pollMs={0} />, h.ui);
     await userEvent.click(await screen.findByText("Saat farkı düzeltiliyor (120 sn)"));
-    expect(h.ui.openManage).toHaveBeenCalledWith("security");
+    expect(h.ui.openManage).toHaveBeenCalledWith("preferences");
   });
 });

@@ -5,6 +5,7 @@ import type { ManageRoute } from "../platform";
 
 const SECTIONS = [
   { route: "accounts", key: "manage.nav.accounts" },
+  { route: "preferences", key: "manage.nav.preferences" },
   { route: "security", key: "manage.nav.security" },
   { route: "backup", key: "manage.nav.backup" },
 ] as const;

@@ -2,7 +2,7 @@
 import { cleanup, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
-import { SecurityScreen } from "@claviger/ui/manage";
+import { PreferencesScreen } from "@claviger/ui/manage";
 import { PopupApp, POPUP_DIMENSIONS, readCachedPopupSize } from "@claviger/ui/popup";
 import { harness, renderUi } from "./helpers/ui";
 
@@ -14,7 +14,7 @@ afterEach(() => {
 async function security() {
   const h = await harness();
   const state = await h.service.getState();
-  const view = renderUi(<SecurityScreen state={state} onChanged={() => {}} />, h.ui);
+  const view = renderUi(<PreferencesScreen state={state} onChanged={() => {}} />, h.ui);
   return { h, ...view };
 }
 
@@ -66,7 +66,7 @@ describe("open mode settings", () => {
   it("disables the size row when the mode is not popup", async () => {
     const h = await harness();
     await h.ui.rpc("setOpenMode", { mode: "window" });
-    renderUi(<SecurityScreen state={await h.service.getState()} onChanged={() => {}} />, h.ui);
+    renderUi(<PreferencesScreen state={await h.service.getState()} onChanged={() => {}} />, h.ui);
     const size = screen.getByRole("combobox", { name: "Pop-up boyutu" }) as HTMLSelectElement;
     expect(size.disabled).toBe(true);
   });
@@ -83,7 +83,7 @@ describe("open mode settings", () => {
     refusing.onOpenModeChange = async () => {
       throw new Error("no side panel");
     };
-    renderUi(<SecurityScreen state={await h.service.getState()} onChanged={() => {}} />, h.ui);
+    renderUi(<PreferencesScreen state={await h.service.getState()} onChanged={() => {}} />, h.ui);
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "Açılış biçimi" }), "panel");
     expect(await screen.findByText("Bu tarayıcı bu açılış biçimini desteklemiyor.")).toBeTruthy();
     expect((await h.service.getState()).openMode).toBe("popup");

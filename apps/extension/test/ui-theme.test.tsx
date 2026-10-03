@@ -3,7 +3,7 @@ import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PopupApp } from "@claviger/ui/popup";
-import { SecurityScreen } from "@claviger/ui/manage";
+import { PreferencesScreen } from "@claviger/ui/manage";
 import { applyCachedTheme } from "@claviger/ui";
 import { resolvedScheme } from "@claviger/ui/popup";
 import { harness, renderUi } from "./helpers/ui";
@@ -33,7 +33,7 @@ const themeRadio = (name: string) =>
 async function security(status: "unlocked" | "locked" = "unlocked") {
   const h = await harness({ status });
   const state = await h.service.getState();
-  renderUi(<SecurityScreen state={state} onChanged={() => {}} />, h.ui);
+  renderUi(<PreferencesScreen state={state} onChanged={() => {}} />, h.ui);
   return h;
 }
 
@@ -131,7 +131,7 @@ describe("theme", () => {
   it("shows English strings", async () => {
     const h = await harness();
     renderUi(
-      <SecurityScreen state={await h.service.getState()} onChanged={() => {}} />,
+      <PreferencesScreen state={await h.service.getState()} onChanged={() => {}} />,
       h.ui,
       "en",
     );

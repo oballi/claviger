@@ -11,6 +11,7 @@ import { CorruptScreen } from "./CorruptScreen";
 import { BackupScreen, type ImportSource } from "./BackupScreen";
 import { ImportScreen } from "./ImportScreen";
 import { ManageFrame, PageTitle } from "./ManageFrame";
+import { PreferencesScreen } from "./PreferencesScreen";
 import { RecoverScreen } from "./RecoverScreen";
 import { SecurityScreen } from "./SecurityScreen";
 import { SetupWizard } from "./SetupWizard";
@@ -19,6 +20,7 @@ const ROUTES: readonly ManageRoute[] = [
   "setup",
   "recover",
   "accounts",
+  "preferences",
   "security",
   "backup",
   "import",
@@ -183,9 +185,13 @@ export function ManageApp({ pollMs = 2000 }: { pollMs?: number }) {
     );
   } else {
     const active: ManageRoute =
-      route === "security" || route === "backup" || route === "import" ? route : "accounts";
+      route === "preferences" || route === "security" || route === "backup" || route === "import"
+        ? route
+        : "accounts";
     let content: ReactNode;
-    if (active === "security") {
+    if (active === "preferences") {
+      content = <PreferencesScreen state={state} onChanged={() => void refresh()} />;
+    } else if (active === "security") {
       content = (
         <SecurityScreen
           state={state}

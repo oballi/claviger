@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { REVEAL_SECONDS } from "../popup/reveal";
-import type { LockPolicy, OpenMode, PopupSize, ServiceState, ViewMode } from "../contract/views";
+import type { LockPolicy, ServiceState } from "../contract/views";
 import { Button } from "../components/Button";
 import { NewPasswordFields, newPasswordProblem } from "../components/NewPasswordFields";
 import { Notice } from "../components/Notice";
@@ -11,9 +10,6 @@ import { errorMessage } from "../errors";
 import { lockPolicyLabel } from "../format";
 import { useT } from "../i18n/i18n";
 import { useUi } from "../platform";
-import { ClockRow } from "./ClockRow";
-import { LanguagePicker } from "./LanguagePicker";
-import { ThemePicker } from "./ThemePicker";
 import { PageTitle, SettingsRow, SettingsSection } from "./ManageFrame";
 
 type Panel = "password" | "recovery" | "lock" | "reveal" | "delete" | null;
@@ -27,12 +23,8 @@ const POLICIES: LockPolicy[] = [
   { kind: "never" },
 ];
 
-const OPEN_MODES: OpenMode[] = ["popup", "window", "panel"];
-const POPUP_SIZES: PopupSize[] = ["small", "medium", "large"];
-
 const policyKey = (p: LockPolicy) => (p.kind === "timeout" ? `timeout-${p.minutes}` : p.kind);
 
-const VIEW_MODES: ViewMode[] = ["normal", "compact", "hidden"];
 const CLIPBOARD_SECONDS = [30, 60, 0] as const;
 
 const selectClass =
@@ -49,7 +41,7 @@ export function SecurityScreen({
   /** Lets the host route to setup / the "found" lock screen; the vault may be adopted from the other area. */
   onDeleted?: () => void;
 }) {
-  const { rpc, reportsScreenLock, capabilities } = useUi();
+  const { rpc, reportsScreenLock } = useUi();
   const t = useT();
   const [panel, setPanel] = useState<Panel>(null);
   const [message, setMessage] = useState("");
@@ -293,84 +285,7 @@ export function SecurityScreen({
         </SettingsRow>
       </SettingsSection>
 
-      <SettingsSection num="02" title={t("security.display")}>
-        {capabilities.autofill ? (
-          <>
-            <SettingsRow title={t("security.shortcut")} description={t("security.shortcutHint")} />
-            <SettingsRow
-              title={t("security.lockShortcut")}
-              description={t("security.lockShortcutHint")}
-            />
-          </>
-        ) : null}
-        {capabilities.clockCheck ? (
-          <ClockRow state={state} disabled={codePending} onChanged={onChanged} />
-        ) : null}
-        <SettingsRow
-          title={t("security.view")}
-          description={`${t("security.viewHint")} ${state.viewMode === "hidden" ? t("view.hiddenHint", { seconds: REVEAL_SECONDS }) : ""}`.trim()}
-          action={
-            <select
-              aria-label={t("security.view")}
-              disabled={codePending}
-              className={selectClass}
-              value={state.viewMode}
-              onChange={(e) =>
-                void savePreference(() => rpc("setViewMode", { mode: e.target.value as ViewMode }))
-              }
-            >
-              {VIEW_MODES.map((m) => (
-                <option key={m} value={m}>
-                  {t(`view.${m}`)}
-                </option>
-              ))}
-            </select>
-          }
-        />
-        <SettingsRow
-          title={t("security.openMode")}
-          description={t("security.openModeHint")}
-          action={
-            <select
-              aria-label={t("security.openMode")}
-              disabled={codePending}
-              className={selectClass}
-              value={state.openMode}
-              onChange={(e) =>
-                void savePreference(() => rpc("setOpenMode", { mode: e.target.value as OpenMode }))
-              }
-            >
-              {OPEN_MODES.map((m) => (
-                <option key={m} value={m}>
-                  {t(`openMode.${m}`)}
-                </option>
-              ))}
-            </select>
-          }
-        />
-        <SettingsRow
-          title={t("security.popupSize")}
-          description={t("security.popupSizeHint")}
-          action={
-            <select
-              aria-label={t("security.popupSize")}
-              disabled={codePending || state.openMode !== "popup"}
-              className={selectClass}
-              value={state.popupSize}
-              onChange={(e) =>
-                void savePreference(() =>
-                  rpc("setPopupSize", { size: e.target.value as PopupSize }),
-                )
-              }
-            >
-              {POPUP_SIZES.map((s) => (
-                <option key={s} value={s}>
-                  {t(`popupSize.${s}`)}
-                </option>
-              ))}
-            </select>
-          }
-        />
+      <SettingsSection num="02" title={t("security.clipboardSecrets")}>
         <SettingsRow
           title={t("security.clipboard")}
           description={t("security.clipboardHint")}
@@ -396,14 +311,6 @@ export function SecurityScreen({
             </select>
           }
         />
-      </SettingsSection>
-
-      <SettingsSection num="03" title={t("theme.section")}>
-        <ThemePicker theme={state.theme} onSaved={onChanged} />
-        <LanguagePicker language={state.language} onSaved={onChanged} />
-      </SettingsSection>
-
-      <SettingsSection num="04" title={t("security.secrets")}>
         <SettingsRow
           title={t("security.reveal")}
           description={t("security.revealHint")}
@@ -445,7 +352,7 @@ export function SecurityScreen({
         </SettingsRow>
       </SettingsSection>
 
-      <SettingsSection num="05" title={t("security.danger")}>
+      <SettingsSection num="03" title={t("security.danger")}>
         <SettingsRow
           title={t("security.delete")}
           description={
