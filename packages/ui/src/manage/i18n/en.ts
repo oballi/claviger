@@ -234,6 +234,9 @@ export const manageEn: Record<ManageKey, string> = {
   "preferences.body": "How claviger looks and opens. These settings don't ask for your password.",
   "preferences.opening": "Opening",
   "preferences.shortcuts": "Shortcuts and codes",
+  "preferences.keysTitle": "Keyboard in the popup",
+  "preferences.keysHint":
+    "/ search, type a letter \u2192 search, \u2191\u2193 move, Enter copy, Shift+Enter fill, Esc clear/close",
   "security.reveal": "Ask for the password to show a secret key",
   "security.revealHint":
     "Viewing an account's setup key and QR code asks for the password every time.",

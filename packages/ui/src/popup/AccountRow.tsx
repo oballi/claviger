@@ -19,6 +19,7 @@ export function AccountRow({
   revealed = false,
   onToggleReveal,
   copied = false,
+  selected = false,
 }: {
   account: AccountView;
   /** "This site" rows use the large code layout from the design. */
@@ -36,6 +37,8 @@ export function AccountRow({
   onToggleReveal?: (account: AccountView) => void;
   /** Brief "Copied" feedback that replaces the code text in this row. */
   copied?: boolean;
+  /** Keyboard selection (Enter copies, Shift+Enter fills); focus on the code button selects too. */
+  selected?: boolean;
 }) {
   const t = useT();
   const name = account.issuer || account.label;
@@ -96,6 +99,7 @@ export function AccountRow({
     <button
       type="button"
       data-code-button=""
+      id={`code-${account.id}`}
       aria-label={
         masked
           ? t("codes.copyHidden", { issuer: name })
@@ -160,6 +164,8 @@ export function AccountRow({
     return (
       <li
         onClick={copyFromRow}
+        data-account-id={account.id}
+        data-selected={selected ? "" : undefined}
         className="ov-row -mx-3 flex cursor-pointer flex-col gap-1 rounded-xl px-3 pt-3 pb-5"
       >
         <div className="truncate text-[13px]">{name}</div>
@@ -186,6 +192,8 @@ export function AccountRow({
   return (
     <li
       onClick={copyFromRow}
+      data-account-id={account.id}
+      data-selected={selected ? "" : undefined}
       title={
         account.issuer && account.label ? `${account.issuer}: ${account.label}` : name || undefined
       }

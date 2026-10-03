@@ -3,6 +3,7 @@ import { z } from "zod";
 import { MAX_CAPTURE_CHARS } from "../contract/qrLimits";
 import type {
   DuplicateGroupView,
+  FillOutcome,
   AccountListView,
   ImportPreviewView,
   ServiceState,
@@ -179,6 +180,7 @@ export const rpcRequestSchema = z.discriminatedUnion("type", [
     tabUrl: url,
   }),
   z.object({ type: z.literal("takeCapture"), id: z.string().min(1).max(64) }),
+  z.object({ type: z.literal("fillAccount"), id, tabId: z.number().int().nonnegative() }),
 ]);
 
 export type RpcRequest = z.infer<typeof rpcRequestSchema>;
@@ -243,6 +245,7 @@ export interface RpcResults {
   setClockCheckEnabled: null;
   storeCapture: { id: string };
   takeCapture: { dataUrl: string; tabUrl: string };
+  fillAccount: { result: FillOutcome; code: string | null };
 }
 
 export interface RpcErrorBody {

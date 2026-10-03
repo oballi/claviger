@@ -75,7 +75,7 @@ export function CodesScreen({
   pollMs: number;
   onLocked: () => void;
 }) {
-  const { rpc, copy, activeTab, onActiveTabChange, openManage, capabilities } = useUi();
+  const { rpc, copy, activeTab, onActiveTabChange, openManage, closePopup, capabilities } = useUi();
   const t = useT();
   const locale = useLocale();
   const [tab, setTab] = useState<{ id: number; url: string } | undefined | null>(null);
@@ -104,6 +104,8 @@ export function CodesScreen({
   const viaKeyboard = useRef(false);
   const clearUndo = useCallback(() => setUndo(null), []);
   const [revealedId, setRevealedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const searchFocused = useRef(false);
   const [announced, setAnnounced] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copiedAnnounce, setCopiedAnnounce] = useState(false);
@@ -205,19 +207,38 @@ export function CodesScreen({
     return () => document.removeEventListener("keydown", onEscape);
   }, [sorting]);
 
-  // "/" must work as soon as the popup opens, when focus is still on <body> (spec §6.2).
+  // Search takes focus once, on the first list render; poll reloads must never steal it back.
   useEffect(() => {
-    if (adding || editing || showTrash || sorting) return;
+    if (searchFocused.current || !list) return;
+    searchFocused.current = true;
+    if (!adding && editing === null && !showTrash && !sorting) searchRef.current?.focus();
+  }, [list, adding, editing, showTrash, sorting]);
+
+  // The selection is the first visible row until the user moves it (or its row disappears).
+  useEffect(() => {
+    const ids = Array.from(
+      listRef.current?.querySelectorAll<HTMLElement>("[data-code-button]") ?? [],
+      (b) => b.closest("li")?.getAttribute("data-account-id") ?? "",
+    );
+    const next = selectedId && ids.includes(selectedId) ? selectedId : (ids[0] ?? null);
+    if (next !== selectedId) setSelectedId(next);
+  });
+
+  // "/" and plain characters go to search even while focus is still on <body> (spec §6.2).
+  useEffect(() => {
+    if (adding || editing || showTrash || sorting || confirmDelete !== null) return;
     function onKey(event: globalThis.KeyboardEvent) {
       const target = event.target as HTMLElement | null;
-      if (event.key !== "/" || target?.closest("input, textarea, select")) return;
+      if (event.key.length !== 1 || event.key === " ") return;
       if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return;
+      if (target?.closest("input, textarea, select, [role=menu], [role=dialog]")) return;
       event.preventDefault();
+      if (event.key !== "/") setQuery((q) => q + event.key);
       searchRef.current?.focus();
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [adding, editing, showTrash, sorting]);
+  }, [adding, editing, showTrash, sorting, confirmDelete]);
 
   // A row can move to another section (and remount), so focus returns to its menu trigger by id.
   useEffect(() => {
@@ -345,6 +366,27 @@ export function CodesScreen({
     rpc("clipboardCopied", {}).catch(() => {});
   }
 
+  async function fillSelected(account: AccountView) {
+    setActionError(null);
+    try {
+      const tab = await activeTab();
+      if (!tab || !capabilities.autofill) return setToast(t("codes.fillRefused"));
+      const r = await rpc("fillAccount", { id: account.id, tabId: tab.id });
+      if (r.result === "filled") {
+        // Nothing else to do here; leaving the popup open would only cover the page.
+        if (closePopup) closePopup();
+        else setToast(t("codes.copiedShort"));
+      } else if (r.result === "copied-instead" && r.code) {
+        await copy(r.code);
+        rpc("clipboardCopied", {}).catch(() => {});
+        setToast(t("codes.fillCopied"));
+      } else setToast(t("codes.fillRefused"));
+    } catch (e) {
+      if (e instanceof RpcError && e.code === "not-linked") setToast(t("codes.fillNotLinked"));
+      else setActionError(errorMessage(t, e));
+    }
+  }
+
   async function linkSite(account: AccountView) {
     setActionError(null);
     const domain = list?.pageDomain;
@@ -391,9 +433,28 @@ export function CodesScreen({
       sortToggle.current?.focus();
       return;
     }
-    if (event.key === "Escape" && query) {
+    if (event.key === "Escape" && !event.defaultPrevented) {
       event.preventDefault();
-      setQuery("");
+      if (query) setQuery("");
+      // A held key must not clear the search and then close the popup in one go.
+      else if (!event.repeat) closePopup?.();
+      return;
+    }
+    const selected = accounts.find((a) => a.id === selectedId);
+    const onSearch = event.target === searchRef.current;
+    if (
+      event.key === "Enter" &&
+      selected &&
+      !event.nativeEvent.isComposing &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey &&
+      (onSearch || (event.shiftKey && (event.target as HTMLElement).closest("[data-code-button]")))
+    ) {
+      // A focused code button keeps its own click for plain Enter, so only the search is handled here.
+      event.preventDefault();
+      if (event.shiftKey) void fillSelected(selected);
+      else void copyCode(selected);
       return;
     }
     if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
@@ -593,6 +654,7 @@ export function CodesScreen({
       onCopy={(a) => void copyCode(a)}
       onNextHotp={(a) => void nextHotp(a)}
       copied={copiedId === account.id}
+      selected={selectedId === account.id}
       revealed={revealedId === account.id}
       onToggleReveal={toggleReveal}
     />
@@ -622,6 +684,13 @@ export function CodesScreen({
     <div
       className="relative flex min-h-0 flex-1 flex-col"
       onKeyDown={onListKeyDown}
+      onFocus={(e) => {
+        const id = (e.target as HTMLElement)
+          .closest("[data-code-button]")
+          ?.closest("li")
+          ?.getAttribute("data-account-id");
+        if (id) setSelectedId(id);
+      }}
       onPointerDown={() => (viaKeyboard.current = false)}
     >
       {/* Announces the state only; the code itself must never reach a live region. */}
@@ -700,6 +769,7 @@ export function CodesScreen({
               type="search"
               data-bare=""
               aria-label={t("codes.search")}
+              aria-activedescendant={selectedId ? `code-${selectedId}` : undefined}
               placeholder={t("codes.searchPlaceholder")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}

@@ -1737,6 +1737,18 @@ export class VaultService {
     }
   }
 
+  /**
+   * Popup fill for an account the user picked. Same checks as every other fill (fillInto re-reads the tab).
+   * A code leaves only when the page had no field, so a burned HOTP value is not lost; never on success.
+   */
+  async fillAccount(
+    id: string,
+    tabId: number,
+  ): Promise<{ result: FillOutcome; code: string | null }> {
+    const r = await this.fillInto({ id, tabId, explicit: true });
+    return r.result === "copied-instead" ? r : { result: r.result, code: null };
+  }
+
   /** "locked" tells the trigger to open the popup; Firefox already did so before awaiting. */
   async fillFromCommand(): Promise<"locked" | "done"> {
     if (!(await this.tryLoaded())) return "locked";
