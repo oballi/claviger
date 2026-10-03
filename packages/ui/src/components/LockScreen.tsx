@@ -136,6 +136,7 @@ export function LockScreen({
               {t("lock.forgot")}
             </Button>
           </div>
+          <p className="m-0 text-right text-[11px] text-muted">{t("lock.forgotHint")}</p>
         </form>
       </div>
       <footer className="flex items-center justify-between border-t border-hair pt-1 pb-1 text-[11px] text-muted">

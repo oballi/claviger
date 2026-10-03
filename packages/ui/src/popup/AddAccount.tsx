@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { QrImageTooLargeError } from "../contract/qrLimits";
 import { useImagePaste } from "../components/useImagePaste";
 import { AccountForm } from "../components/AccountForm";
+import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { RpcError } from "../rpc/client";
 import { errorMessage } from "../errors";
@@ -70,7 +71,6 @@ export function AddAccount({
   onAdded: (name: string) => void;
 }) {
   const { openManage, captureTab, openScan, rpc, capabilities, imageToCapture } = useUi();
-  const first = capabilities.qrScan ? 1 : 0;
   const t = useT();
   const [manual, setManual] = useState(false);
   const [scanNote, setScanNote] = useState<string | null>(null);
@@ -131,16 +131,24 @@ export function AddAccount({
       </div>
       <div className="flex flex-col pt-7">
         {capabilities.qrScan ? (
-          <Option num="01" title={t("add.qr")} hint={t("add.qrHint")} onClick={() => void scan()} />
+          <div className="flex flex-col items-start gap-2 pb-6">
+            <Button variant="primary" onClick={() => void scan()} className="w-full">
+              {t("add.qr")}
+            </Button>
+            <p className="m-0 text-xs leading-normal text-muted">{t("add.qrHint")}</p>
+            {canPaste ? (
+              <p className="m-0 text-[11px] leading-normal text-muted">{t("add.pasteHint")}</p>
+            ) : null}
+          </div>
         ) : null}
         <Option
-          num={String(first + 1).padStart(2, "0")}
+          num="01"
           title={t("add.manual")}
           hint={t("add.manualHint")}
           onClick={() => setManual(true)}
         />
         <Option
-          num={String(first + 2).padStart(2, "0")}
+          num="02"
           title={t("add.import")}
           hint={t("add.importHint")}
           onClick={() => openManage("backup")}
@@ -150,16 +158,7 @@ export function AddAccount({
       <p role="alert" className="m-0 pt-3 text-xs leading-normal text-warn">
         {scanNote}
       </p>
-      {canPaste ? (
-        <p className="m-0 mt-auto pt-4 text-[11px] leading-normal text-muted">
-          {t("add.pasteHint")}
-        </p>
-      ) : null}
-      <p
-        className={`m-0 pt-2 text-[11px] leading-normal text-muted ${canPaste ? "" : "mt-auto pt-4"}`}
-      >
-        {t("add.footer")}
-      </p>
+      <p className="m-0 mt-auto pt-4 text-[11px] leading-normal text-muted">{t("add.footer")}</p>
     </Shell>
   );
 }

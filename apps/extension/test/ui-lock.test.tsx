@@ -28,14 +28,14 @@ describe("LockScreen", () => {
     expect(screen.getByRole("heading", { name: "Kasa kilitli." })).toBeTruthy();
     expect(screen.getByText("1 hesabın kodları ana parolanın arkasında.")).toBeTruthy();
     expect(screen.getByText("1 saat kullanılmayınca kilitlenir")).toBeTruthy();
-    await userEvent.click(screen.getByRole("button", { name: "Değiştir" }));
+    await userEvent.click(screen.getByRole("button", { name: "Kilit ayarını değiştir" }));
     expect(onChangePolicy).toHaveBeenCalled();
   });
 
   it("unlocks with the right password", async () => {
     const h = await harness({ status: "locked" });
     const { onUnlocked } = await openLock(h);
-    expect(screen.queryByRole("button", { name: "Değiştir" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Kilit ayarını değiştir" })).toBeNull();
     await userEvent.type(screen.getByLabelText("Ana parola"), `${PASSWORD}{Enter}`);
     await vi.waitFor(() => expect(onUnlocked).toHaveBeenCalled());
     expect((await h.ui.rpc("getState", {})).status).toBe("unlocked");
@@ -44,6 +44,7 @@ describe("LockScreen", () => {
   it("sends a forgotten password to recovery", async () => {
     const h = await harness({ status: "locked" });
     const { onForgot } = await openLock(h);
+    expect(screen.getByText("Kurtarma kodunla yönetim sayfasından açabilirsin.")).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "Parolamı unuttum" }));
     expect(onForgot).toHaveBeenCalled();
   });
