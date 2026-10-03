@@ -90,6 +90,7 @@ To rebuild the exact Firefox package from a source archive, see [docs/build-from
 
 - Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Translations: [docs/i18n.md](docs/i18n.md).
 - **Please do not report security problems in public issues.** See [SECURITY.md](SECURITY.md).
+- What claviger stores and sends: [PRIVACY.md](PRIVACY.md) (privacy policy).
 - This project follows the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Acknowledgements
