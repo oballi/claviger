@@ -90,6 +90,7 @@ Firefox paketini bir kaynak arşivinden birebir yeniden üretmek için [docs/bui
 
 - Pull request açmadan önce [CONTRIBUTING.md](CONTRIBUTING.md) dosyasını oku. Çeviriler için: [docs/i18n.md](docs/i18n.md).
 - **Güvenlik sorunlarını lütfen herkese açık issue'larda bildirme.** Bkz. [SECURITY.md](SECURITY.md).
+- claviger'ın ne sakladığı ve ne gönderdiği: [PRIVACY.tr.md](PRIVACY.tr.md) (gizlilik politikası).
 - Bu proje [Davranış Kuralları](CODE_OF_CONDUCT.md)'na uyar.
 
 ## Teşekkür
