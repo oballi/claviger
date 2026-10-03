@@ -330,6 +330,7 @@ describe("snapshot ordering and repair", () => {
 
   it("a double failure still returns the new recovery code and unlocks", async () => {
     const { service } = await unlockedService();
+    await service.addAccount({ uri: URI });
     await service.getState();
     vi.spyOn(SnapshotStore.prototype, "rekey").mockRejectedValue(new Error("x"));
     vi.spyOn(SnapshotStore.prototype, "removeVault").mockRejectedValue(new Error("x"));
@@ -416,7 +417,9 @@ describe("reconcile and gating (round 2)", () => {
     const p = memoryPlatform();
     sortedLocal(p);
     const { service } = await unlockedService(p);
+    await service.addAccount({ uri: URI });
     await service.getState();
+    expect((await snapKeys(p)).length).toBeGreaterThan(0);
     const spy = vi.spyOn(SnapshotStore.prototype, "rekey");
     await service.lock();
     await service.unlock(PASSWORD);
@@ -428,6 +431,7 @@ describe("reconcile and gating (round 2)", () => {
     await service.lock();
     await service.unlock("a brand new password");
     expect(spy).not.toHaveBeenCalled();
+    expect((await snapKeys(p)).length).toBeGreaterThan(0);
     expect(await oldCannotOpen(p, PASSWORD)).toEqual([]);
   });
 
@@ -484,7 +488,11 @@ describe("reconcile and gating (round 2)", () => {
     const p = memoryPlatform();
     const { recoveryCode } = await unlockedService(p, { kind: "never" });
     const service = new VaultService(p);
+    await service.unlock(PASSWORD);
+    await service.addAccount({ uri: URI });
+    p.clock.advance(DAILY_CHECK_MS + 1);
     await service.getState();
+    expect((await snapKeys(p)).length).toBeGreaterThan(0);
     await service.lock();
     // Cached key was cleared by lock; log in again so a restart can load from cache.
     await service.unlock(PASSWORD);
@@ -508,6 +516,7 @@ describe("reconcile and gating (round 2)", () => {
     await listing;
     await recovery;
     await restarted.getState();
+    expect((await snapKeys(p)).length).toBeGreaterThan(0);
     expect(await oldCannotOpen(p, PASSWORD)).toEqual([]);
   });
 });
