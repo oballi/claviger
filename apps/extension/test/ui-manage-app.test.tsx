@@ -154,16 +154,20 @@ describe("ManageApp", () => {
     expect(await screen.findByRole("heading", { name: "Yedekleme." })).toBeTruthy();
   });
 
-  it("widens the frame only on the accounts route", async () => {
+  it("keeps the same wide frame on every menu page", async () => {
     const { ui } = await harness();
     renderUi(<ManageApp pollMs={0} />, ui);
     const frame = async () => (await screen.findByRole("main")).parentElement as HTMLElement;
     await screen.findByRole("heading", { name: "Hesaplar." });
     expect((await frame()).className).toContain("max-w-[1240px]");
-    await userEvent.click(screen.getByRole("link", { name: "Güvenlik" }));
-    await screen.findByRole("heading", { name: "Güvenlik." });
-    expect((await frame()).className).toContain("max-w-[1040px]");
-    expect((await frame()).className).not.toContain("max-w-[1240px]");
+    for (const [link, heading] of [
+      ["Güvenlik", "Güvenlik."],
+      ["Yedekleme", "Yedekleme."],
+    ]) {
+      await userEvent.click(screen.getByRole("link", { name: link }));
+      await screen.findByRole("heading", { name: heading });
+      expect((await frame()).className).toContain("max-w-[1240px]");
+    }
   });
 
   it("imports from the backup page through the preview", async () => {

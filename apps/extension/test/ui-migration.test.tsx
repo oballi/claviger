@@ -59,7 +59,7 @@ describe("phone transfer", () => {
     await userEvent.click(screen.getByRole("button", { name: "Sonraki" }));
     expect(screen.getByText(`QR 2 / ${total}`)).toBeTruthy();
     expect(
-      screen.getByText(/Buradaki hesapları silmeden önce telefonda bir kodu kontrol edin/),
+      screen.getByText(/Buradaki hesapları silmeden önce telefonda bir kodu kontrol et/),
     ).toBeTruthy();
     expect(document.body.textContent).not.toContain(base32(1));
   });

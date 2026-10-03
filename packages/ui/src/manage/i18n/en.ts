@@ -268,7 +268,7 @@ export const manageEn: Record<ManageKey, string> = {
   "backup.aegisHint":
     "An encrypted Aegis vault. Open it in Aegis with the password you choose here.",
   "backup.aegisPlain": "Aegis (plain JSON)",
-  "backup.aegisPlainHint": "Readable by Aegis and others. Your keys are NOT protected.",
+  "backup.aegisPlainHint": "Readable by Aegis and others. Your keys are not protected.",
   "backup.download": "Download backup",
   "backup.downloadConfirm": "Download",
   "backup.samePassword": "Use a password different from your vault password for this export.",

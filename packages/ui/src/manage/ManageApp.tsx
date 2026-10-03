@@ -222,11 +222,7 @@ export function ManageApp({ pollMs = 2000 }: { pollMs?: number }) {
       content = <AccountsScreen state={state} onChanged={() => void refresh()} />;
     }
     page = (
-      <ManageFrame
-        active={active === "import" ? "backup" : active}
-        onLock={lock}
-        wide={active === "accounts"}
-      >
+      <ManageFrame active={active === "import" ? "backup" : active} onLock={lock} wide>
         {content}
       </ManageFrame>
     );
