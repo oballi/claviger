@@ -5,9 +5,7 @@
 [Türkçe](README.tr.md)
 
 <p align="center">
-  <img src="docs/screenshots/popup-en-dark.png" alt="claviger popup with grouped accounts and live codes" width="300">
-  &nbsp;
-  <img src="docs/screenshots/manage-en-light.png" alt="claviger accounts page with groups" width="520">
+  <img src="docs/media/claviger-en.gif" alt="claviger fills a two-factor code into a sign-in page with Alt+Shift+O" width="800">
 </p>
 
 > **Status: 1.0.** The browser store listings are on the way; until they are live, download claviger from [Releases](https://github.com/oballi/claviger/releases/latest) (see below). Keep an exported backup either way.
