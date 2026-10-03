@@ -656,7 +656,7 @@ export function BackupScreen({
           action={
             <select
               aria-label={t("backup.reminder.title")}
-              className="h-11 rounded-full border border-line bg-bg px-3 font-sans text-[13px] text-text"
+              className="ov-select h-11 rounded-full border border-line bg-bg pl-3 font-sans text-[13px] text-text"
               value={state.backupReminderDays}
               onChange={(e) =>
                 void rpc("setBackupReminder", {

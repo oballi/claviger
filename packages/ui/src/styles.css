@@ -39,6 +39,7 @@
   --ov-critical: #b3261e;
   --ov-btn: #19191b;
   --ov-btn-text: #f6f5f2;
+  --ov-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2366645f' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   color-scheme: light dark;
 }
 
@@ -61,6 +62,7 @@
     --ov-critical: #e5736b;
     --ov-btn: #eceae5;
     --ov-btn-text: #121214;
+    --ov-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239c9a94' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   }
 }
 
@@ -77,6 +79,7 @@
   --ov-critical: #e5736b;
   --ov-btn: #eceae5;
   --ov-btn-text: #121214;
+  --ov-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239c9a94' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   color-scheme: dark;
 }
 
@@ -172,4 +175,22 @@ input[data-bare]:focus-visible {
     position: absolute;
     inset: 0;
   }
+}
+
+/* Native select with a token-coloured chevron (--ov-chevron is duplicated per theme because a data-URI cannot read var()). */
+.ov-select {
+  appearance: none;
+  padding-right: 40px;
+  text-overflow: ellipsis;
+  background-image: var(--ov-chevron);
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 14px 14px;
+}
+.ov-select-line {
+  padding-right: 24px;
+  background-position: right 2px center;
+}
+.ov-select:disabled {
+  opacity: 0.6;
 }

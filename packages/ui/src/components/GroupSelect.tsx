@@ -24,7 +24,7 @@ export function GroupSelect({
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-11 rounded-full border border-line bg-bg px-3.5 font-sans text-[13px] text-text"
+        className="ov-select h-11 rounded-full border border-line bg-bg pl-3.5 font-sans text-[13px] text-text"
       >
         {groups.map((g) => (
           <option key={g.id} value={g.id}>
