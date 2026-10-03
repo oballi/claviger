@@ -134,6 +134,7 @@ export const tr = {
   "common.recommended": "önerilen",
   "reauth.password": "Ana parola",
   "reauth.hint": "Bu işlem için parolanı tekrar onayla.",
+  "password.show": "Parolayı göster",
   "password.new": "Ana parola",
   "password.confirm": "Parolayı tekrar gir",
   "password.tooShort": "Parola en az 8 karakter olmalı.",

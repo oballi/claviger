@@ -32,6 +32,17 @@ describe("LockScreen", () => {
     expect(onChangePolicy).toHaveBeenCalled();
   });
 
+  it("toggles password visibility with the eye button", async () => {
+    const h = await harness();
+    await h.ui.rpc("lock", {});
+    await openLock(h);
+    const field = document.getElementById("unlock-password") as HTMLInputElement;
+    await userEvent.click(screen.getByRole("button", { name: "Parolayı göster" }));
+    expect(field.type).toBe("text");
+    await userEvent.click(screen.getByRole("button", { name: "Parolayı göster" }));
+    expect(field.type).toBe("password");
+  });
+
   it("unlocks with the right password", async () => {
     const h = await harness({ status: "locked" });
     const { onUnlocked } = await openLock(h);

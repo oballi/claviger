@@ -125,6 +125,11 @@ body {
   outline-offset: 2px;
 }
 
+/* Headings only take programmatic focus (tabindex -1); a ring there is noise. */
+:is(h1, h2, h3)[tabindex="-1"]:focus-visible {
+  outline: none;
+}
+
 /* Text fields use the underline-only design language: 1px inset shadow + 1px border form the 2px line; the transparent outline keeps forced-colors focus visible. */
 input:is(
     :not([type]),

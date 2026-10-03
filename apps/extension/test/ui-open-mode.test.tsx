@@ -57,7 +57,7 @@ describe("popup layout", () => {
 describe("open mode settings", () => {
   it("saves the open mode through the RPC and disables the size row outside popup mode", async () => {
     const { h } = await security();
-    const size = screen.getByRole("combobox", { name: "Pop-up boyutu" });
+    const size = screen.getByRole("combobox", { name: "Popup boyutu" });
     expect((size as HTMLSelectElement).disabled).toBe(false);
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "Açılış biçimi" }), "panel");
     await waitFor(async () => expect((await h.service.getState()).openMode).toBe("panel"));
@@ -67,13 +67,13 @@ describe("open mode settings", () => {
     const h = await harness();
     await h.ui.rpc("setOpenMode", { mode: "window" });
     renderUi(<PreferencesScreen state={await h.service.getState()} onChanged={() => {}} />, h.ui);
-    const size = screen.getByRole("combobox", { name: "Pop-up boyutu" }) as HTMLSelectElement;
+    const size = screen.getByRole("combobox", { name: "Popup boyutu" }) as HTMLSelectElement;
     expect(size.disabled).toBe(true);
   });
 
   it("saves the popup size", async () => {
     const { h } = await security();
-    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Pop-up boyutu" }), "small");
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Popup boyutu" }), "small");
     await waitFor(async () => expect((await h.service.getState()).popupSize).toBe("small"));
   });
 

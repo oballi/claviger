@@ -22,7 +22,7 @@ describe("PreferencesScreen", () => {
     expect(within(look).getByLabelText("Kod görünümü")).toBeTruthy();
     const opening = region("Açılış");
     expect(within(opening).getByLabelText("Açılış biçimi")).toBeTruthy();
-    expect(within(opening).getByLabelText("Pop-up boyutu")).toBeTruthy();
+    expect(within(opening).getByLabelText("Popup boyutu")).toBeTruthy();
     const more = region("Kısayollar ve kodlar");
     expect(within(more).getByText("Klavye kısayolu: Alt+Shift+O")).toBeTruthy();
     expect(within(more).getByText("Kilitleme kısayolu")).toBeTruthy();

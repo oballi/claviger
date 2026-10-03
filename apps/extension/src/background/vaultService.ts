@@ -245,13 +245,15 @@ export class VaultService {
 
   async listSnapshots(): Promise<SnapshotInfo[]> {
     const vault = await this.requireVault();
-    return (await this.snapshots.list()).map((s) => ({
-      id: s.id,
-      createdAt: s.createdAt,
-      reason: s.reason,
-      accountCount: s.accountCount,
-      sameVault: s.vaultId === vault.vaultId,
-    }));
+    return (await this.snapshots.list())
+      .filter((s) => s.accountCount > 0)
+      .map((s) => ({
+        id: s.id,
+        createdAt: s.createdAt,
+        reason: s.reason,
+        accountCount: s.accountCount,
+        sameVault: s.vaultId === vault.vaultId,
+      }));
   }
 
   /**
@@ -1151,7 +1153,8 @@ export class VaultService {
   ): Promise<{ added: number; skipped: number; unreadable: number; ungrouped: number }> {
     return this.exclusive(async () => {
       const snap = await this.snapshots.get(id);
-      if (!snap) throw new ServiceError("not-found", "The local copy no longer exists");
+      if (!snap || snap.accountCount === 0)
+        throw new ServiceError("not-found", "The local copy no longer exists");
       const current = await this.requireVault();
       const sameVault = snap.vaultId === current.vaultId;
       if ((await current.listAccounts()).indexDamaged) {

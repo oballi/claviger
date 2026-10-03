@@ -13,7 +13,11 @@ import { AccountForm } from "../components/AccountForm";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { LockPolicyOptions } from "../components/LockPolicyOptions";
-import { NewPasswordFields, newPasswordProblem } from "../components/NewPasswordFields";
+import {
+  NewPasswordFields,
+  newPasswordProblem,
+  passwordsMismatch,
+} from "../components/NewPasswordFields";
 import { Notice } from "../components/Notice";
 import { RecoveryCodeDisplay } from "../components/RecoveryCodeDisplay";
 import { errorMessage } from "../errors";
@@ -62,17 +66,22 @@ function Choice({
   const id = useId();
   return (
     <label className="flex min-h-11 cursor-pointer items-start gap-4 border-t border-hair py-4">
-      <input
-        type="radio"
-        name={name}
-        checked={checked}
-        onChange={onSelect}
-        aria-labelledby={`${id}-title`}
-        aria-describedby={`${id}-hint`}
-        className="mt-1 h-4 w-4 accent-[var(--ov-text)]"
-      />
+      <span className="flex h-11 items-center">
+        <input
+          type="radio"
+          name={name}
+          checked={checked}
+          onChange={onSelect}
+          aria-labelledby={`${id}-title`}
+          aria-describedby={`${id}-hint`}
+          className="h-4 w-4 accent-[var(--ov-text)]"
+        />
+      </span>
       <span className="flex flex-col gap-1">
-        <span id={`${id}-title`} className="flex items-center gap-2 text-[15px] font-medium">
+        <span
+          id={`${id}-title`}
+          className="flex min-h-11 items-center gap-2 text-[15px] font-medium"
+        >
           {title}
           {badge ? (
             <span className="rounded-full border border-line px-[7px] py-px font-mono text-[10px] font-normal text-muted">
@@ -321,7 +330,12 @@ export function SetupWizard({
       footer = (
         <>
           {enterHint}
-          <Button type="submit" form="setup-password" variant="primary">
+          <Button
+            type="submit"
+            form="setup-password"
+            variant="primary"
+            disabled={passwordsMismatch(password, confirm)}
+          >
             {t("common.continue")}
             <Icon name="arrow" size={15} />
           </Button>

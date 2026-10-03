@@ -95,6 +95,8 @@ export class SnapshotStore {
     delete records[SITE_MEMORY_KEY];
     const info = await Vault.inspect(recordsStorage(records));
     if (info.status !== "ok") return null;
+    // An empty vault has nothing to protect and would only crowd out useful copies.
+    if ((info.accountCount ?? 0) === 0) return null;
     const digest = await digestOf(records);
     const existing = await this.list();
     if (existing[0]?.digest === digest) return null;
@@ -130,7 +132,10 @@ export class SnapshotStore {
       const keep = new Set(all.slice(0, MAX_SNAPSHOTS).map((s) => s.id));
       const newestNonEmpty = all.find((s) => s.accountCount > 0);
       if (newestNonEmpty) keep.add(newestNonEmpty.id);
-      const stale = all.filter((s) => !keep.has(s.id)).map((s) => SNAPSHOT_PREFIX + s.id);
+      // Copies of empty vaults are hidden from the UI; drop them so they stop using slots.
+      const stale = all
+        .filter((s) => !keep.has(s.id) || s.accountCount === 0)
+        .map((s) => SNAPSHOT_PREFIX + s.id);
       if (stale.length) await this.local.remove(stale);
     } catch {
       // Pruning is best effort; the new copy is already stored.

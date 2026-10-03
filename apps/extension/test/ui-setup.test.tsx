@@ -216,6 +216,27 @@ describe("SetupWizard", () => {
     );
   });
 
+  it("shows the mismatch live and keeps Devam disabled", async () => {
+    await start();
+    await userEvent.type(screen.getByLabelText("Ana parola"), NEW_PASSWORD);
+    await userEvent.type(screen.getByLabelText("Parolayı tekrar gir"), "kirmizi bisiklet");
+    expect(screen.queryByText("Parolalar eşleşmiyor.")).toBeNull();
+    await userEvent.type(screen.getByLabelText("Parolayı tekrar gir"), " xxxxxxx");
+    expect(screen.getByText("Parolalar eşleşmiyor.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Devam" })).toHaveProperty("disabled", true);
+  });
+
+  it("toggles password visibility with the eye buttons", async () => {
+    await start();
+    const field = screen.getByLabelText("Ana parola") as HTMLInputElement;
+    const eye = screen.getAllByRole("button", { name: "Parolayı göster" })[0]!;
+    expect(field.type).toBe("password");
+    expect(eye.getAttribute("aria-pressed")).toBe("false");
+    await userEvent.click(eye);
+    expect(field.type).toBe("text");
+    expect(eye.getAttribute("aria-pressed")).toBe("true");
+  });
+
   it("does not show the Enter hint on the recovery code screen", async () => {
     await start();
     await enterPassword();
