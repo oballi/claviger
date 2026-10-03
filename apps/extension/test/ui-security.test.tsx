@@ -123,7 +123,7 @@ describe("SecurityScreen", () => {
 
   it("turns the reveal password off only after confirmation, with a warning", async () => {
     const { ui } = await open();
-    const secrets = region("Gizli anahtar");
+    const secrets = region("Pano ve gizli anahtarlar");
     const toggle = within(secrets).getByRole("switch", {
       name: "Gizli anahtarı göster için parola iste",
     });
@@ -145,8 +145,8 @@ describe("SecurityScreen", () => {
     );
     await confirmPassword(access, "Kaydet");
     await screen.findByText("Kaydedildi.");
-    await userEvent.click(within(region("Gizli anahtar")).getByRole("switch"));
-    expect(within(region("Gizli anahtar")).getByLabelText("Ana parola")).toHaveProperty(
+    await userEvent.click(within(region("Pano ve gizli anahtarlar")).getByRole("switch"));
+    expect(within(region("Pano ve gizli anahtarlar")).getByLabelText("Ana parola")).toHaveProperty(
       "value",
       "",
     );
@@ -210,7 +210,7 @@ describe("SecurityScreen", () => {
     expect(within(access).queryByTestId("recovery-code")).toBeNull();
     await userEvent.click(within(access).getByRole("button", { name: "Vazgeç" }));
 
-    const secrets = region("Gizli anahtar");
+    const secrets = region("Pano ve gizli anahtarlar");
     await userEvent.click(within(secrets).getByRole("switch"));
     await confirmPassword(secrets, "Kaydet", "wrong password");
     await within(secrets).findByText("Parola yanlış.");
@@ -246,7 +246,7 @@ describe("SecurityScreen", () => {
     );
     await confirmPassword(access, "Kaydet");
     await screen.findByText("Kaydedildi.");
-    const secrets = region("Gizli anahtar");
+    const secrets = region("Pano ve gizli anahtarlar");
     await userEvent.click(within(secrets).getByRole("switch"));
     await confirmPassword(secrets, "Kaydet");
     await vi.waitFor(() => expect(tokens).toHaveLength(2));
@@ -340,7 +340,10 @@ describe("SecurityScreen", () => {
       "disabled",
       true,
     );
-    expect(within(region("Gizli anahtar")).getByRole("switch")).toHaveProperty("disabled", true);
+    expect(within(region("Pano ve gizli anahtarlar")).getByRole("switch")).toHaveProperty(
+      "disabled",
+      true,
+    );
     const del = within(region("Tehlikeli bölge")).getByRole("button", { name: "Kasayı sil" });
     expect(del).toHaveProperty("disabled", true);
     await userEvent.click(del);
@@ -434,27 +437,9 @@ describe("SecurityScreen", () => {
     await userEvent.click(submit);
     await vi.waitFor(async () => expect((await ui.rpc("getState", {})).status).toBe("no-vault"));
   });
-  it("changes the display mode without a password", async () => {
-    const { service } = await open();
-    const display = region("Doldurma, görünüm ve pano");
-    await userEvent.selectOptions(within(display).getByLabelText("Görünüm"), "Gizli");
-    expect(await screen.findByText("Kaydedildi.")).toBeTruthy();
-    expect((await service.getState()).viewMode).toBe("hidden");
-    expect(within(display).queryByLabelText("Ana parola")).toBeNull();
-  });
-
-  it("has no fill-only-linked or site-memory switch, only the shortcut row", async () => {
-    await open();
-    const display = region("Doldurma, görünüm ve pano");
-    expect(within(display).queryByText("Yalnızca bağlı sitede doldur")).toBeNull();
-    expect(within(display).queryByText("Kullandığım siteleri hatırla")).toBeNull();
-    expect(within(display).getByText("Klavye kısayolu: Alt+Shift+O")).toBeTruthy();
-    expect(within(display).getByText("Kilitleme kısayolu")).toBeTruthy();
-  });
-
   it("changes clipboard clearing without a password", async () => {
     const { service, onChanged } = await open();
-    const display = region("Doldurma, görünüm ve pano");
+    const display = region("Pano ve gizli anahtarlar");
     await userEvent.selectOptions(within(display).getByLabelText("Panoyu temizle"), "30 sn sonra");
     expect(await screen.findByText("Kaydedildi.")).toBeTruthy();
     expect((await service.getState()).clipboardClearSec).toBe(30);
@@ -497,30 +482,27 @@ describe("SecurityScreen", () => {
     expect(await screen.findByText("Yeni kod oluşturunca eskisi geçersiz olur.")).toBeTruthy();
   });
 
-  it("disables the display selects and hides the warning while a new code is pending", async () => {
+  it("disables the clipboard select and hides the warning while a new code is pending", async () => {
     await open();
     const access = region("Erişim");
     await userEvent.click(within(access).getByRole("button", { name: "Yeni kod oluştur" }));
     await confirmPassword(access, "Oluştur");
     await within(access).findByTestId("recovery-code");
     expect(screen.queryByText(WARNING)).toBeNull();
-    const display = region("Doldurma, görünüm ve pano");
-    expect(within(display).getByLabelText("Görünüm")).toHaveProperty("disabled", true);
+    const display = region("Pano ve gizli anahtarlar");
     expect(within(display).getByLabelText("Panoyu temizle")).toHaveProperty("disabled", true);
   });
 
-  it("numbers the sections 01 to 05", async () => {
+  it("numbers the sections 01 to 03 and no longer shows preference rows", async () => {
     await open();
-    const titles = [
-      "Erişim",
-      "Doldurma, görünüm ve pano",
-      "Görünüm",
-      "Gizli anahtar",
-      "Tehlikeli bölge",
-    ];
-    titles.forEach((title, i) => {
+    ["Erişim", "Pano ve gizli anahtarlar", "Tehlikeli bölge"].forEach((title, i) => {
       expect(within(region(title)).getByText(`0${i + 1}`)).toBeTruthy();
     });
+    for (const label of ["Tema", "Dil", "Görünüm", "Açılış biçimi", "Pop-up boyutu"]) {
+      expect(screen.queryByText(label)).toBeNull();
+    }
+    expect(screen.queryByText("Saat kontrolü")).toBeNull();
+    expect(screen.queryByText("Kilitleme kısayolu")).toBeNull();
   });
 
   it("no warning without a recovery code", async () => {

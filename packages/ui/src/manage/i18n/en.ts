@@ -33,6 +33,7 @@ export const manageEn: Record<ManageKey, string> = {
   "groups.reordered": "Groups reordered.",
   "manage.nav.label": "Sections",
   "manage.nav.accounts": "Accounts",
+  "manage.nav.preferences": "Preferences",
   "manage.nav.security": "Security",
   "manage.nav.backup": "Backup",
   "manage.lock": "Lock",
@@ -198,7 +199,6 @@ export const manageEn: Record<ManageKey, string> = {
   "theme.dark": "Dark",
   "theme.hint":
     "System follows your computer's setting. The choice applies to the popup and the manage page.",
-  "security.display": "Fill, display and clipboard",
   "security.view": "Display",
   "security.viewHint": "How codes look in the popup.",
   "view.normal": "Normal",
@@ -225,7 +225,11 @@ export const manageEn: Record<ManageKey, string> = {
     "You haven't confirmed saving your recovery code. If you didn't save it, create a new one; the old one stops working.",
   "security.recoveryConfirm": "I saved it",
   "security.recoveryConfirmed": "Recovery code marked as saved.",
-  "security.secrets": "Secret keys",
+  "security.clipboardSecrets": "Clipboard and secret keys",
+  "preferences.title": "Preferences.",
+  "preferences.body": "How claviger looks and opens. These settings don't ask for your password.",
+  "preferences.opening": "Opening",
+  "preferences.shortcuts": "Shortcuts and codes",
   "security.reveal": "Ask for the password to show a secret key",
   "security.revealHint":
     "Viewing an account's setup key and QR code asks for the password every time.",

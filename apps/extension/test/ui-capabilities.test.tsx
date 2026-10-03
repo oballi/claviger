@@ -3,7 +3,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { AddAccount, PopupApp } from "@claviger/ui/popup";
-import { SecurityScreen, SetupWizard } from "@claviger/ui/manage";
+import { PreferencesScreen, SetupWizard } from "@claviger/ui/manage";
 import { harness, renderUi } from "./helpers/ui";
 
 const NONE = {
@@ -78,14 +78,17 @@ describe("a platform without page, clock or sync abilities", () => {
     expect(h.ui.captureTab).not.toHaveBeenCalled();
   });
 
-  it("hides clock, fill, memory and shortcut rows on the security page", async () => {
+  it("hides clock, fill, memory and shortcut rows on the preferences page", async () => {
     const h = await harness({ capabilities: NONE });
-    renderUi(<SecurityScreen state={await h.ui.rpc("getState", {})} onChanged={() => {}} />, h.ui);
+    renderUi(
+      <PreferencesScreen state={await h.ui.rpc("getState", {})} onChanged={() => {}} />,
+      h.ui,
+    );
     expect(screen.queryByText("Saat kontrolü")).toBeNull();
     expect(screen.queryByText("Yalnızca bağlı sitede doldur")).toBeNull();
     expect(screen.queryByText("Kullandığım siteleri hatırla")).toBeNull();
     expect(screen.queryByText("Klavye kısayolu: Alt+Shift+O")).toBeNull();
-    expect(screen.getByText("Doldurma, görünüm ve pano", { exact: false })).toBeTruthy();
+    expect(screen.getByText("Kısayollar ve kodlar", { exact: false })).toBeTruthy();
   });
 
   it("skips the storage step in the setup wizard", async () => {

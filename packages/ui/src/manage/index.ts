@@ -13,3 +13,4 @@ export * from "./SetupWizard";
 export * from "./SnapshotsSection";
 export * from "./WizardFrame";
 export * from "./i18n";
+export * from "./PreferencesScreen";

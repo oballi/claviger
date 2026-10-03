@@ -31,6 +31,7 @@ export const manageTr = {
   "groups.reordered": "Gruplar sıralandı.",
   "manage.nav.label": "Bölümler",
   "manage.nav.accounts": "Hesaplar",
+  "manage.nav.preferences": "Tercihler",
   "manage.nav.security": "Güvenlik",
   "manage.nav.backup": "Yedekleme",
   "manage.lock": "Kilitle",
@@ -195,7 +196,6 @@ export const manageTr = {
   "theme.dark": "Koyu",
   "theme.hint":
     "Sistem: bilgisayarın hangi moddaysa onu izler. Seçim popup ve yönetim sayfasında birlikte uygulanır.",
-  "security.display": "Doldurma, görünüm ve pano",
   "security.view": "Görünüm",
   "security.viewHint": "Kodlar popup'ta nasıl görünsün.",
   "view.normal": "Normal",
@@ -223,7 +223,11 @@ export const manageTr = {
     "Kurtarma kodunu kaydettiğini onaylamadın. Kaydetmediysen yeni bir kod oluştur; eskisi geçersiz olur.",
   "security.recoveryConfirm": "Kaydettim",
   "security.recoveryConfirmed": "Kurtarma kodunun kaydedildiği onaylandı.",
-  "security.secrets": "Gizli anahtar",
+  "security.clipboardSecrets": "Pano ve gizli anahtarlar",
+  "preferences.title": "Tercihler.",
+  "preferences.body": "claviger'ın nasıl göründüğü ve nasıl açıldığı. Bu ayarlar parola istemez.",
+  "preferences.opening": "Açılış",
+  "preferences.shortcuts": "Kısayollar ve kodlar",
   "security.reveal": "Gizli anahtarı göster için parola iste",
   "security.revealHint":
     "Bir hesabın kurulum anahtarını ve QR kodunu görüntülemek her seferinde parola ister.",

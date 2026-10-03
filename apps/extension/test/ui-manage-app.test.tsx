@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { RpcError } from "@claviger/ui/rpc-client";
 import type { UiPlatform } from "@claviger/ui";
 import userEvent from "@testing-library/user-event";
@@ -31,6 +31,7 @@ const ACME = "otpauth://totp/Acme:bob?secret=JBSWY3DPEHPK3PXP&issuer=Acme";
 describe("parseRoute", () => {
   it("reads both hash styles and ignores unknown routes", () => {
     expect(parseRoute("#/security")).toBe("security");
+    expect(parseRoute("#/preferences")).toBe("preferences");
     expect(parseRoute("#backup")).toBe("backup");
     expect(parseRoute("#/nope")).toBeNull();
     expect(parseRoute("")).toBeNull();
@@ -154,6 +155,24 @@ describe("ManageApp", () => {
     expect(await screen.findByRole("heading", { name: "Yedekleme." })).toBeTruthy();
   });
 
+  it("orders the tabs and serves the preferences route", async () => {
+    const { ui } = await harness();
+    window.location.hash = "#/preferences";
+    renderUi(<ManageApp pollMs={0} />, ui);
+    expect(await screen.findByRole("heading", { name: "Tercihler." })).toBeTruthy();
+    const nav = screen.getByRole("navigation");
+    expect(
+      within(nav)
+        .getAllByRole("link")
+        .map((a) => a.textContent),
+    ).toEqual(["Hesaplar", "Tercihler", "Güvenlik", "Yedekleme"]);
+    expect(screen.getByRole("link", { name: "Tercihler" }).getAttribute("aria-current")).toBe(
+      "page",
+    );
+    expect(screen.getByRole("radiogroup", { name: "Tema" })).toBeTruthy();
+    expect(screen.queryByText("Ana parola")).toBeNull();
+  });
+
   it("keeps the same wide frame on every menu page", async () => {
     const { ui } = await harness();
     renderUi(<ManageApp pollMs={0} />, ui);
@@ -161,6 +180,7 @@ describe("ManageApp", () => {
     await screen.findByRole("heading", { name: "Hesaplar." });
     expect((await frame()).className).toContain("max-w-[1240px]");
     for (const [link, heading] of [
+      ["Tercihler", "Tercihler."],
       ["Güvenlik", "Güvenlik."],
       ["Yedekleme", "Yedekleme."],
     ]) {

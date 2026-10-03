@@ -656,7 +656,7 @@ export function CodesScreen({
         <div className="px-7">
           <Button
             variant="link"
-            onClick={() => openManage("security")}
+            onClick={() => openManage("preferences")}
             className="text-xs text-muted"
           >
             {t("clock.popupNote", { offset: state.clockOffsetSec })}

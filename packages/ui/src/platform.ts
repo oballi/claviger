@@ -3,7 +3,8 @@ import type { RpcPayload, RpcResults, RpcType } from "./protocol/protocol";
 
 export type Rpc = <T extends RpcType>(type: T, payload: RpcPayload<T>) => Promise<RpcResults[T]>;
 
-export type ManageRoute = "setup" | "recover" | "accounts" | "security" | "backup" | "import";
+export type ManageRoute =
+  "setup" | "recover" | "accounts" | "preferences" | "security" | "backup" | "import";
 
 export interface UiCapabilities {
   /** The platform knows which page the user is on ("This site" ordering, fill target). */
