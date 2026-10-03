@@ -23,7 +23,8 @@ export function WizardFrame({
   const t = useT();
   return (
     <div className="flex min-h-screen items-start justify-center bg-bg font-sans text-text md:items-center md:px-6 md:py-10">
-      <div className="flex w-full max-w-[960px] flex-col border-hair md:flex-row md:rounded-[20px] md:border">
+      {/* zoom scales the whole card (type, rail, spacing) proportionally on large screens without touching shared components elsewhere */}
+      <div className="flex w-full max-w-[960px] flex-col border-hair md:flex-row md:rounded-[20px] md:border 2xl:[zoom:1.3]">
         <nav
           aria-label={t("setup.stepsLabel")}
           className="flex w-full shrink-0 flex-col gap-10 border-hair px-[clamp(20px,6vw,48px)] pt-9 pb-6 md:w-[240px] md:border-r md:px-7 md:py-8"
