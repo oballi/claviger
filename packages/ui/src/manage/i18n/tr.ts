@@ -157,9 +157,9 @@ export const manageTr = {
     "Bu bilgilerle kodların başka bir cihazda da üretilebilir. Ekranı kimseyle paylaşma.",
   "account.transfer": "Telefona taşımak için QR göster",
   "account.transferWarning":
-    "Bunu tarayan herkes kodlarınızı üretebilir. Yalnızca kendi cihazınızla tarayın, sonra gizleyin.",
+    "Bunu tarayan herkes kodlarını üretebilir. Yalnızca kendi cihazınla tara, sonra gizle.",
   "account.transferSteamNote":
-    "Steam kodları yalnızca Steam desteği olan uygulamalara (ör. Aegis) taşınabilir. Burada silmeden önce orada bir kodu kontrol edin.",
+    "Steam kodları yalnızca Steam desteği olan uygulamalara (ör. Aegis) taşınabilir. Burada silmeden önce orada bir kodu kontrol et.",
   "account.hideIn": "{seconds} sn içinde gizlenir",
   "account.hide": "Gizle",
   "security.title": "Güvenlik.",
@@ -187,7 +187,7 @@ export const manageTr = {
   "language.label": "Dil",
   "language.system": "Sistem",
   "language.hint":
-    "Uygulamanın dili. Tarayıcı menüsündeki ve kısayol açıklamalarındaki metinler tarayıcınızın diline bağlıdır ve buradan değişmez.",
+    "Uygulamanın dili. Tarayıcı menüsündeki ve kısayol açıklamalarındaki metinler tarayıcının diline bağlıdır ve buradan değişmez.",
   "theme.section": "Görünüm",
   "theme.label": "Tema",
   "theme.system": "Sistem",
@@ -263,9 +263,9 @@ export const manageTr = {
   "backup.groupEncrypted": "Şifreli",
   "backup.groupPlain": "Düz (şifresiz)",
   "backup.aegis": "Aegis (şifreli)",
-  "backup.aegisHint": "Şifreli bir Aegis kasası. Burada seçtiğiniz parolayla Aegis'te açılır.",
+  "backup.aegisHint": "Şifreli bir Aegis kasası. Burada seçtiğin parolayla Aegis'te açılır.",
   "backup.aegisPlain": "Aegis (düz JSON)",
-  "backup.aegisPlainHint": "Aegis ve diğer uygulamalar okuyabilir. Anahtarlarınız KORUNMAZ.",
+  "backup.aegisPlainHint": "Aegis ve diğer uygulamalar okuyabilir. Anahtarların korunmaz.",
   "backup.download": "Yedeği indir",
   "backup.downloadConfirm": "İndir",
   "backup.samePassword": "Bu dışa aktarma için kasa parolasından farklı bir parola kullan.",
@@ -276,7 +276,7 @@ export const manageTr = {
   "backup.drop": "Yedek dosyasını buraya bırak",
   "backup.or": "veya",
   "backup.chooseFile": "Dosya seç",
-  "backup.pasteImageHint": "Bir QR görselini Ctrl+V ile de yapıştırabilirsiniz.",
+  "backup.pasteImageHint": "Bir QR görselini Ctrl+V ile de yapıştırabilirsin.",
   "backup.dropNoFile": "Bağlantı değil, bir görsel dosyası bırakın.",
   "backup.sources": "Desteklenen kaynaklar",
   "backup.paste": "Metin yapıştır",
@@ -381,7 +381,7 @@ export const manageTr = {
     "Chrome'da chrome://extensions/shortcuts adresinden, Firefox'ta eklenti yönetimi > dişli > \"Eklenti kısayollarını yönet\" ile değiştirilir.",
   "security.lockShortcut": "Kilitleme kısayolu",
   "security.lockShortcutHint":
-    'Varsayılan olarak atanmamış. Chrome: chrome://extensions/shortcuts adresinden; Firefox: Eklentiler sayfası, dişli simgesi, "Eklenti kısayollarını yönet" ile bir tuş atayın.',
+    'Varsayılan olarak atanmamış. Chrome: chrome://extensions/shortcuts adresinden; Firefox: Eklentiler sayfası, dişli simgesi, "Eklenti kısayollarını yönet" ile bir tuş ata.',
   "clock.title": "Saat kontrolü",
   "clock.hint":
     "Kodlar tutmuyorsa bilgisayarının saatini bir kez Google'ın sunucusuyla karşılaştırır. İstek Google'a gider ve yalnızca sen istediğinde çalışır.",
@@ -427,8 +427,8 @@ export const manageTr = {
   "transfer.prev": "Önceki",
   "transfer.next": "Sonraki",
   "transfer.warning":
-    "Bu kodları tarayan kişi hesaplarınıza tam erişim kazanır. Yalnızca kendi telefonunuzla tarayın.",
-  "transfer.checkNote": "Buradaki hesapları silmeden önce telefonda bir kodu kontrol edin.",
+    "Bu kodları tarayan kişi hesaplarına tam erişim kazanır. Yalnızca kendi telefonunla tara.",
+  "transfer.checkNote": "Buradaki hesapları silmeden önce telefonda bir kodu kontrol et.",
   "transfer.none": "Seçilen hesapların hiçbiri bu yolla taşınamaz.",
   "transfer.excluded": "Taşınamayanlar",
   "transfer.reason.digits": "7 haneli kodlar desteklenmez.",

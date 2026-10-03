@@ -198,7 +198,7 @@ describe("AddAccount", () => {
         dataUrl: "data:image/png;base64,AAAA",
         tabUrl: "",
       });
-      expect(screen.getByText("Veya bir QR görselini buraya yapıştırın (Ctrl+V).")).toBeTruthy();
+      expect(screen.getByText("Veya bir QR görselini buraya yapıştır (Ctrl+V).")).toBeTruthy();
     });
 
     it("warns when the image is too large and stores nothing", async () => {
