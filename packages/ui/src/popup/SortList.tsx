@@ -140,6 +140,7 @@ export function SortList({
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[13px]">{a.issuer || a.label}</span>
           {a.issuer ? <span className="block truncate text-xs text-muted">{a.label}</span> : null}
+          {!tag ? <span className="block text-xs text-muted">{t("sort.sitePinned")}</span> : null}
         </span>
         {tag ? <span className="text-xs text-muted">{t("sort.fixed")}</span> : null}
       </li>

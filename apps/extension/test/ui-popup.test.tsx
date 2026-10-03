@@ -124,7 +124,14 @@ describe("codes screen", () => {
     renderUi(<PopupApp pollMs={0} />, ui);
     await userEvent.click(await screen.findByRole("button", { name: /^GitHub kodunu kopyala/ }));
     expect(ui.copy).toHaveBeenCalledWith(githubCode);
-    expect(screen.getByText("GitHub kodu kopyalandı").closest('[role="status"]')).toBeTruthy();
+    const button = screen.getByRole("button", { name: /^GitHub kodunu kopyala/ });
+    expect(button.textContent).toBe("Kopyalandı");
+    expect(button.getAttribute("aria-label")).not.toContain("Kopyalandı");
+    expect(screen.queryByText("GitHub kodu kopyalandı")).toBeNull();
+    expect(screen.getAllByText("Kopyalandı").some((n) => n.closest("[aria-live=polite]"))).toBe(
+      true,
+    );
+    expect(document.querySelector("[aria-live=polite]")?.textContent).not.toContain(githubCode);
   });
 
   it("shows an error instead of failing silently when copying is refused", async () => {

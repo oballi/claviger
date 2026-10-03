@@ -1,4 +1,5 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
+import { createPortal } from "react-dom";
 import { Icon } from "../components/Icon";
 import { useT } from "../i18n/i18n";
 
@@ -10,6 +11,16 @@ export interface MenuItem {
   disabled?: boolean;
   onSelect?: () => void;
   sub?: MenuItem[];
+}
+
+const GAP = 4;
+const EDGE = 8;
+
+/** Fixed coordinates: the menu is portalled so no row (or the scrolling list) can paint over or clip it. */
+interface Placement {
+  right: number;
+  top?: number;
+  bottom?: number;
 }
 
 const ITEMS = '[role="menuitem"]:not(:disabled)';
@@ -31,6 +42,7 @@ export function RowMenu({
   const id = useId();
   const [open, setOpen] = useState(false);
   const [sub, setSub] = useState<MenuItem[] | null>(null);
+  const [place, setPlace] = useState<Placement | null>(null);
   const button = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
 
@@ -47,10 +59,28 @@ export function RowMenu({
     (sub ? (enabled?.[1] ?? enabled?.[0]) : enabled?.[0])?.focus();
   }, [open, sub]);
 
+  // Opens downward; flips upward when the popup viewport has more room above than below.
+  useLayoutEffect(() => {
+    if (!open || !button.current) return;
+    const rect = button.current.getBoundingClientRect();
+    const height = menu.current?.offsetHeight ?? 0;
+    const below = window.innerHeight - rect.bottom - EDGE;
+    const flip = height > below && rect.top > below;
+    setPlace({
+      right: Math.max(EDGE, window.innerWidth - rect.right),
+      ...(flip ? { bottom: window.innerHeight - rect.top + GAP } : { top: rect.bottom + GAP }),
+    });
+  }, [open, sub]);
+
   useEffect(() => {
     if (!open) return;
-    // The menu can extend the scrollable list; keep it visible.
-    menu.current?.scrollIntoView?.({ block: "nearest" });
+    const dismiss = () => {
+      setOpen(false);
+      setSub(null);
+    };
+    // A fixed menu would float away from its row while the list scrolls.
+    window.addEventListener("scroll", dismiss, true);
+    window.addEventListener("resize", dismiss);
     const onDown = (e: MouseEvent) => {
       const target = e.target as Node;
       if (!menu.current?.contains(target) && !button.current?.contains(target)) {
@@ -59,7 +89,11 @@ export function RowMenu({
       }
     };
     document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      window.removeEventListener("scroll", dismiss, true);
+      window.removeEventListener("resize", dismiss);
+    };
   }, [open]);
 
   function onKeyDown(e: KeyboardEvent<HTMLElement>) {
@@ -118,45 +152,49 @@ export function RowMenu({
           <Icon name="more" size={18} />
         )}
       </button>
-      {open ? (
-        <div
-          ref={menu}
-          id={id}
-          role="menu"
-          aria-label={label}
-          onKeyDown={onKeyDown}
-          className="absolute top-full right-0 z-10 flex w-[236px] cursor-default flex-col rounded-[14px] border border-ring bg-bg p-1.5 shadow-lg"
-        >
-          {shown.map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              role="menuitem"
-              aria-haspopup={item.sub ? "menu" : undefined}
-              disabled={item.disabled}
-              onClick={() => {
-                if (item.key === "back") setSub(null);
-                else if (item.sub) setSub(item.sub);
-                else {
-                  close(true);
-                  item.onSelect?.();
-                }
-              }}
-              className={`flex min-h-10 cursor-pointer flex-row items-center gap-2 rounded-lg border-0 bg-transparent px-3 text-left font-sans text-[13px] hover:bg-hair focus-visible:bg-hair disabled:cursor-default disabled:opacity-40 ${item.danger ? "text-warn" : "text-text"}`}
+      {open
+        ? createPortal(
+            <div
+              ref={menu}
+              id={id}
+              role="menu"
+              aria-label={label}
+              onKeyDown={onKeyDown}
+              style={place ?? { right: EDGE, top: 0 }}
+              className="fixed z-50 flex w-[236px] cursor-default flex-col rounded-[14px] border border-ring bg-bg p-1.5 text-text shadow-[0_10px_30px_rgba(0,0,0,0.28)]"
             >
-              {item.label}
-              {item.hint ? (
-                <span className="ml-auto font-mono text-[11px] text-muted">{item.hint}</span>
-              ) : null}
-              {item.sub ? (
-                <span aria-hidden="true" className="ml-auto text-muted">
-                  {"\u203a"}
-                </span>
-              ) : null}
-            </button>
-          ))}
-        </div>
-      ) : null}
+              {shown.map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  role="menuitem"
+                  aria-haspopup={item.sub ? "menu" : undefined}
+                  disabled={item.disabled}
+                  onClick={() => {
+                    if (item.key === "back") setSub(null);
+                    else if (item.sub) setSub(item.sub);
+                    else {
+                      close(true);
+                      item.onSelect?.();
+                    }
+                  }}
+                  className={`flex min-h-10 cursor-pointer flex-row items-center gap-2 rounded-lg border-0 bg-transparent px-3 text-left font-sans text-[13px] hover:bg-hair focus-visible:bg-hair disabled:cursor-default disabled:opacity-40 ${item.danger ? "text-warn" : "text-text"}`}
+                >
+                  {item.label}
+                  {item.hint ? (
+                    <span className="ml-auto font-mono text-[11px] text-muted">{item.hint}</span>
+                  ) : null}
+                  {item.sub ? (
+                    <span aria-hidden="true" className="ml-auto text-muted">
+                      {"\u203a"}
+                    </span>
+                  ) : null}
+                </button>
+              ))}
+            </div>,
+            document.body,
+          )
+        : null}
     </>
   );
 }

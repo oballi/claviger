@@ -21,6 +21,8 @@ import { useLocale, useT } from "../i18n/i18n";
 import { useUi } from "../platform";
 import { iconButton } from "./iconButton";
 import { REVEAL_SECONDS } from "./reveal";
+
+const COPIED_MS = 1200;
 import { ThemeToggle } from "./ThemeToggle";
 import { AccountRow } from "./AccountRow";
 import type { MenuItem } from "./RowMenu";
@@ -102,6 +104,14 @@ export function CodesScreen({
   const clearUndo = useCallback(() => setUndo(null), []);
   const [revealedId, setRevealedId] = useState<string | null>(null);
   const [announced, setAnnounced] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedAnnounce, setCopiedAnnounce] = useState(false);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(copiedTimer.current), []);
+  // Entering sort mode drops a visible copy toast (it would sit on top of the sort list).
+  useEffect(() => {
+    if (sorting) setToast(null);
+  }, [sorting]);
   const toggleReveal = (a: AccountView) => {
     setAnnounced(true);
     setRevealedId((id) => (id === a.id ? null : a.id));
@@ -317,12 +327,19 @@ export function CodesScreen({
   async function copyCode(account: AccountView) {
     setActionError(null);
     try {
-      await copy(account.code);
+      // Same view object the row rendered: inside the window the dimmed next code is what is copied.
+      await copy(state.viewMode === "hidden" ? account.code : (account.nextCode ?? account.code));
     } catch {
       setActionError(t("codes.copyFailed"));
       return;
     }
-    setToast(t("codes.copied", { issuer: account.issuer || account.label }));
+    setCopiedId(account.id);
+    setCopiedAnnounce(true);
+    clearTimeout(copiedTimer.current);
+    copiedTimer.current = setTimeout(() => {
+      setCopiedId(null);
+      setCopiedAnnounce(false);
+    }, COPIED_MS);
     // Clearing is best effort; a failed report must not turn a good copy into an error.
     rpc("clipboardCopied", {}).catch(() => {});
   }
@@ -574,6 +591,7 @@ export function CodesScreen({
       mode={state.viewMode}
       onCopy={(a) => void copyCode(a)}
       onNextHotp={(a) => void nextHotp(a)}
+      copied={copiedId === account.id}
       revealed={revealedId === account.id}
       onToggleReveal={toggleReveal}
     />
@@ -612,6 +630,9 @@ export function CodesScreen({
           : announced
             ? t("codes.hiddenAnnounce")
             : ""}
+      </div>
+      <div aria-live="polite" className="sr-only">
+        {copiedAnnounce ? t("codes.copiedShort") : ""}
       </div>
       <header className="flex items-center pt-2 pr-3 pl-7">
         <div className="flex-1 font-mono text-xs tracking-wide">{t("app.name")}</div>

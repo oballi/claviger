@@ -36,6 +36,7 @@ describe("listing", () => {
           groupId: null,
           code: expected.code,
           remaining: expected.remaining,
+          nextCode: null,
         },
       ],
       groups: [],
