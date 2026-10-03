@@ -5,9 +5,7 @@
 [English](README.md)
 
 <p align="center">
-  <img src="docs/screenshots/popup-tr-dark.png" alt="Gruplanmış hesaplar ve canlı kodlarla claviger popup'ı" width="300">
-  &nbsp;
-  <img src="docs/screenshots/manage-tr-light.png" alt="Gruplarla claviger hesaplar sayfası" width="520">
+  <img src="docs/media/claviger-tr.gif" alt="claviger, Alt+Shift+O ile bir giriş sayfasına iki adımlı doğrulama kodunu dolduruyor" width="800">
 </p>
 
 > **Durum: 1.0.** Tarayıcı mağazası sayfaları hazırlanıyor; yayına girene kadar claviger'ı [Releases](https://github.com/oballi/claviger/releases/latest) sayfasından indirebilirsin (aşağıya bak). Her durumda dışa aktarılmış bir yedeğin olsun.
