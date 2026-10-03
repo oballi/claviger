@@ -134,6 +134,7 @@ export const en: Record<PopupKey, string> = {
   "codes.secondsLeft": "{seconds} s left",
   "codes.fillNotLinked": "This account is not linked to this site.",
   "codes.fillRefused": "Could not fill this page.",
+  "codes.filled": "Code filled.",
   "codes.fillCopied": "No field found, code copied.",
   "codes.copyFailed": "Couldn't copy.",
   "codes.added": "{issuer} added",

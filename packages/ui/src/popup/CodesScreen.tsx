@@ -22,8 +22,6 @@ import { useUi } from "../platform";
 import { iconButton } from "./iconButton";
 import { REVEAL_SECONDS } from "./reveal";
 
-const COPIED_MS = 1200;
-
 import { ThemeToggle } from "./ThemeToggle";
 import { AccountRow } from "./AccountRow";
 import type { MenuItem } from "./RowMenu";
@@ -34,6 +32,8 @@ import { useCollapsed } from "./useCollapsed";
 import { useTrash } from "./useTrash";
 import { NO_GROUP_KEY, sectionsOf } from "../groups";
 import { swapOrder } from "../reorder";
+
+const COPIED_MS = 1200;
 
 const EditAccount = lazy(() => import("./EditAccount").then((m) => ({ default: m.EditAccount })));
 const TrashList = lazy(() => import("./TrashList").then((m) => ({ default: m.TrashList })));
@@ -375,7 +375,7 @@ export function CodesScreen({
       if (r.result === "filled") {
         // Nothing else to do here; leaving the popup open would only cover the page.
         if (closePopup) closePopup();
-        else setToast(t("codes.copiedShort"));
+        else setToast(t("codes.filled"));
       } else if (r.result === "copied-instead" && r.code) {
         await copy(r.code);
         rpc("clipboardCopied", {}).catch(() => {});
@@ -433,7 +433,14 @@ export function CodesScreen({
       sortToggle.current?.focus();
       return;
     }
-    if (event.key === "Escape" && !event.defaultPrevented) {
+    if (
+      event.key === "Escape" &&
+      !event.defaultPrevented &&
+      !event.nativeEvent.isComposing &&
+      confirmDelete === null &&
+      !(event.target as HTMLElement).closest("[role=menu], [role=dialog]") &&
+      !document.querySelector("[role=menu]")
+    ) {
       event.preventDefault();
       if (query) setQuery("");
       // A held key must not clear the search and then close the popup in one go.
@@ -463,7 +470,14 @@ export function CodesScreen({
     );
     if (buttons.length === 0) return;
     event.preventDefault();
-    const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
+    let index = buttons.indexOf(document.activeElement as HTMLButtonElement);
+    // Focus not on a row yet (search field): ArrowDown lands on the selected row itself.
+    if (index < 0 && event.key === "ArrowDown") {
+      const sel = buttons.findIndex(
+        (b) => b.closest("li")?.getAttribute("data-account-id") === selectedId,
+      );
+      if (sel >= 0) index = sel - 1;
+    }
     const next =
       event.key === "ArrowDown"
         ? (index + 1) % buttons.length

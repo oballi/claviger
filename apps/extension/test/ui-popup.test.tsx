@@ -216,14 +216,23 @@ describe("codes screen", () => {
   it("moves exactly one code per arrow key press", async () => {
     const { ui } = await seeded();
     renderUi(<PopupApp pollMs={0} />, ui);
+    // All rows must be rendered before focus moves, or a late list refresh remounts the focused button.
+    await screen.findByRole("button", { name: /^GitHub kodunu/ });
+    await screen.findByRole("button", { name: /^Bank kodunu/ });
     const first = await screen.findByRole("button", { name: /^Steam kodunu kopyala/ });
     first.focus();
     await userEvent.keyboard("{ArrowDown}");
-    expect(document.activeElement?.getAttribute("aria-label")).toMatch(/^GitHub kodunu/);
+    await vi.waitFor(() =>
+      expect(document.activeElement?.getAttribute("aria-label")).toMatch(/^GitHub kodunu/),
+    );
     await userEvent.keyboard("{ArrowUp}");
-    expect(document.activeElement).toBe(first);
+    await vi.waitFor(() =>
+      expect(document.activeElement?.getAttribute("aria-label")).toMatch(/^Steam kodunu/),
+    );
     await userEvent.keyboard("{ArrowUp}");
-    expect(document.activeElement?.getAttribute("aria-label")).toMatch(/^Bank kodunu/);
+    await vi.waitFor(() =>
+      expect(document.activeElement?.getAttribute("aria-label")).toMatch(/^Bank kodunu/),
+    );
   });
 
   it("generates the next HOTP code", async () => {

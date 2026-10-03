@@ -569,6 +569,47 @@ describe("fillAccount (popup picks the account)", () => {
     expect(await service.fillAccount(id, TAB)).toEqual({ result: "refused", code: null });
   });
 
+  it("hands the advanced HOTP code back when the second check navigates away", async () => {
+    const { p, service, id } = await setup({ type: "hotp" });
+    const urls = [BANK, "https://evil.io/"];
+    p.tabs.url = async () => urls.shift() ?? "https://evil.io/";
+    const r = await service.fillAccount(id, TAB);
+    expect(r.result).toBe("copied-instead");
+    expect(r.code).toMatch(/^\d{6}$/);
+    expect(p.tabs.fills).toHaveLength(0);
+  });
+
+  it("hands the advanced HOTP code back when the second check is not-linked", async () => {
+    const { p, service, id } = await setup({ type: "hotp" });
+    const urls = [BANK, "https://other.com/"];
+    p.tabs.url = async () => urls.shift() ?? "https://other.com/";
+    const r = await service.fillAccount(id, TAB);
+    expect(r.result).toBe("copied-instead");
+    expect(r.code).toMatch(/^\d{6}$/);
+  });
+
+  it("hands the advanced HOTP code back when the page answers wrong-site", async () => {
+    const { p, service, id } = await setup({ type: "hotp" });
+    p.tabs.next = "wrong-site";
+    const r = await service.fillAccount(id, TAB);
+    expect(r.result).toBe("copied-instead");
+    expect(r.code).toMatch(/^\d{6}$/);
+  });
+
+  it("throws locked when the vault locks between the second check and the injection", async () => {
+    const { p, service, id } = await setup();
+    const real = p.tabs.url.bind(p.tabs);
+    let calls = 0;
+    p.tabs.url = async (t: number) => {
+      calls += 1;
+      const u = await real(t);
+      if (calls === 2) await service.lock();
+      return u;
+    };
+    await expect(service.fillAccount(id, TAB)).rejects.toMatchObject({ code: "locked" });
+    expect(p.tabs.fills).toHaveLength(0);
+  });
+
   it("throws not-found for an unknown account", async () => {
     const { service } = await setup();
     await expect(service.fillAccount("nope", TAB)).rejects.toMatchObject({ code: "not-found" });

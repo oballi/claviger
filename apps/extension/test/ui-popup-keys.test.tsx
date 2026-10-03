@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PopupApp } from "@claviger/ui/popup";
@@ -136,5 +136,49 @@ describe("popup keyboard", () => {
     await userEvent.keyboard("{Shift>}{Enter}{/Shift}");
     expect(await screen.findByText("Bu sayfaya doldurulamadı.")).toBeTruthy();
     expect(vi.mocked(h.ui.copy)).not.toHaveBeenCalled();
+  });
+
+  it("Escape with a row menu open leaves the search and the popup alone", async () => {
+    const h = await seeded();
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await screen.findByText("Zed");
+    await userEvent.keyboard("z");
+    await userEvent.click(screen.getByRole("button", { name: "Zed için işlemler" }));
+    expect(screen.getByRole("menu")).toBeTruthy();
+    search().focus();
+    await userEvent.keyboard("{Escape}");
+    expect((search() as HTMLInputElement).value).toBe("z");
+    expect(h.ui.closePopup).not.toHaveBeenCalled();
+  });
+
+  it("Escape during IME composition does not clear the search or close", async () => {
+    const h = await seeded();
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await screen.findByText("Zed");
+    await userEvent.keyboard("z");
+    fireEvent.keyDown(search(), { key: "Escape", isComposing: true });
+    expect((search() as HTMLInputElement).value).toBe("z");
+    expect(h.ui.closePopup).not.toHaveBeenCalled();
+  });
+
+  it("ArrowDown from the search field lands on the selected row", async () => {
+    const h = await seeded();
+    renderUi(<PopupApp pollMs={0} />, h.ui);
+    await screen.findByText("Zed");
+    screen.getByRole("button", { name: /^Zed kodunu/ }).focus();
+    search().focus();
+    await userEvent.keyboard("{ArrowDown}");
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: /^Zed kodunu/ }));
+  });
+
+  it("a successful fill without closePopup says the code was filled, not copied", async () => {
+    const h = await seeded("https://acme.com/login");
+    renderUi(<PopupApp pollMs={0} />, { ...h.ui, closePopup: undefined });
+    await screen.findByText("Zed");
+    await userEvent.keyboard("{Shift>}{Enter}{/Shift}");
+    expect(await screen.findByText("Kod dolduruldu.")).toBeTruthy();
+    expect(
+      screen.queryByText("Kopyalandı", { selector: "[role=status] *, [role=status]" }),
+    ).toBeNull();
   });
 });

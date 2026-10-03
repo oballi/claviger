@@ -1625,7 +1625,7 @@ export class VaultService {
     frameId?: number;
     frameUrl?: string;
     explicit?: boolean;
-  }): Promise<{ result: FillOutcome; code: string | null }> {
+  }): Promise<{ result: FillOutcome; code: string | null; advanced: boolean }> {
     const vault = await this.requireVault();
     const epoch = this.lockEpoch;
     const settings = await this.settings();
@@ -1659,13 +1659,19 @@ export class VaultService {
       }
       return { domain };
     };
-    const refused = { result: "refused" as const, code: generated.code };
+    const refused = { result: "refused" as const, code: generated.code, advanced: false };
 
     if (!(await check())) return refused;
     // HOTP advances only after the first check, so a refused fill never burns a counter value.
     const code = account.type === "hotp" ? await this.advanceHotp(opts.id) : generated.code;
-    const target = await check();
-    if (!target) return { result: "refused", code };
+    const advanced = account.type === "hotp";
+    // After the advance a not-linked tab is a refusal that still hands the code back, not a throw.
+    const target = await check().catch((e: unknown) => {
+      if (advanced && e instanceof ServiceError && e.code === "not-linked") return null;
+      throw e;
+    });
+    if (!target) return { result: "refused", code, advanced };
+    if (epoch !== this.lockEpoch) throw new ServiceError("locked", "The vault is locked");
     const result = await this.p.tabs.fill(
       opts.tabId,
       opts.frameId,
@@ -1673,8 +1679,8 @@ export class VaultService {
       opts.explicit === true,
       target.domain,
     );
-    if (result === "filled") return { result: "filled", code: null };
-    return { result: result === "no-field" ? "copied-instead" : "refused", code };
+    if (result === "filled") return { result: "filled", code: null, advanced };
+    return { result: result === "no-field" ? "copied-instead" : "refused", code, advanced };
   }
 
   private async advanceHotp(id: string): Promise<string> {
@@ -1739,14 +1745,17 @@ export class VaultService {
 
   /**
    * Popup fill for an account the user picked. Same checks as every other fill (fillInto re-reads the tab).
-   * A code leaves only when the page had no field, so a burned HOTP value is not lost; never on success.
+   * A code leaves only when it would otherwise be lost: the page had no field, or an HOTP counter already
+   * advanced and the fill was then refused (returned as copied-instead). Never on success or a refusal before the advance.
    */
   async fillAccount(
     id: string,
     tabId: number,
   ): Promise<{ result: FillOutcome; code: string | null }> {
     const r = await this.fillInto({ id, tabId, explicit: true });
-    return r.result === "copied-instead" ? r : { result: r.result, code: null };
+    if (r.result === "copied-instead") return { result: r.result, code: r.code };
+    if (r.result === "refused" && r.advanced) return { result: "copied-instead", code: r.code };
+    return { result: r.result, code: null };
   }
 
   /** "locked" tells the trigger to open the popup; Firefox already did so before awaiting. */
