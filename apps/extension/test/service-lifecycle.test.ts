@@ -33,7 +33,7 @@ describe("setup", () => {
       language: "system",
       openMode: "popup",
       popupSize: "medium",
-      clipboardClearSec: 0,
+      clipboardClearSec: 60,
       recoveryCodeConfirmed: true,
     });
   });

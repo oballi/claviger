@@ -51,6 +51,7 @@ export function SecurityScreen({
   const [message, setMessage] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [mismatchShown, setMismatchShown] = useState(false);
   const [passwordReady, setPasswordReady] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [freshCode, setFreshCode] = useState<string | null>(null);
@@ -174,12 +175,13 @@ export function SecurityScreen({
                 error={passwordError}
                 labels={{ password: t("recover.newPassword") }}
                 idPrefix="change"
+                onMismatchChange={setMismatchShown}
               />
               <div className="flex gap-2">
                 <Button
                   type="submit"
                   variant="primary"
-                  disabled={passwordsMismatch(newPassword, confirm)}
+                  disabled={passwordsMismatch(newPassword, confirm) || mismatchShown}
                 >
                   {t("security.passwordChange")}
                 </Button>

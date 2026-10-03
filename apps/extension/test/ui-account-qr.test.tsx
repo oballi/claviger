@@ -149,4 +149,11 @@ describe("useAutoHide", () => {
     act(() => vi.advanceTimersByTime(2_000));
     expect(onHide).toHaveBeenCalled();
   });
+
+  it("hides at once when it becomes active while the page is already hidden", () => {
+    Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true });
+    const onHide = vi.fn();
+    renderHook(() => useAutoHide(true, 60_000, onHide));
+    expect(onHide).toHaveBeenCalledTimes(1);
+  });
 });

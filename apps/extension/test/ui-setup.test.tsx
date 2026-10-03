@@ -233,6 +233,7 @@ describe("SetupWizard", () => {
     expect(screen.queryByText("Parolalar eşleşmiyor.")).toBeNull();
     await userEvent.tab();
     expect(screen.getByText("Parolalar eşleşmiyor.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Devam" })).toHaveProperty("disabled", true);
   });
 
   it("toggles password visibility with the eye buttons", async () => {

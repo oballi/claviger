@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { SETTINGS_KEY } from "../src/background/settings";
 import { CLIPBOARD_ALARM, VaultService } from "../src/background/vaultService";
 import { memoryPlatform } from "./helpers/platform";
 import { PASSWORD, unlockedService } from "./helpers/service";
@@ -110,10 +111,36 @@ describe("open mode and popup size", () => {
 });
 
 describe("clipboard clearing", () => {
+  it("clears after 60 s on a fresh setup", async () => {
+    const { service, p } = await unlockedService();
+    expect((await service.getState()).clipboardClearSec).toBe(60);
+    await service.clipboardCopied();
+    expect(p.alarms.scheduled.get(CLIPBOARD_ALARM)).toBe(p.clock.now() + 60_000);
+  });
+
   it("does nothing while the setting is off", async () => {
     const { service, p } = await unlockedService();
+    await service.setClipboardClear(0);
     await service.clipboardCopied();
     expect(p.alarms.scheduled.has(CLIPBOARD_ALARM)).toBe(false);
+  });
+
+  it("keeps an explicit never across reloads and other setting changes", async () => {
+    const { service, p } = await unlockedService();
+    await service.setClipboardClear(0);
+    await service.setViewMode("compact");
+    const reloaded = new VaultService(p);
+    expect((await reloaded.getState()).clipboardClearSec).toBe(0);
+  });
+
+  it("moves a legacy stored 0 the user never chose to 60 s, and keeps a legacy 30 s", async () => {
+    const { service, p } = await unlockedService();
+    const stored = (await p.local.get([SETTINGS_KEY]))[SETTINGS_KEY] as Record<string, unknown>;
+    const { clipboardClearChosen: _marker, ...legacy } = stored;
+    await p.local.set({ [SETTINGS_KEY]: { ...legacy, clipboardClearSec: 0 } });
+    expect((await service.getState()).clipboardClearSec).toBe(60);
+    await p.local.set({ [SETTINGS_KEY]: { ...legacy, clipboardClearSec: 30 } });
+    expect((await service.getState()).clipboardClearSec).toBe(30);
   });
 
   it("schedules a clear and restarts it on every copy", async () => {

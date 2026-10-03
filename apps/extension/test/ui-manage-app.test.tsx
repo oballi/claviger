@@ -158,7 +158,8 @@ describe("ManageApp", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "Kodlarıma git" }));
     expect(await screen.findByRole("heading", { name: "Hesaplar." })).toBeTruthy();
-    expect(window.location.hash).toBe("#/accounts");
+    // The route fix-up runs in an effect after the accounts page commits.
+    await vi.waitFor(() => expect(window.location.hash).toBe("#/accounts"));
   });
 
   it("navigates between sections and locks from the top bar", async () => {
@@ -224,7 +225,8 @@ describe("ManageApp", () => {
     expect(screen.getByRole("link", { name: "Yedekleme" }).getAttribute("aria-current")).toBe(
       "page",
     );
-    await userEvent.click(screen.getByRole("button", { name: "1 hesabı ekle" }));
+    // The heading renders while the preview is still loading.
+    await userEvent.click(await screen.findByRole("button", { name: "1 hesabı ekle" }));
     await userEvent.click(await screen.findByRole("button", { name: "Hesaplara git" }));
     expect(await screen.findByText("Acme")).toBeTruthy();
   });
@@ -303,7 +305,8 @@ describe("ManageApp", () => {
     renderUi(<ManageApp pollMs={0} />, ui);
     await userEvent.type(await screen.findByLabelText("Ana parola"), `${PASSWORD}{Enter}`);
     expect(await screen.findByRole("heading", { name: "Hesaplar." })).toBeTruthy();
-    expect(window.location.hash).toBe("#/accounts");
+    // The route fix-up runs in an effect after the accounts page commits.
+    await vi.waitFor(() => expect(window.location.hash).toBe("#/accounts"));
   });
 
   it("drops a wizard that never started creating once another tab sets the vault up", async () => {

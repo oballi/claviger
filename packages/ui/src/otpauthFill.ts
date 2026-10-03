@@ -48,20 +48,29 @@ export function parseOtpauthFill(text: string): OtpauthFill | null {
     label = colon === -1 ? labelText : labelText.slice(colon + 1);
   }
 
-  const algorithm = (get("algorithm") ?? "SHA1").toUpperCase();
-  const digits = get("digits")?.trim() || "6";
-  const period = get("period")?.trim() || "30";
-  const counter = Number(get("counter"));
+  const algorithm = (get("algorithm") ?? "SHA1").toUpperCase().replace(/-/g, "");
+  if (!["SHA1", "SHA256", "SHA512"].includes(algorithm)) return null;
+  // Mirrors core: every numeric parameter must be finite, whatever the type (Steam ignores the value).
+  const numeric = (name: string): string | null => get(name)?.trim() || null;
+  if (["digits", "period", "counter"].some((n) => !Number.isFinite(Number(numeric(n) ?? 0))))
+    return null;
+  const digits = numeric("digits") ?? "6";
+  const period = numeric("period") ?? "30";
+  const rawCounter = numeric("counter");
+  const counter = Number(rawCounter ?? 0);
+  if (type !== "steam") {
+    if (!/^\d+$/.test(digits) || Number(digits) < 6 || Number(digits) > 8) return null;
+    if (!/^\d+$/.test(period) || Number(period) < 1 || Number(period) > 300) return null;
+    if (!Number.isSafeInteger(counter) || counter < 0) return null;
+  }
   return {
     issuer: issuer.trim(),
     label: label.trim(),
     secret,
     type,
-    algorithm: ["SHA1", "SHA256", "SHA512"].includes(algorithm) ? algorithm : "SHA1",
+    algorithm,
     digits,
     period,
-    ...(type === "hotp" && get("counter") !== null && Number.isSafeInteger(counter)
-      ? { counter }
-      : {}),
+    ...(type === "hotp" && rawCounter !== null ? { counter } : {}),
   };
 }

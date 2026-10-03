@@ -28,7 +28,7 @@
 - Her hesap AES-256-GCM ile şifrelenir. Anahtar, ana parolanla (Argon2id) ve istersen bir kurtarma koduyla korunur. Ayrıntılar: [docs/vault-format.md](docs/vault-format.md).
 - Ne zaman kilitleneceğini sen seçersin: tarayıcı kapanınca, ekran kilitlenince, 15 dakika, 1 saat ya da 4 saat işlem yapılmayınca, ya da hiçbir zaman. Kasayı anında kilitleyen bir klavye kısayolu da atayabilirsin.
 - Dışa aktarma ve güvenlik ayarlarını değiştirme parolayı yeniden ister; gizli anahtarı göstermek de, sen kapatmadıkça ister. Kilit ayarları da kasa anahtarıyla mühürlenir, böylece senden habersiz değiştirilemez.
-- Pano, bir kodu kopyaladıktan 30 saniye ya da 1 dakika sonra temizlenebilir.
+- Pano, bir kodu kopyaladıktan 1 dakika sonra temizlenir (30 saniye ya da hiçbir zaman da seçilebilir).
 - Silinen hesaplar 30 gün **Son silinenler**'de kalır. Kasanın şifreli kopyaları her gün ve riskli değişikliklerden önce bu cihazda alınır (son 7 kopya tutulur).
 
 ### Taşıma ve yedek
