@@ -14,6 +14,7 @@ First store release.
 - The next code appears dimmed in the last seconds of a period, and copying then gives the next code.
 - Copy feedback in the row itself, a seconds counter when time runs out, the account name on the "This site" row.
 - A welcome screen with the three ways to add a first account.
+- The setup wizard is a compact centred card with Continue right under the form.
 - Show/hide buttons on every password field and a live "passwords don't match" hint.
 - The clipboard is cleared 1 minute after copying by default.
 
@@ -23,6 +24,7 @@ First store release.
 - Inline errors next to the field in the add form; pasting an `otpauth://` link fills the form.
 - Clearer wording across the app and aligned radio buttons in setup and settings.
 - Automatic copies of an empty vault are no longer kept.
+- Group actions on the accounts page stay together on narrow panels.
 
 ### Security
 
