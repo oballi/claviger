@@ -6,10 +6,10 @@ dist/
 .wxt/
 *.log
 .DS_Store
-.superpowers/
 
 # Private working notes (kept on disk, not published)
 docs/superpowers/
 docs/research/
+.superpowers/
 .claude/
 CLAUDE.md
