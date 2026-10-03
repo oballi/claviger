@@ -1,8 +1,23 @@
 # Changelog
 
+## 1.0.1 — 2026-10-03
+
+### Changed
+
+- The setup wizard scales up on large screens, and its Continue row stays visible at the bottom of the window on long steps.
+
+### Fixed
+
+- Group actions on the accounts page no longer run into the panel edge; they move under the group name together when space is short.
+- After moving an account into a collapsed group, focus no longer gets lost in the popup.
+
+### Docs
+
+- Privacy policy (English and Turkish) and an animated demo in the README.
+
 ## 1.0.0 — 2026-10-03
 
-First store release.
+First public release (GitHub).
 
 ### Features
 
