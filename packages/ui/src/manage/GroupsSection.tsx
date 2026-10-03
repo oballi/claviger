@@ -254,59 +254,65 @@ export function GroupsSection({
                       },
                     )}
                     onClick={() => toggle(g.id)}
-                    className="flex min-h-11 min-w-28 flex-1 cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-left font-sans text-sm text-text"
+                    className="flex min-h-11 min-w-16 flex-1 cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-left font-sans text-sm text-text"
                   >
                     <span className="truncate" title={g.name}>
                       {g.name}
                     </span>
                     <span className="font-mono text-xs text-muted">{count(g.id)}</span>
                   </button>
-                  <Button
-                    variant="link"
-                    className="px-1 text-xs"
-                    data-focus={`${g.id}:up`}
-                    aria-label={t("groups.up", { name: g.name })}
-                    disabled={i === 0}
-                    onClick={() => void reorder(g.id, moveId(ids, g.id, -1), "up")}
+                  {/* One unit: when the row is narrow it wraps whole, right-aligned, under the name. */}
+                  <div
+                    data-testid="group-actions"
+                    className="ml-auto flex shrink-0 flex-nowrap items-center gap-x-2"
                   >
-                    {"\u2191"}
-                  </Button>
-                  <Button
-                    variant="link"
-                    className="px-1 text-xs"
-                    data-focus={`${g.id}:down`}
-                    aria-label={t("groups.down", { name: g.name })}
-                    disabled={i === groups.length - 1}
-                    onClick={() => void reorder(g.id, moveId(ids, g.id, 1), "down")}
-                  >
-                    {"\u2193"}
-                  </Button>
-                  <Button
-                    variant="link"
-                    className="text-xs font-normal"
-                    data-focus={`${g.id}:rename`}
-                    aria-label={t("groups.renameAria", { name: g.name })}
-                    onClick={() => {
-                      setError(null);
-                      setConfirming(null);
-                      setRenaming({ id: g.id, value: g.name });
-                    }}
-                  >
-                    {t("groups.rename")}
-                  </Button>
-                  <Button
-                    variant="link"
-                    className="text-xs font-normal"
-                    data-focus={`${g.id}:delete`}
-                    aria-label={t("groups.deleteAria", { name: g.name })}
-                    onClick={() => {
-                      setError(null);
-                      setRenaming(null);
-                      setConfirming(g.id);
-                    }}
-                  >
-                    {t("groups.delete")}
-                  </Button>
+                    <Button
+                      variant="link"
+                      className="px-1 text-xs"
+                      data-focus={`${g.id}:up`}
+                      aria-label={t("groups.up", { name: g.name })}
+                      disabled={i === 0}
+                      onClick={() => void reorder(g.id, moveId(ids, g.id, -1), "up")}
+                    >
+                      {"\u2191"}
+                    </Button>
+                    <Button
+                      variant="link"
+                      className="px-1 text-xs"
+                      data-focus={`${g.id}:down`}
+                      aria-label={t("groups.down", { name: g.name })}
+                      disabled={i === groups.length - 1}
+                      onClick={() => void reorder(g.id, moveId(ids, g.id, 1), "down")}
+                    >
+                      {"\u2193"}
+                    </Button>
+                    <Button
+                      variant="link"
+                      className="text-xs font-normal"
+                      data-focus={`${g.id}:rename`}
+                      aria-label={t("groups.renameAria", { name: g.name })}
+                      onClick={() => {
+                        setError(null);
+                        setConfirming(null);
+                        setRenaming({ id: g.id, value: g.name });
+                      }}
+                    >
+                      {t("groups.rename")}
+                    </Button>
+                    <Button
+                      variant="link"
+                      className="text-xs font-normal"
+                      data-focus={`${g.id}:delete`}
+                      aria-label={t("groups.deleteAria", { name: g.name })}
+                      onClick={() => {
+                        setError(null);
+                        setRenaming(null);
+                        setConfirming(g.id);
+                      }}
+                    >
+                      {t("groups.delete")}
+                    </Button>
+                  </div>
                 </>
               )}
             </div>
