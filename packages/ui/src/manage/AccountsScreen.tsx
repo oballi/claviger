@@ -21,7 +21,6 @@ import { TextField } from "../components/TextField";
 import { ACCOUNT_DRAG, GROUP_DRAG } from "../dragTypes";
 import { neighbourOf, reorderByDrop, swapOrder } from "../reorder";
 
-/** Design board "Yönetim — hesaplar". */
 export function AccountsScreen({
   state,
   onChanged,

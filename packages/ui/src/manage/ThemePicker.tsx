@@ -7,7 +7,7 @@ import { applyTheme } from "../theme";
 
 const THEMES: Theme[] = ["system", "light", "dark"];
 
-/** Design board "Tema seçimi": a three-way radiogroup; the choice is applied at once and stored. */
+/** Theme picker: a three-way radiogroup; the choice is applied at once and stored. */
 export function ThemePicker({ theme, onSaved }: { theme: Theme; onSaved: () => void }) {
   const { rpc } = useUi();
   const t = useT();

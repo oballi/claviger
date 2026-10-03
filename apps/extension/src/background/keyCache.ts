@@ -17,7 +17,7 @@ function decodeKey(value: unknown): Uint8Array | null {
 }
 
 /**
- * Where the DEK of an unlocked vault lives (spec §5.3-5.4):
+ * Where the DEK of an unlocked vault lives:
  * - `session` (memory only, cleared when the browser closes): always while unlocked.
  * - `local` (on disk): only under the "Never" lock policy. NEVER written to `sync`.
  */

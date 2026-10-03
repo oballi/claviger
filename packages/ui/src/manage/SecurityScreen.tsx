@@ -34,7 +34,7 @@ const CLIPBOARD_SECONDS = [30, 60, 0] as const;
 const selectClass =
   "h-11 rounded-full border border-line bg-bg px-3 font-sans text-[13px] text-text";
 
-/** Design board "Yönetim — güvenlik". Every change asks for the master password (spec §5.4). */
+/** Every security change asks for the master password. */
 export function SecurityScreen({
   state,
   onChanged,

@@ -9,7 +9,7 @@ import { TextField } from "./TextField";
 
 /**
  * Asks for the master password before a sensitive action. Each submit fetches its own
- * single-use token (spec §3.2); `onConfirmed` failures are shown here and keep the form open.
+ * single-use token; `onConfirmed` failures are shown here and keep the form open.
  */
 export function ReauthForm({
   onConfirmed,

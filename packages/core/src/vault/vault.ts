@@ -694,7 +694,7 @@ export class Vault {
         throw new CoreError("unsupported-format", "This account was saved by a newer version");
       const record = encryptedRecordSchema.safeParse(raw);
       const index = await this.readIndex({ strict: true });
-      // The tombstone must be newer than the record itself, or the old copy comes back via sync (spec §7).
+      // The tombstone must be newer than the record itself, or the old copy comes back via sync.
       const deletedAt = Math.max(
         this.nextUpdatedAt(index.updatedAt),
         record.success ? record.data.updatedAt + 1 : 0,
@@ -987,7 +987,7 @@ export class Vault {
         if (!tomb.success || tomb.data.deletedAt >= cutoff) continue;
         purged++;
         toRemove.push(key);
-        // An old copy hidden by the tombstone must go too, or it resurrects once the tombstone is removed (spec §7).
+        // An old copy hidden by the tombstone must go too, or it resurrects once the tombstone is removed.
         const recordKey = accountKey(key.slice(TOMB_PREFIX.length));
         if (await this.hiddenBy(recordKey, all[recordKey], tomb.data.deletedAt))
           toRemove.push(recordKey);

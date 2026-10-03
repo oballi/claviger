@@ -50,7 +50,7 @@ function Option({
   );
 }
 
-/** The four lock policies of spec §5.4 as radio rows (setup step 3). */
+/** The four lock policies as radio rows (setup step 3). */
 export function LockPolicyOptions({
   value,
   onChange,

@@ -114,7 +114,7 @@ function GroupLabel({ children }: { children: ReactNode }) {
   );
 }
 
-/** Design board "Yönetim — yedekleme", plus the storage-area move (spec §7). */
+/** Backup screen, plus moving the vault between storage areas. */
 export function BackupScreen({
   state,
   onChanged,

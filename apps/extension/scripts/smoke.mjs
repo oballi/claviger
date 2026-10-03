@@ -207,7 +207,7 @@ try {
       throw new Error("deleting a group did not ungroup its accounts");
   }
 
-  // Plan 8: moveAccount RPC, popup menu/theme/sort mode, manage layout at 1280 and 1024.
+  // moveAccount RPC, popup menu/theme/sort mode, manage layout at 1280 and 1024.
   {
     const g1 = await must({ type: "createGroup", name: "Kişisel hesaplar" });
     const g2 = await must({ type: "createGroup", name: "Work2" });

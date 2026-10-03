@@ -11,7 +11,7 @@ import { dropId, moveId } from "./groupOrder";
 
 type Kind = "rename" | "up" | "down" | "delete" | "title" | "toggle" | "member";
 
-/** Design board "Yönetim — gruplar", right column. */
+/** Groups panel in the right column of the accounts page. */
 export function GroupsSection({
   groups,
   accounts,

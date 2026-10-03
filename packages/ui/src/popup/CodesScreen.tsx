@@ -59,7 +59,7 @@ function Section({
   );
 }
 
-/** Sync quota pressure: total bytes, or the index item nearing the per-item limit (spec §7). */
+/** Sync quota pressure: total bytes, or the index item nearing the per-item limit. */
 function quotaPercent(usage: StorageUsageView | null): number | null {
   if (!usage?.quotaBytes || !usage.maxItemBytes) return null;
   const ratio = Math.max(usage.bytes / usage.quotaBytes, usage.indexBytes / usage.maxItemBytes);
@@ -225,7 +225,7 @@ export function CodesScreen({
     if (next !== selectedId) setSelectedId(next);
   });
 
-  // "/" and plain characters go to search even while focus is still on <body> (spec §6.2).
+  // "/" and plain characters go to search even while focus is still on <body>.
   useEffect(() => {
     if (adding || editing || showTrash || sorting || confirmDelete !== null) return;
     function onKey(event: globalThis.KeyboardEvent) {

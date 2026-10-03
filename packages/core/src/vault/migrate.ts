@@ -4,7 +4,7 @@ import { canonicalJson } from "./canonical";
 import { isVaultKey } from "./format";
 
 /**
- * Moves all `vault:*` keys from `from` to `to`: copy -> verify -> delete source (spec §7).
+ * Moves all `vault:*` keys from `from` to `to`: copy -> verify -> delete source.
  * If verification fails the target is cleaned up and the source is left untouched.
  */
 export async function moveVaultData(from: StoragePort, to: StoragePort): Promise<number> {
