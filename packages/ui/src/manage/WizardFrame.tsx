@@ -23,10 +23,10 @@ export function WizardFrame({
   const t = useT();
   return (
     <div className="flex min-h-screen items-start justify-center bg-bg font-sans text-text md:items-center md:px-6 md:py-10">
-      <div className="flex w-full max-w-[960px] flex-col overflow-hidden border-hair md:flex-row md:rounded-[20px] md:border">
+      <div className="flex w-full max-w-[960px] flex-col border-hair md:flex-row md:rounded-[20px] md:border">
         <nav
           aria-label={t("setup.stepsLabel")}
-          className="flex w-full shrink-0 flex-col gap-10 border-hair px-10 pt-9 pb-6 md:w-[240px] md:border-r md:px-7 md:py-8"
+          className="flex w-full shrink-0 flex-col gap-10 border-hair px-[clamp(20px,6vw,48px)] pt-9 pb-6 md:w-[240px] md:border-r md:px-7 md:py-8"
         >
           <div className="font-mono text-[13px] tracking-wide">{t("app.name")}</div>
           <ol className="m-0 flex list-none flex-col gap-1 p-0">
@@ -59,12 +59,12 @@ export function WizardFrame({
               {String(step + 1).padStart(2, "0")} / {String(STEPS.length).padStart(2, "0")}
             </div>
             {children}
-            {footer ? (
-              <div className="flex items-center justify-between gap-4 border-t border-hair pt-5">
-                {footer}
-              </div>
-            ) : null}
           </div>
+          {footer ? (
+            <div className="flex items-center justify-between gap-4 border-t border-hair pt-5">
+              {footer}
+            </div>
+          ) : null}
         </main>
       </div>
     </div>

@@ -368,8 +368,7 @@ export function SetupWizard({
       );
       footer = (
         <>
-          <span />
-          <div className="flex items-center gap-4">
+          <div className="ml-auto flex items-center gap-4">
             {enterHint}
             <Button
               type="submit"
