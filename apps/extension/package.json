@@ -28,6 +28,7 @@
     "build:smoke": "SMOKE=1 wxt build",
     "smoke": "node scripts/smoke.mjs",
     "size:popup": "node scripts/popup-size.mjs",
+    "icons": "node scripts/render-icons.mjs",
     "lint:firefox": "web-ext lint --source-dir .output/firefox-mv3 --self-hosted"
   },
   "dependencies": {

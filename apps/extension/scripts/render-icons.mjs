@@ -1,5 +1,5 @@
 // Renders the toolbar/store icons from icon-src/*.svg with the bundled Chromium.
-// Usage: CHROMIUM_PATH=... node scripts/render-icons.mjs
+// Usage: CHROMIUM_PATH=... pnpm --filter @claviger/extension icons
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
