@@ -10,7 +10,7 @@
   <img src="docs/screenshots/manage-en-light.png" alt="claviger accounts page with groups" width="520">
 </p>
 
-> **Status: 1.0.** The browser store listings are on the way; until they are live, install claviger from source (see below). Keep an exported backup either way.
+> **Status: 1.0.** The browser store listings are on the way; until they are live, download claviger from [Releases](https://github.com/oballi/claviger/releases/latest) (see below). Keep an exported backup either way.
 
 ## Features
 
@@ -55,6 +55,15 @@ claviger has no account, no server and no analytics. The vault stays in your bro
 | `offscreen` (Chrome)        | Clear the clipboard after the time you chose; the background service has no clipboard access. |
 | `sidePanel` (Chrome)        | Show claviger in the side panel when you pick that open mode.                                 |
 | `www.google.com` (optional) | Requested only when you run the clock check.                                                  |
+
+## Install from a release
+
+Download the files for your browser from the [latest release](https://github.com/oballi/claviger/releases/latest).
+
+- **Chrome, Edge, Brave (116+):** download `claviger-<version>-chrome.zip` and unzip it into a folder you will keep (the browser loads the extension from there). Open `chrome://extensions`, turn on _Developer mode_, choose _Load unpacked_ and select that folder. Keep the folder in the same place: the extension's data is tied to it.
+- **Firefox (140+):** until the add-on is signed on addons.mozilla.org, Firefox only accepts it as a temporary add-on, which is removed when Firefox closes. Download `claviger-<version>-firefox.zip`, open `about:debugging#/runtime/this-firefox`, choose _Load Temporary Add-on_ and select the zip.
+
+`SHA256SUMS.txt` in the release lists the checksums of the files.
 
 ## Install from source
 

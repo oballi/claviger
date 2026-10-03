@@ -10,7 +10,7 @@
   <img src="docs/screenshots/manage-tr-light.png" alt="Gruplarla claviger hesaplar sayfası" width="520">
 </p>
 
-> **Durum: 1.0.** Tarayıcı mağazası sayfaları hazırlanıyor; yayına girene kadar claviger'ı kaynak koddan kurabilirsin (aşağıya bak). Her durumda dışa aktarılmış bir yedeğin olsun.
+> **Durum: 1.0.** Tarayıcı mağazası sayfaları hazırlanıyor; yayına girene kadar claviger'ı [Releases](https://github.com/oballi/claviger/releases/latest) sayfasından indirebilirsin (aşağıya bak). Her durumda dışa aktarılmış bir yedeğin olsun.
 
 ## Özellikler
 
@@ -55,6 +55,15 @@ claviger'ın hesabı, sunucusu ya da analitiği yok. Kasa, tarayıcı eşitlemes
 | `offscreen` (Chrome)            | Seçtiğin süre sonunda panoyu temizlemek; arka plan servisinin panoya erişimi yok. |
 | `sidePanel` (Chrome)            | O açılış biçimini seçersen claviger'ı yan panelde göstermek.                      |
 | `www.google.com` (isteğe bağlı) | Yalnızca saat kontrolünü çalıştırdığında istenir.                                 |
+
+## Sürüm paketinden kurulum
+
+Tarayıcına uygun dosyaları [son sürüm](https://github.com/oballi/claviger/releases/latest) sayfasından indir.
+
+- **Chrome, Edge, Brave (116+):** `claviger-<sürüm>-chrome.zip` dosyasını indir ve silmeyeceğin bir klasöre aç (tarayıcı eklentiyi oradan yükler). `chrome://extensions` sayfasını aç, _Geliştirici modu_'nu aç, _Paketlenmemiş öğe yükle_'yi seç ve o klasörü göster. Klasörün yerini değiştirme: eklentinin verileri bu klasöre bağlıdır.
+- **Firefox (140+):** eklenti addons.mozilla.org'da imzalanana kadar Firefox onu yalnızca geçici eklenti olarak kabul eder; Firefox kapanınca kaldırılır. `claviger-<sürüm>-firefox.zip` dosyasını indir, `about:debugging#/runtime/this-firefox` sayfasını aç, _Geçici Eklenti Yükle_'yi seç ve zip dosyasını göster.
+
+Sürümdeki `SHA256SUMS.txt` dosyası, dosyaların sağlama toplamlarını listeler.
 
 ## Kaynaktan kurulum
 
