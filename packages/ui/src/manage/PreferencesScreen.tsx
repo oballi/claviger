@@ -4,6 +4,7 @@ import { SegmentedControl } from "../components/SegmentedControl";
 import { errorMessage } from "../errors";
 import { useT } from "../i18n/i18n";
 import { useUi } from "../platform";
+import { cachePopupSize } from "../popup/popupSize";
 import { REVEAL_SECONDS } from "../popup/reveal";
 import { ClockRow } from "./ClockRow";
 import { LanguagePicker } from "./LanguagePicker";
@@ -83,7 +84,13 @@ export function PreferencesScreen({
               disabled={state.openMode !== "popup"}
               value={state.popupSize}
               options={POPUP_SIZES.map((x) => ({ value: x, label: t(`popupSize.${x}`) }))}
-              onChange={(size) => void savePreference(() => rpc("setPopupSize", { size }))}
+              onChange={(size) =>
+                void savePreference(async () => {
+                  await rpc("setPopupSize", { size });
+                  // Same origin as the popup, so its next first paint already uses the new size.
+                  cachePopupSize(size);
+                })
+              }
             />
           }
         />

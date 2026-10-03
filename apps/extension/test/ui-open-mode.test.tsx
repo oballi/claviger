@@ -25,6 +25,7 @@ describe("popup layout", () => {
   it("sizes the popup root per setting and fills the panel", async () => {
     const h = await harness();
     const root = async (props: { size?: "small" | "large"; layout?: "panel" }) => {
+      if (props.size) await h.ui.rpc("setPopupSize", { size: props.size });
       const view = renderUi(<PopupApp pollMs={0} {...props} />, h.ui);
       await screen.findByText("Henüz hesap yok.");
       const cls = view.container.firstElementChild!.className;
@@ -77,6 +78,27 @@ describe("open mode settings", () => {
     const { h } = await security();
     await userEvent.click(radio("Popup boyutu", "Küçük"));
     await waitFor(async () => expect((await h.service.getState()).popupSize).toBe("small"));
+  });
+
+  it("opens the popup at the new size right after it is changed", async () => {
+    const { h, unmount } = await security();
+    localStorage.setItem("claviger-popup-size", "medium");
+    await userEvent.click(radio("Popup boyutu", "Küçük"));
+    await waitFor(async () => expect((await h.service.getState()).popupSize).toBe("small"));
+    unmount();
+    // Same as entrypoints/popup/main.tsx: the first paint uses the mirrored size.
+    const { container } = renderUi(<PopupApp pollMs={0} size={readCachedPopupSize()} />, h.ui);
+    expect(container.firstElementChild!.className).toContain("w-[320px]");
+    await screen.findByText("Henüz hesap yok.");
+    expect(container.firstElementChild!.className).toContain("w-[320px]");
+  });
+
+  it("applies the stored size when the mirror is stale", async () => {
+    const h = await harness();
+    await h.ui.rpc("setPopupSize", { size: "large" });
+    const { container } = renderUi(<PopupApp pollMs={0} size="small" />, h.ui);
+    await screen.findByText("Henüz hesap yok.");
+    expect(container.firstElementChild!.className).toContain("w-[420px]");
   });
 
   it("shows the error and keeps the old mode when the browser refuses it", async () => {

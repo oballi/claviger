@@ -30,14 +30,17 @@ export function readCachedPopupSize(): PopupSize {
   return "medium";
 }
 
-/** The popup cannot resize once open; the new size is mirrored for the next open. */
+/** Mirrors the stored size so the next popup opens at it from the first paint. */
+export function cachePopupSize(size: PopupSize): void {
+  try {
+    localStorage.setItem(CACHE_KEY, size);
+  } catch {
+    // Ignored: the popup still applies the stored setting once its state loads.
+  }
+}
+
 export function usePopupSizeSync(size: PopupSize | undefined): void {
   useEffect(() => {
-    if (!isSize(size)) return;
-    try {
-      localStorage.setItem(CACHE_KEY, size);
-    } catch {
-      // Ignored: the stored setting still applies after the next load.
-    }
+    if (isSize(size)) cachePopupSize(size);
   }, [size]);
 }
