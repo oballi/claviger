@@ -198,7 +198,7 @@ export function AccountForm({
         <button
           type="button"
           aria-expanded={advancedOpen}
-          aria-controls="add-advanced"
+          aria-controls={advancedOpen ? "add-advanced" : undefined}
           onClick={() => setAdvancedOpen((open) => !open)}
           className="flex min-h-11 cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 font-sans text-xs text-muted"
         >

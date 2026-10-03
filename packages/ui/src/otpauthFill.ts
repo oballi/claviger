@@ -48,20 +48,25 @@ export function parseOtpauthFill(text: string): OtpauthFill | null {
     label = colon === -1 ? labelText : labelText.slice(colon + 1);
   }
 
-  const algorithm = (get("algorithm") ?? "SHA1").toUpperCase();
+  const algorithm = (get("algorithm") ?? "SHA1").toUpperCase().replace(/-/g, "");
+  if (!["SHA1", "SHA256", "SHA512"].includes(algorithm)) return null;
   const digits = get("digits")?.trim() || "6";
+  if (type !== "steam" && !/^\d+$/.test(digits)) return null;
+  if (type !== "steam" && (Number(digits) < 6 || Number(digits) > 8)) return null;
   const period = get("period")?.trim() || "30";
-  const counter = Number(get("counter"));
+  if (type === "totp" && (!/^\d+$/.test(period) || Number(period) < 1 || Number(period) > 300))
+    return null;
+  const rawCounter = get("counter");
+  const counter = Number(rawCounter);
+  if (rawCounter !== null && (!Number.isSafeInteger(counter) || counter < 0)) return null;
   return {
     issuer: issuer.trim(),
     label: label.trim(),
     secret,
     type,
-    algorithm: ["SHA1", "SHA256", "SHA512"].includes(algorithm) ? algorithm : "SHA1",
+    algorithm,
     digits,
     period,
-    ...(type === "hotp" && get("counter") !== null && Number.isSafeInteger(counter)
-      ? { counter }
-      : {}),
+    ...(type === "hotp" && rawCounter !== null ? { counter } : {}),
   };
 }

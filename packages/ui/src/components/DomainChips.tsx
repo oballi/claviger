@@ -23,6 +23,7 @@ export function DomainChips({
           <button
             type="button"
             aria-label={t("edit.removeSite", { domain: d })}
+            title={t("edit.removeSite", { domain: d })}
             onClick={() => onRemove(d)}
             className="relative h-[22px] w-[22px] cursor-pointer rounded-full border-0 bg-transparent p-0 text-muted before:absolute before:top-1/2 before:left-1/2 before:size-8 before:-translate-x-1/2 before:-translate-y-1/2 before:content-['']"
           >

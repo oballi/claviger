@@ -306,7 +306,11 @@ export function AccountsScreen({
         <p role="status" className="m-0 min-h-4 text-sm">
           {message}
         </p>
-        <TrashSection version={trashVersion} onMessage={(text) => void changed(text)} />
+        <TrashSection
+          version={trashVersion}
+          hideWhenEmpty
+          onMessage={(text) => void changed(text)}
+        />
         {dialogs}
       </div>
     );
@@ -522,8 +526,9 @@ export function AccountsScreen({
                 return (
                   <tr
                     key={a.id}
-                    // Mouse shortcut; keyboard users keep the Düzenle link, so rows stay out of the tab order.
+                    // Mouse shortcut; keyboard users keep the Edit link, so rows stay out of the tab order.
                     onClick={(e) => {
+                      if (window.getSelection()?.toString()) return;
                       if (
                         !(e.target as HTMLElement).closest(
                           "button, a, input, select, textarea, [draggable]",

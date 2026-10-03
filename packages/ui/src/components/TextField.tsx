@@ -19,6 +19,7 @@ export function PasswordEye({
       onClick={onToggle}
       aria-pressed={shown}
       aria-label={t("password.show")}
+      title={t("password.show")}
       className={`inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-muted hover:text-text focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-text ${className}`}
     >
       <Icon name={shown ? "eye-off" : "eye"} />

@@ -15,9 +15,12 @@ type Confirm = { kind: "one"; item: TrashItemView } | { kind: "all" };
 export function TrashSection({
   version,
   onMessage,
+  hideWhenEmpty = false,
 }: {
   version: number;
   onMessage: (text: string) => void;
+  /** Render nothing while the bin is loading or empty (first-run welcome). */
+  hideWhenEmpty?: boolean;
 }) {
   const { rpc } = useUi();
   const t = useT();
@@ -79,6 +82,7 @@ export function TrashSection({
 
   const list = items ?? [];
   const nameOf = (item: TrashItemView) => trashName(item, t);
+  if (hideWhenEmpty && !error && list.length === 0) return null;
 
   return (
     <section

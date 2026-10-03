@@ -21,7 +21,6 @@ import { useLocale, useT } from "../i18n/i18n";
 import { useUi } from "../platform";
 import { iconButton } from "./iconButton";
 import { REVEAL_SECONDS } from "./reveal";
-
 import { ThemeToggle } from "./ThemeToggle";
 import { AccountRow } from "./AccountRow";
 import type { MenuItem } from "./RowMenu";

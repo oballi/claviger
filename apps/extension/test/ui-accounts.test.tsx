@@ -204,6 +204,17 @@ describe("AccountsScreen", () => {
     expect(screen.queryByRole("table")).toBeNull();
     expect(screen.queryByRole("region", { name: "Gruplar" })).toBeNull();
     expect(screen.getByRole("button", { name: /İçe aktar/ })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: /Son silinenler/ })).toBeNull();
+  });
+
+  it("shows the bin on the welcome once the last account was deleted", async () => {
+    const h = await harness();
+    const { id } = await h.ui.rpc("addAccountManual", {
+      draft: { secret: "JBSWY3DPEHPK3PXA", issuer: "Gone", label: "" },
+    });
+    await h.ui.rpc("deleteAccount", { id });
+    renderUi(<AccountsScreen state={await h.ui.rpc("getState", {})} onChanged={vi.fn()} />, h.ui);
+    expect(await screen.findByRole("heading", { name: /Son silinenler/ })).toBeTruthy();
   });
 
   it("pins and reorders within the same group", async () => {

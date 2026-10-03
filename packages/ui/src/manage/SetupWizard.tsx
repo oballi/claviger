@@ -245,6 +245,7 @@ export function SetupWizard({
   const [area, setArea] = useState<"local" | "sync">("local");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [mismatchShown, setMismatchShown] = useState(false);
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState<string | null>(null);
 
@@ -359,6 +360,7 @@ export function SetupWizard({
               onPassword={(value) => dispatch({ type: "password", value })}
               onConfirm={(value) => dispatch({ type: "confirm", value })}
               error={error}
+              onMismatchChange={setMismatchShown}
             />
           </form>
           <Notice label={t("setup.importantLabel")}>{t("setup.password.notice")}</Notice>
@@ -371,7 +373,7 @@ export function SetupWizard({
             type="submit"
             form="setup-password"
             variant="primary"
-            disabled={passwordsMismatch(password, confirm)}
+            disabled={passwordsMismatch(password, confirm) || mismatchShown}
           >
             {t("common.continue")}
             <Icon name="arrow" size={15} />

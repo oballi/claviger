@@ -274,6 +274,51 @@ describe("AddAccount", () => {
       );
     });
 
+    const pasteInto = async (uri: string) => {
+      const h = await open();
+      await userEvent.click(screen.getByRole("button", { name: /Elle gir/ }));
+      const field = screen.getByLabelText("Kurulum anahtarı veya otpauth:// bağlantısı");
+      await userEvent.click(field);
+      await userEvent.paste(uri);
+      return { h, field: field as HTMLInputElement };
+    };
+    const base = `otpauth://totp/Acme:me?secret=${SECRET}`;
+
+    it.each(["SHA-256", "SHA256", "sha-256"])("normalizes algorithm %s like core", async (alg) => {
+      const { h, field } = await pasteInto(`${base}&algorithm=${alg}`);
+      expect(field.value).toBe(SECRET);
+      expect((screen.getByLabelText("Algoritma") as HTMLSelectElement).value).toBe("SHA256");
+      await userEvent.click(screen.getByRole("button", { name: "Hesabı ekle" }));
+      await vi.waitFor(() => expect(h.onAdded).toHaveBeenCalled());
+      expect(await accounts(h)).toMatchObject([{ algorithm: "SHA256" }]);
+    });
+
+    it("fills SHA512", async () => {
+      const { field } = await pasteInto(`${base}&algorithm=SHA512`);
+      expect(field.value).toBe(SECRET);
+      expect((screen.getByLabelText("Algoritma") as HTMLSelectElement).value).toBe("SHA512");
+    });
+
+    it("keeps an unsupported algorithm link as typed so submit reports it", async () => {
+      const { h, field } = await pasteInto(`${base}&algorithm=MD5`);
+      expect(field.value).toBe(`${base}&algorithm=MD5`);
+      await userEvent.click(screen.getByRole("button", { name: "Hesabı ekle" }));
+      expect(await screen.findByText("Bu algoritma desteklenmiyor.")).toBeTruthy();
+      expect(h.onAdded).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["digits=9", "digits=9"],
+      ["digits=10", "digits=10"],
+      ["period=0", "period=0"],
+      ["counter=-1 (hotp)", "counter=-1"],
+    ])("keeps a link with %s as typed", async (_name, param) => {
+      const uri =
+        (param.startsWith("counter") ? base.replace("/totp/", "/hotp/") : base) + `&${param}`;
+      const { field } = await pasteInto(uri);
+      expect(field.value).toBe(uri);
+    });
+
     it("also parses a link pasted into the service field", async () => {
       await open();
       await userEvent.click(screen.getByRole("button", { name: /Elle gir/ }));

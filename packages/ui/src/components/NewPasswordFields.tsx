@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { passwordStrength } from "../format";
 import { useT, type Translate } from "../i18n/i18n";
 import { TextField } from "./TextField";
@@ -23,6 +23,7 @@ export function NewPasswordFields({
   labels,
   idPrefix = "new",
   autoFocus = true,
+  onMismatchChange,
 }: {
   password: string;
   confirm: string;
@@ -32,6 +33,8 @@ export function NewPasswordFields({
   labels?: { password?: string; confirm?: string };
   idPrefix?: string;
   autoFocus?: boolean;
+  /** Reports whether the mismatch message is visible, so the caller can keep its submit disabled. */
+  onMismatchChange?: (shown: boolean) => void;
 }) {
   const t = useT();
   const [blurred, setBlurred] = useState(false);
@@ -39,6 +42,10 @@ export function NewPasswordFields({
     passwordsMismatch(password, confirm) || (blurred && confirm.length > 0 && confirm !== password)
       ? t("password.mismatch")
       : null;
+  const mismatchShown = live !== null;
+  useEffect(() => {
+    onMismatchChange?.(mismatchShown);
+  }, [mismatchShown, onMismatchChange]);
   const score = passwordStrength(password);
   return (
     <div className="flex flex-col gap-6">
