@@ -10,7 +10,7 @@
   <img src="docs/screenshots/manage-tr-light.png" alt="Gruplarla claviger hesaplar sayfası" width="520">
 </p>
 
-> **Durum: erken geliştirme (0.x).** claviger henüz hiçbir tarayıcı mağazasında yok; 1.0.0'a kadar yalnızca kaynak koddan kurulabilir. Uyumsuz değişiklikler olabilir, dışa aktarılmış bir yedeğin hep olsun.
+> **Durum: 1.0.** Tarayıcı mağazası sayfaları hazırlanıyor; yayına girene kadar claviger'ı kaynak koddan kurabilirsin (aşağıya bak). Her durumda dışa aktarılmış bir yedeğin olsun.
 
 ## Özellikler
 

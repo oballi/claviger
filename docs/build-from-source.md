@@ -48,10 +48,10 @@ The list should match the one from the same command on the unpacked package you 
 
 ## Reproducibility result
 
-Checked on 2026-10-02 with Node 22.22.2 and pnpm 10.34.6 at commit 2dc8d4e (version 0.1.0). The archive was made with `git archive`, extracted into an empty directory, and built as above. The 43 files in `firefox-mv3` had the same SHA-256 sums in all three builds:
+Checked on 2026-10-03 with Node 22.22.2 and pnpm 10.34.6 at tag `v1.0.0`. The archive was made with `git archive`, extracted into an empty directory, and built as above. The 48 files in `firefox-mv3` had the same SHA-256 sums in all three builds:
 
 1. the extracted archive, first build,
 2. the extracted archive, `.output` deleted and built again,
-3. the working repository (`pnpm --filter @claviger/extension build:firefox`).
+3. a git checkout of `v1.0.0` (`pnpm --filter @claviger/extension build:firefox`).
 
 The zip files themselves were not compared.
