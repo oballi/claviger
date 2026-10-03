@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.3 — 2026-10-03
+
+### Fixed
+
+- A new popup size chosen in Preferences now applies the very next time the popup opens, instead of one open later.
+
 ## 1.0.2 — 2026-10-03
 
 ### Fixed
