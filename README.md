@@ -1,44 +1,64 @@
 # claviger
 
-**An open-source two-factor authenticator for your browser.** claviger generates TOTP, HOTP and Steam Guard codes inside an encrypted vault that never leaves your device unless you choose browser sync.
+**An open-source two-factor authenticator for Chrome and Firefox.** claviger keeps your TOTP, HOTP and Steam Guard codes in an encrypted vault on your own device, and puts the right code in front of you when a site asks for it.
 
 [Türkçe](README.tr.md)
 
-> **Status: early development (0.x).** claviger is not yet published in any browser store. 0.1.0 is tagged, but until 1.0.0 it can only be installed from source. Expect breaking changes; always keep an exported backup.
+<p align="center">
+  <img src="docs/screenshots/popup-en-dark.png" alt="claviger popup with grouped accounts and live codes" width="300">
+  &nbsp;
+  <img src="docs/screenshots/manage-en-light.png" alt="claviger accounts page with groups" width="520">
+</p>
+
+> **Status: early development (0.x).** claviger is not in any browser store yet; until 1.0.0 it can only be installed from source. Expect breaking changes and keep an exported backup.
 
 ## Features
 
-- **Encrypted vault.** Every account is encrypted with AES-256-GCM. The key is protected by your master password (Argon2id) and, optionally, a recovery code. See [docs/vault-format.md](docs/vault-format.md).
-- **You choose when it locks.** Lock when the browser closes, also when the screen locks, after 15 min / 1 h / 4 h of inactivity, or never. Exporting and changing security settings always ask for the password again; so does showing a secret key, unless you turn that off.
-- **Local first.** The vault lives in the browser's local storage by default. Browser sync is opt-in and only ever stores encrypted data.
-- **Site-aware.** Accounts can be linked to the sites they belong to, so the right code is shown first. The popup lists the accounts you linked to the current site first.
-- **Fill on request.** The Alt+Shift+O shortcut or the right-click "Fill with claviger" menu types the code into the current page. It only fills accounts linked to that site, only on https pages, re-checks the page right before writing, and never hands the secret to the page.
-- **QR codes.** Scan a QR code from the screen (frozen capture, automatic detection or area selection) or import one from an image file. Decoding happens locally.
-- **Automatic local copies.** Encrypted copies are made on this device daily and before risky changes; the last 7 are kept. Restoring only adds accounts that are missing. An empty vault offers a restore, and a corrupt vault can be moved aside without deleting it. Changing the password or recovery code re-keys these copies too.
-- **Display and clipboard.** Display modes Normal, Compact and Hidden. Optionally clear the clipboard 30 s or 1 min after copying a code. A reminder appears if a recovery code was never confirmed as saved.
-- **Open mode and size.** Open claviger as a popup (small, medium or large), a separate window or a side panel (Firefox: sidebar). The code row can be revealed one at a time in Hidden mode. The language can be set to System, Turkish or English. A reminder offers a backup after a number of days without a file export.
-- **Organizing.** Reorder accounts by drag and drop; adding an account with an existing name shows a warning.
-- **Optional clock check.** Compares your clock with one HTTPS source (`www.google.com`). It is off by default and the browser asks for that permission only for the request.
-- **Imports** from Google Authenticator, the Authenticator extension, Aegis, 2FAS, Proton Authenticator (plain and encrypted), Bitwarden (unencrypted JSON), andOTP (plain and encrypted), FreeOTP+ (JSON), Stratum / Authenticator Pro (plain and encrypted), Raivo (JSON) and plain `otpauth://` links. QR images can be pasted (Ctrl+V) or dropped; duplicate accounts can be found and merged. A preview shows exactly what will be added; duplicates are skipped.
-- **Backups.** Encrypted `.claviger` export (recommended) an Aegis-compatible file (encrypted or plain JSON), or a plain `otpauth://` list for moving to another app. Accounts can also be shown as a Google Authenticator transfer QR or as a single-account QR for another device.
-- **Chrome and Firefox** (Manifest V3; Chrome 116+, Firefox 140+), with minimal permissions and no remote code, fonts or analytics.
+### Your codes, where you need them
 
-Nothing leaves your device, except the opt-in clock check, which contacts `www.google.com`. See [docs/versioning.md](docs/versioning.md) for the release policy.
+- TOTP, HOTP and Steam Guard codes with a countdown for each one.
+- **This site:** accounts you linked to a site appear at the top when you are on that site. Nothing is guessed from names.
+- **Fill on request:** press a shortcut (Alt+Shift+O by default) or right-click a code field and choose "Fill with claviger". It only fills accounts linked to the page's site, only on https, and checks the page again right before writing.
+- **Add accounts** by scanning a QR code on the screen, from an image file, by pasting an image (Ctrl+V), or by typing the setup key.
+- **Organize** with groups, pinned accounts, search and a sort mode for drag-and-drop ordering.
+- **Your layout:** open claviger as a popup (small, medium or large), in its own window or in the side panel. Normal, Compact or Hidden view; in Hidden view an eye button shows one code for 10 seconds. Light, dark or system theme; English or Turkish.
+
+### Security
+
+- Every account is encrypted with AES-256-GCM. The key is protected by your master password (Argon2id) and an optional recovery code. Details: [docs/vault-format.md](docs/vault-format.md).
+- You choose when it locks: when the browser closes, when the screen locks, after 15 minutes, 1 hour or 4 hours of inactivity, or never. You can also assign a keyboard shortcut that locks it at once.
+- Exporting and changing security settings ask for the password again, and so does showing a secret key unless you turn that off. The lock settings themselves are sealed with the vault key, so they cannot be changed behind your back.
+- The clipboard can be cleared 30 seconds or 1 minute after you copy a code.
+- Deleted accounts stay in **Recently deleted** for 30 days, and encrypted copies of the vault are made on this device every day and before risky changes (the last 7 are kept).
+
+### Moving in and out
+
+- **Import** from Google Authenticator, the Authenticator extension, Aegis, 2FAS, Proton Authenticator, Bitwarden, andOTP, FreeOTP+, Stratum (Authenticator Pro), Raivo and plain `otpauth://` links. Encrypted backups from Aegis, 2FAS, Proton, andOTP, Stratum and the Authenticator extension are supported too. You see exactly what will be added before anything is saved.
+- **Find duplicates** and merge them, with undo.
+- **Export** an encrypted `.claviger` backup (recommended), an Aegis-compatible file (encrypted or plain), or a plain `otpauth://` list.
+- **Move to a phone:** show one account as a QR code, or several accounts as Google Authenticator transfer QR codes. They hide themselves after a short time.
+- A reminder appears when you have not exported a backup for a while (30 days by default).
+
+## Privacy
+
+claviger has no account, no server and no analytics. The vault stays in your browser's local storage unless you turn on browser sync, and even then only encrypted data is synced. The only network request is the optional clock check, which you start yourself and which contacts `www.google.com` once. No remote code or fonts are loaded.
 
 ## Permissions
 
-- `storage`: keep the encrypted vault, copies and settings.
-- `alarms` and `idle`: lock timers and daily local copies.
-- `activeTab` and `scripting`: fill a code into the current page, only when you ask.
-- `clipboardWrite`: copy codes.
-- `contextMenus`: the right-click "Fill with claviger" entry.
-- `offscreen` (Chrome only): a short-lived hidden page that clears the clipboard after the time you chose, because the background service has no clipboard access.
-- `sidePanel` (Chrome only): show claviger in the browser side panel when you pick that open mode.
-- Optional `www.google.com`: requested only for the clock check.
+| Permission                  | Why                                                                                           |
+| --------------------------- | --------------------------------------------------------------------------------------------- |
+| `storage`                   | Keep the encrypted vault, local copies and settings.                                          |
+| `alarms`, `idle`            | Lock timers, screen-lock detection and daily local copies.                                    |
+| `activeTab`, `scripting`    | Fill a code into the current page, only when you ask.                                         |
+| `clipboardWrite`            | Copy codes.                                                                                   |
+| `contextMenus`              | The right-click "Fill with claviger" entry.                                                   |
+| `offscreen` (Chrome)        | Clear the clipboard after the time you chose; the background service has no clipboard access. |
+| `sidePanel` (Chrome)        | Show claviger in the side panel when you pick that open mode.                                 |
+| `www.google.com` (optional) | Requested only when you run the clock check.                                                  |
 
-## Building from source
+## Install from source
 
-Requirements: Node.js 22+ and pnpm 10.
+You need Node.js 22+ and pnpm 10.
 
 ```sh
 pnpm install
@@ -46,27 +66,28 @@ pnpm --filter @claviger/extension build          # Chrome  → apps/extension/.o
 pnpm --filter @claviger/extension build:firefox  # Firefox → apps/extension/.output/firefox-mv3
 ```
 
-To rebuild the exact Firefox package from a source archive, see [docs/build-from-source.md](docs/build-from-source.md).
+- **Chrome (116+):** open `chrome://extensions`, turn on _Developer mode_, choose _Load unpacked_ and select `apps/extension/.output/chrome-mv3`.
+- **Firefox (140+):** open `about:debugging#/runtime/this-firefox`, choose _Load Temporary Add-on_ and select any file in `apps/extension/.output/firefox-mv3`.
 
-- **Chrome:** open `chrome://extensions`, enable _Developer mode_, choose _Load unpacked_ and select `apps/extension/.output/chrome-mv3`.
-- **Firefox:** open `about:debugging#/runtime/this-firefox`, choose _Load Temporary Add-on_ and select any file in `apps/extension/.output/firefox-mv3`.
+To rebuild the exact Firefox package from a source archive, see [docs/build-from-source.md](docs/build-from-source.md). The release policy is in [docs/versioning.md](docs/versioning.md).
 
 ## Project layout
 
 | Path             | What it is                                                                                                      |
 | ---------------- | --------------------------------------------------------------------------------------------------------------- |
 | `packages/core`  | Platform-independent TypeScript: OTP algorithms, the encrypted vault, importers and exporters. No browser APIs. |
-| `apps/extension` | The browser extension (WXT + React).                                                                            |
+| `packages/ui`    | The shared React interface (popup and management pages) and the message contract.                               |
+| `apps/extension` | The browser extension (WXT): background service, browser integration and tests.                                 |
 
 ## Contributing and security
 
-- Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
-- **Do not report security problems in public issues.** See [SECURITY.md](SECURITY.md).
+- Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Translations: [docs/i18n.md](docs/i18n.md).
+- **Please do not report security problems in public issues.** See [SECURITY.md](SECURITY.md).
 - This project follows the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Acknowledgements
 
-claviger is inspired by [Authenticator-Extension/Authenticator](https://github.com/Authenticator-Extension/Authenticator). Thanks to its maintainers and contributors. Third-party components are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+claviger is inspired by [Authenticator-Extension/Authenticator](https://github.com/Authenticator-Extension/Authenticator); thanks to its maintainers and contributors. Third-party components are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## License
 
