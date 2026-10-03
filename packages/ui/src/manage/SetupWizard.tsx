@@ -368,16 +368,18 @@ export function SetupWizard({
       );
       footer = (
         <>
-          {enterHint}
-          <Button
-            type="submit"
-            form="setup-password"
-            variant="primary"
-            disabled={passwordsMismatch(password, confirm) || mismatchShown}
-          >
-            {t("common.continue")}
-            <Icon name="arrow" size={15} />
-          </Button>
+          <div className="ml-auto flex items-center gap-4">
+            {enterHint}
+            <Button
+              type="submit"
+              form="setup-password"
+              variant="primary"
+              disabled={passwordsMismatch(password, confirm) || mismatchShown}
+            >
+              {t("common.continue")}
+              <Icon name="arrow" size={15} />
+            </Button>
+          </div>
         </>
       );
       break;
@@ -424,9 +426,7 @@ export function SetupWizard({
           {alert}
         </>
       );
-      footer = created ? (
-        <span />
-      ) : (
+      footer = created ? null : (
         <Button onClick={() => go(0)}>
           <Icon name="back" size={15} />
           {t("common.back")}

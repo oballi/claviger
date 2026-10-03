@@ -348,6 +348,29 @@ describe("frames", () => {
     expect(screen.getByText("03 / 05")).toBeTruthy();
   });
 
+  it("keeps the action row inside the main region", async () => {
+    const { ui } = await harness();
+    renderUi(
+      <WizardFrame step={0} footer={<button type="button">devam</button>}>
+        <p>adım</p>
+      </WizardFrame>,
+      ui,
+    );
+    expect(within(screen.getByRole("main")).getByRole("button", { name: "devam" })).toBeTruthy();
+  });
+
+  it("renders no action row without a footer", async () => {
+    const { ui } = await harness();
+    renderUi(
+      <WizardFrame step={1}>
+        <p>adım</p>
+      </WizardFrame>,
+      ui,
+    );
+    expect(within(screen.getByRole("main")).queryByRole("button")).toBeNull();
+    expect(screen.getByRole("main").querySelector(".border-t")).toBeNull();
+  });
+
   it("renders a QR code as an image", async () => {
     const { ui } = await harness();
     renderUi(<QrCode value="otpauth://totp/x?secret=JBSWY3DPEHPK3PXP" label="QR" />, ui);
