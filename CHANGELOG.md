@@ -1,6 +1,28 @@
 # Changelog
 
-## Unreleased
+## 1.0.0 — 2026-10-03
+
+First store release.
+
+### Features
+
+- Groups, pinning, drag-and-drop ordering and a sort mode in the popup; a "recently deleted" bin with undo.
+- Imports from the Authenticator extension, Google Authenticator (migration QR), Aegis, 2FAS, andOTP, FreeOTP+, Proton Authenticator, Bitwarden, Stratum (Authenticator Pro) and Raivo, plus plain `otpauth://` lists; exports to an encrypted `.claviger` backup, Aegis and Google Authenticator QR codes; move a single account to a phone with a QR.
+- Duplicate finder with safe merge.
+- Preferences tab: theme (also a one-click toggle in the popup and manage headers), language, code view, open mode (popup, side panel, window) and popup size; backup reminder; lock shortcut.
+- Popup keyboard use: search is focused on open, typing goes to search, arrows move, Enter copies, Shift+Enter fills the linked site, Esc clears or closes.
+- The next code appears dimmed in the last seconds of a period, and copying then gives the next code.
+- Copy feedback in the row itself, a seconds counter when time runs out, the account name on the "This site" row.
+- A welcome screen with the three ways to add a first account.
+- Show/hide buttons on every password field and a live "passwords don't match" hint.
+- The clipboard is cleared 1 minute after copying by default.
+
+### Fixes
+
+- The row menu no longer overlaps the codes; delete confirmations focus Cancel.
+- Inline errors next to the field in the add form; pasting an `otpauth://` link fills the form.
+- Clearer wording across the app and aligned radio buttons in setup and settings.
+- Automatic copies of an empty vault are no longer kept.
 
 ### Security
 
