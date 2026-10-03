@@ -93,7 +93,9 @@ export function PopupApp({
   return (
     <div
       className={`relative flex flex-col overflow-hidden bg-bg font-sans text-text ${
-        layout === "panel" ? "h-screen w-full min-w-[300px]" : POPUP_SIZE_CLASS[size]
+        layout === "panel"
+          ? "h-screen w-full min-w-[300px]"
+          : POPUP_SIZE_CLASS[state?.popupSize ?? size]
       }`}
     >
       <ErrorBoundary message={t("common.crashed")} retryLabel={t("common.retry")}>
