@@ -254,14 +254,14 @@ export function GroupsSection({
                       },
                     )}
                     onClick={() => toggle(g.id)}
-                    className="flex min-h-11 min-w-16 flex-1 cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-left font-sans text-sm text-text"
+                    className="flex min-h-11 min-w-16 shrink grow basis-28 cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-left font-sans text-sm text-text"
                   >
                     <span className="truncate" title={g.name}>
                       {g.name}
                     </span>
                     <span className="font-mono text-xs text-muted">{count(g.id)}</span>
                   </button>
-                  {/* One unit: when the row is narrow it wraps whole, right-aligned, under the name. */}
+                  {/* One unit. The name's 7rem basis (not flex-1's 0) is what makes the row wrap before the actions would touch the panel edge. */}
                   <div
                     data-testid="group-actions"
                     className="ml-auto flex shrink-0 flex-nowrap items-center gap-x-2"

@@ -278,7 +278,9 @@ describe("groups section", () => {
     expect(rename.className).toContain("font-normal");
     const toggle = within(row).getByRole("button", { name: /^İş, \d+ hesap$/ });
     expect(toggle.className).toContain("min-w-16");
-    expect(toggle.className).toContain("flex-1");
+    // A real basis (not flex-1's 0) so the row wraps the actions as a unit before they get clipped.
+    for (const cls of ["grow", "shrink", "basis-28"]) expect(toggle.className).toContain(cls);
+    expect(toggle.className).not.toContain("flex-1");
     expect(within(toggle).getByText("İş").className).toContain("truncate");
     expect(within(toggle).getByText("İş").getAttribute("title")).toBe("İş");
   });
