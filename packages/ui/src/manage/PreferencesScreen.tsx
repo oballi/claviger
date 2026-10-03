@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { OpenMode, PopupSize, ServiceState, ViewMode } from "../contract/views";
+import { SegmentedControl } from "../components/SegmentedControl";
 import { errorMessage } from "../errors";
 import { useT } from "../i18n/i18n";
 import { useUi } from "../platform";
@@ -12,9 +13,6 @@ import { ThemePicker } from "./ThemePicker";
 const VIEW_MODES: ViewMode[] = ["normal", "compact", "hidden"];
 const OPEN_MODES: OpenMode[] = ["popup", "window", "panel"];
 const POPUP_SIZES: PopupSize[] = ["small", "medium", "large"];
-
-const selectClass =
-  "h-11 rounded-full border border-line bg-bg px-3 font-sans text-[13px] text-text";
 
 /** Appearance and usage settings. None of them asks for the master password. */
 export function PreferencesScreen({
@@ -53,20 +51,12 @@ export function PreferencesScreen({
           title={t("security.view")}
           description={`${t("security.viewHint")} ${state.viewMode === "hidden" ? t("view.hiddenHint", { seconds: REVEAL_SECONDS }) : ""}`.trim()}
           action={
-            <select
-              aria-label={t("security.view")}
-              className={selectClass}
+            <SegmentedControl
+              label={t("security.view")}
               value={state.viewMode}
-              onChange={(e) =>
-                void savePreference(() => rpc("setViewMode", { mode: e.target.value as ViewMode }))
-              }
-            >
-              {VIEW_MODES.map((m) => (
-                <option key={m} value={m}>
-                  {t(`view.${m}`)}
-                </option>
-              ))}
-            </select>
+              options={VIEW_MODES.map((m) => ({ value: m, label: t(`view.${m}`) }))}
+              onChange={(mode) => void savePreference(() => rpc("setViewMode", { mode }))}
+            />
           }
         />
       </SettingsSection>
@@ -76,43 +66,25 @@ export function PreferencesScreen({
           title={t("security.openMode")}
           description={t("security.openModeHint")}
           action={
-            <select
-              aria-label={t("security.openMode")}
-              className={selectClass}
+            <SegmentedControl
+              label={t("security.openMode")}
               value={state.openMode}
-              onChange={(e) =>
-                void savePreference(() => rpc("setOpenMode", { mode: e.target.value as OpenMode }))
-              }
-            >
-              {OPEN_MODES.map((m) => (
-                <option key={m} value={m}>
-                  {t(`openMode.${m}`)}
-                </option>
-              ))}
-            </select>
+              options={OPEN_MODES.map((m) => ({ value: m, label: t(`openMode.${m}`) }))}
+              onChange={(mode) => void savePreference(() => rpc("setOpenMode", { mode }))}
+            />
           }
         />
         <SettingsRow
           title={t("security.popupSize")}
           description={t("security.popupSizeHint")}
           action={
-            <select
-              aria-label={t("security.popupSize")}
+            <SegmentedControl
+              label={t("security.popupSize")}
               disabled={state.openMode !== "popup"}
-              className={selectClass}
               value={state.popupSize}
-              onChange={(e) =>
-                void savePreference(() =>
-                  rpc("setPopupSize", { size: e.target.value as PopupSize }),
-                )
-              }
-            >
-              {POPUP_SIZES.map((s) => (
-                <option key={s} value={s}>
-                  {t(`popupSize.${s}`)}
-                </option>
-              ))}
-            </select>
+              options={POPUP_SIZES.map((x) => ({ value: x, label: t(`popupSize.${x}`) }))}
+              onChange={(size) => void savePreference(() => rpc("setPopupSize", { size }))}
+            />
           }
         />
       </SettingsSection>

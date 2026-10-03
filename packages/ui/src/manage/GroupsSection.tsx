@@ -198,7 +198,7 @@ export function GroupsSection({
               if (dragged) void reorder(g.id, dropId(ids, dragged, g.id), null);
             }}
           >
-            <div className="flex items-center gap-1">
+            <div className="flex flex-wrap items-center gap-x-1">
               <span
                 draggable="true"
                 aria-hidden="true"
@@ -254,7 +254,7 @@ export function GroupsSection({
                       },
                     )}
                     onClick={() => toggle(g.id)}
-                    className="flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-left font-sans text-sm text-text"
+                    className="flex min-h-11 min-w-28 flex-1 cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-left font-sans text-sm text-text"
                   >
                     <span className="truncate" title={g.name}>
                       {g.name}
