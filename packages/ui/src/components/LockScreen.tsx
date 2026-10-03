@@ -55,6 +55,7 @@ export function LockScreen({
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    setShown(false);
     setBusy(true);
     setError(null);
     try {
@@ -104,6 +105,9 @@ export function LockScreen({
                 id="unlock-password"
                 type={shown ? "text" : "password"}
                 data-bare=""
+                spellCheck={false}
+                autoCorrect="off"
+                autoCapitalize="off"
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

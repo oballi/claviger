@@ -433,7 +433,7 @@ export const manageEn: Record<ManageKey, string> = {
   "transfer.accounts": "Accounts to move",
   "transfer.show": "Show QR codes",
   "transfer.position": "QR {n} / {total}",
-  "transfer.qrLabel": "Transfer QR {n} / {total}",
+  "transfer.qrLabel": "QR to move {n} / {total}",
   "transfer.prev": "Previous",
   "transfer.next": "Next",
   "transfer.warning":

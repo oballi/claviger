@@ -55,6 +55,22 @@ describe("SecurityScreen", () => {
     expect(within(access).queryByLabelText("Yeni ana parola")).toBeNull();
   });
 
+  it("disables the password change button while the confirmation does not match", async () => {
+    await open();
+    const access = region("Erişim");
+    await userEvent.click(within(access).getByRole("button", { name: "Parolayı değiştir" }));
+    await userEvent.type(within(access).getByLabelText("Yeni ana parola"), "yeni parola cümlesi");
+    await userEvent.type(
+      within(access).getByLabelText("Parolayı tekrar gir"),
+      "yeni parola cümlesi!",
+    );
+    expect(within(access).getByText("Parolalar eşleşmiyor.")).toBeTruthy();
+    expect(within(access).getByRole("button", { name: "Parolayı değiştir" })).toHaveProperty(
+      "disabled",
+      true,
+    );
+  });
+
   it("creates a replacement recovery code that invalidates the old one", async () => {
     const { ui, recoveryCode } = await open();
     const access = region("Erişim");

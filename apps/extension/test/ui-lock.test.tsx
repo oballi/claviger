@@ -43,6 +43,17 @@ describe("LockScreen", () => {
     expect(field.type).toBe("password");
   });
 
+  it("turns spellcheck off for the password and hides it again on submit", async () => {
+    const h = await harness();
+    await h.ui.rpc("lock", {});
+    await openLock(h);
+    const field = document.getElementById("unlock-password") as HTMLInputElement;
+    expect(field.getAttribute("spellcheck")).toBe("false");
+    await userEvent.click(screen.getByRole("button", { name: "Parolayı göster" }));
+    await userEvent.type(field, "wrong password 1{Enter}");
+    expect(field.type).toBe("password");
+  });
+
   it("unlocks with the right password", async () => {
     const h = await harness({ status: "locked" });
     const { onUnlocked } = await openLock(h);

@@ -309,6 +309,7 @@ describe("snapshot ordering and repair", () => {
     release();
     await Promise.all([gs, cp]);
     (p.local as { get: unknown }).get = origGet;
+    expect((await snapKeys(p)).length).toBeGreaterThan(0);
     expect(await oldCannotOpen(p, PASSWORD)).toEqual([]);
   });
 

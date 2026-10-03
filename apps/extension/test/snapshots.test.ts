@@ -106,6 +106,32 @@ describe("SnapshotStore", () => {
     expect(ids).toContain(again!.id);
   });
 
+  it("legacy empty copies never push the newest non-empty copy out of the kept window", async () => {
+    const { source, store, clock, vault, local } = await setup();
+    await vault.addAccount(acc(SECRET, "Acme", "a"));
+    const nonEmpty = await store.take(source, "daily");
+    for (let i = 0; i < MAX_SNAPSHOTS; i++) await legacyEmptyCopy(local, nonEmpty!, `legacy-${i}`);
+    await vault.addAccount(acc("JBSWY3DPEHPK3PXQ", "B", "b"));
+    clock.advance(1000);
+    const next = await store.take(source, "before-import");
+    expect((await store.list()).map((x) => x.id)).toEqual([next!.id, nonEmpty!.id]);
+  });
+
+  it("evicts a legacy empty copy first when storage is full", async () => {
+    const { source, store, clock, vault, local } = await setup();
+    await vault.addAccount(acc(SECRET, "Acme", "a"));
+    const first = await store.take(source, "daily");
+    clock.advance(1000);
+    await vault.addAccount(acc("JBSWY3DPEHPK3PXQ", "B", "b"));
+    const second = await store.take(source, "before-import");
+    await legacyEmptyCopy(local, second!, "legacy-empty");
+    await vault.addAccount(acc("JBSWY3DPEHPK3PXR", "C", "c"));
+    clock.advance(1000);
+    local.failNextSet = new Error("QUOTA_BYTES quota exceeded");
+    const third = await store.take(source, "before-import");
+    expect((await store.list()).map((x) => x.id)).toEqual([third!.id, second!.id, first!.id]);
+  });
+
   it("rekey reaches legacy empty copies", async () => {
     const { source, store, vault, local } = await setup();
     await vault.addAccount(acc(SECRET, "Acme", "a"));

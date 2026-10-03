@@ -1,4 +1,4 @@
-import { useState, type InputHTMLAttributes } from "react";
+import { useEffect, useRef, useState, type InputHTMLAttributes } from "react";
 import { useT } from "../i18n/i18n";
 import { Icon } from "./Icon";
 
@@ -42,6 +42,14 @@ export function TextField({
   mono?: boolean;
 }) {
   const [shown, setShown] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    // A revealed password must not stay on screen after the form was submitted.
+    const form = inputRef.current?.form;
+    const hide = () => setShown(false);
+    form?.addEventListener("submit", hide);
+    return () => form?.removeEventListener("submit", hide);
+  }, []);
   const isPassword = props.type === "password";
   const described = [hint ? `${id}-hint` : null, error ? `${id}-error` : null]
     .filter(Boolean)
@@ -54,11 +62,13 @@ export function TextField({
       <div className="relative flex items-center">
         <input
           id={id}
+          ref={inputRef}
           aria-invalid={error ? true : undefined}
           aria-describedby={described || undefined}
           className={`h-11 min-w-0 flex-1 border-0 border-b border-line bg-transparent ${isPassword ? "pl-0 pr-11" : "px-0"} text-text outline-none focus-visible:border-text ${mono ? "font-mono text-base tracking-wider" : "text-sm"}`}
           {...props}
           type={isPassword && shown ? "text" : props.type}
+          {...(isPassword ? { spellCheck: false, autoCorrect: "off", autoCapitalize: "off" } : {})}
         />
         {isPassword ? (
           <PasswordEye

@@ -117,7 +117,11 @@ export class SnapshotStore {
       // Usually a full storage.local: make room once, then give up.
       // The newest non-empty copy backs the "vault is empty" restore offer; never evict it.
       const protectedId = existing.find((s) => s.accountCount > 0)?.id;
-      const victim = [...existing].reverse().find((s) => s.id !== protectedId);
+      // Empty copies are hidden from the UI, so they go first.
+      const oldestFirst = [...existing].reverse();
+      const victim =
+        oldestFirst.find((s) => s.accountCount === 0) ??
+        oldestFirst.find((s) => s.id !== protectedId);
       if (!victim) throw new Error("Snapshot could not be stored", { cause });
       await this.local.remove([SNAPSHOT_PREFIX + victim.id]);
       existing.splice(existing.indexOf(victim), 1);
@@ -129,13 +133,15 @@ export class SnapshotStore {
     }
     try {
       const all = [snapshot, ...existing];
-      const keep = new Set(all.slice(0, MAX_SNAPSHOTS).map((s) => s.id));
-      const newestNonEmpty = all.find((s) => s.accountCount > 0);
-      if (newestNonEmpty) keep.add(newestNonEmpty.id);
-      // Copies of empty vaults are hidden from the UI; drop them so they stop using slots.
-      const stale = all
-        .filter((s) => !keep.has(s.id) || s.accountCount === 0)
-        .map((s) => SNAPSHOT_PREFIX + s.id);
+      // Copies of empty vaults are hidden from the UI; drop them before counting slots, so they
+      // can never push the newest non-empty copy out of the kept window.
+      const keep = new Set(
+        all
+          .filter((s) => s.accountCount > 0)
+          .slice(0, MAX_SNAPSHOTS)
+          .map((s) => s.id),
+      );
+      const stale = all.filter((s) => !keep.has(s.id)).map((s) => SNAPSHOT_PREFIX + s.id);
       if (stale.length) await this.local.remove(stale);
     } catch {
       // Pruning is best effort; the new copy is already stored.

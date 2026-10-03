@@ -226,6 +226,15 @@ describe("SetupWizard", () => {
     expect(screen.getByRole("button", { name: "Devam" })).toHaveProperty("disabled", true);
   });
 
+  it("shows the mismatch on blur of a shorter confirmation", async () => {
+    await start();
+    await userEvent.type(screen.getByLabelText("Ana parola"), NEW_PASSWORD);
+    await userEvent.type(screen.getByLabelText("Parolayı tekrar gir"), "kirmizi");
+    expect(screen.queryByText("Parolalar eşleşmiyor.")).toBeNull();
+    await userEvent.tab();
+    expect(screen.getByText("Parolalar eşleşmiyor.")).toBeTruthy();
+  });
+
   it("toggles password visibility with the eye buttons", async () => {
     await start();
     const field = screen.getByLabelText("Ana parola") as HTMLInputElement;
