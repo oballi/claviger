@@ -28,6 +28,8 @@ describe("PreferencesScreen", () => {
     expect(within(more).getByText("Klavye kısayolu: Alt+Shift+O")).toBeTruthy();
     expect(within(more).getByText("Kilitleme kısayolu")).toBeTruthy();
     expect(within(more).getByText("Saat kontrolü")).toBeTruthy();
+    expect(within(more).getByText("Açılır pencerede klavye")).toBeTruthy();
+    expect(within(more).getByText(/Shift\+Enter doldur, Esc temizle\/kapat/)).toBeTruthy();
     expect(screen.queryByLabelText("Ana parola")).toBeNull();
   });
 

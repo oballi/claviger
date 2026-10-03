@@ -199,6 +199,10 @@ async function dispatch(
     case "setClockCheckEnabled":
       await service.setClockCheckEnabled(req.enabled);
       return null;
+    case "fillAccount":
+      // The scan page has no use for it, and it types into a tab.
+      if (isScanPage(sender)) throw new ServiceError("invalid-request", "Not the popup");
+      return service.fillAccount(req.id, req.tabId);
     case "storeCapture":
       return service.storeCapture({ dataUrl: req.dataUrl, tabUrl: req.tabUrl });
     case "takeCapture":

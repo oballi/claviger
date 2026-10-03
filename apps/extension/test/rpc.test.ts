@@ -1,5 +1,5 @@
 import { CoreError } from "@claviger/core";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { VaultService } from "../src/background/vaultService";
 import { createRpcClient, RpcError } from "@claviger/ui/rpc-client";
 import { RPC_CHANNEL } from "@claviger/ui/protocol";
@@ -524,5 +524,45 @@ describe("duplicate rpcs", () => {
       ctx,
     );
     expect(response).toMatchObject({ ok: false });
+  });
+});
+
+describe("fillAccount rpc", () => {
+  const request = { type: "fillAccount", id: "a", tabId: 1 };
+  const send = (service: VaultService, sender: { id?: string; url?: string }, req = request) =>
+    handleRpcMessage(service, { channel: RPC_CHANNEL, request: req }, sender, ctx);
+
+  it("forbids web pages, other extensions and the scan page", async () => {
+    const service = new VaultService(memoryPlatform());
+    const fill = vi.spyOn(service, "fillAccount");
+    for (const sender of [
+      { id: "ext-id", url: "https://evil.example/" },
+      { id: "other", url: "chrome-extension://ext-id/popup.html" },
+      { url: "chrome-extension://ext-id/popup.html" },
+    ]) {
+      expect(await send(service, sender)).toMatchObject({
+        ok: false,
+        error: { code: "forbidden" },
+      });
+    }
+    expect(
+      await send(service, { id: "ext-id", url: "chrome-extension://ext-id/scan.html#x" }),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "invalid-request" },
+    });
+    expect(fill).not.toHaveBeenCalled();
+  });
+
+  it("rejects a malformed tab id before it reaches the service", async () => {
+    const service = new VaultService(memoryPlatform());
+    const fill = vi.spyOn(service, "fillAccount");
+    for (const tabId of [-1, 1.5, "1"]) {
+      expect(await send(service, trusted, { ...request, tabId } as never)).toMatchObject({
+        ok: false,
+        error: { code: "invalid-request" },
+      });
+    }
+    expect(fill).not.toHaveBeenCalled();
   });
 });

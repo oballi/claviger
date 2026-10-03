@@ -27,6 +27,8 @@ export interface UiPlatform {
   capabilities: UiCapabilities;
   copy(text: string): Promise<void>;
   openManage(route?: ManageRoute): void;
+  /** Popup only: closes it (Escape on an empty search). Absent elsewhere, where the surface must stay. */
+  closePopup?(): void;
   /** The tab the popup was opened on (panel: the window it is attached to); undefined on the manage page or when the tab has no URL. */
   activeTab(): Promise<{ id: number; url: string } | undefined>;
   /**

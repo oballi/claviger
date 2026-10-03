@@ -90,6 +90,7 @@ export function PreferencesScreen({
       </SettingsSection>
 
       <SettingsSection num="03" title={t("preferences.shortcuts")}>
+        <SettingsRow title={t("preferences.keysTitle")} description={t("preferences.keysHint")} />
         {capabilities.autofill ? (
           <>
             <SettingsRow title={t("security.shortcut")} description={t("security.shortcutHint")} />

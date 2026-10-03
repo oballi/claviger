@@ -231,6 +231,9 @@ export const manageTr = {
   "preferences.body": "claviger'ın nasıl göründüğü ve nasıl açıldığı. Bu ayarlar parola istemez.",
   "preferences.opening": "Açılış",
   "preferences.shortcuts": "Kısayollar ve kodlar",
+  "preferences.keysTitle": "Açılır pencerede klavye",
+  "preferences.keysHint":
+    "/ arama, harf yaz \u2192 arama, \u2191\u2193 gezin, Enter kopyala, Shift+Enter doldur, Esc temizle/kapat",
   "security.reveal": "Gizli anahtarı göster için parola iste",
   "security.revealHint":
     "Bir hesabın kurulum anahtarını ve QR kodunu görüntülemek her seferinde parola ister.",

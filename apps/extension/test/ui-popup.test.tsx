@@ -161,6 +161,8 @@ describe("codes screen", () => {
     const { ui } = await seeded();
     renderUi(<PopupApp pollMs={0} />, ui);
     await screen.findByText("Bank");
+    expect(document.activeElement).toBe(screen.getByRole("searchbox", { name: "Hesap ara" }));
+    (document.activeElement as HTMLElement).blur();
     expect(document.activeElement).toBe(document.body);
     await userEvent.keyboard("/");
     expect(document.activeElement).toBe(screen.getByRole("searchbox", { name: "Hesap ara" }));
@@ -197,6 +199,7 @@ describe("codes screen", () => {
     renderUi(<PopupApp pollMs={0} />, ui);
     await screen.findByText("Bank");
     const search = screen.getByRole("searchbox", { name: "Hesap ara" });
+    search.blur();
     for (const init of [
       { ctrlKey: true },
       { metaKey: true },

@@ -102,6 +102,7 @@ export function createBrowserUiPlatform(
         // Only the popup is dismissed by opening a tab; a panel or window must stay.
         .then(() => context === "popup" && window.close());
     },
+    closePopup: context === "popup" ? () => window.close() : undefined,
     async activeTab() {
       if (context !== "popup" && context !== "panel") return undefined;
       const { tab } = await queryActiveTab(context);
