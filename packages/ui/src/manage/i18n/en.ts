@@ -167,7 +167,7 @@ export const manageEn: Record<ManageKey, string> = {
   "account.hide": "Hide",
   "security.title": "Security.",
   "security.body":
-    "Password, lock and secret-key behaviour. Every change here asks for your master password.",
+    "Password, lock, clipboard and secret-key settings. Changes that protect the vault ask for your master password.",
   "security.saved": "Saved.",
   "security.access": "Access",
   "security.password": "Master password",
@@ -199,7 +199,7 @@ export const manageEn: Record<ManageKey, string> = {
   "theme.dark": "Dark",
   "theme.hint":
     "System follows your computer's setting. The choice applies to the popup and the manage page.",
-  "security.view": "Display",
+  "security.view": "Code view",
   "security.viewHint": "How codes look in the popup.",
   "view.normal": "Normal",
   "view.compact": "Compact",

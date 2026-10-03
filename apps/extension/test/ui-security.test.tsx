@@ -498,7 +498,7 @@ describe("SecurityScreen", () => {
     ["Erişim", "Pano ve gizli anahtarlar", "Tehlikeli bölge"].forEach((title, i) => {
       expect(within(region(title)).getByText(`0${i + 1}`)).toBeTruthy();
     });
-    for (const label of ["Tema", "Dil", "Görünüm", "Açılış biçimi", "Pop-up boyutu"]) {
+    for (const label of ["Tema", "Dil", "Kod görünümü", "Açılış biçimi", "Pop-up boyutu"]) {
       expect(screen.queryByText(label)).toBeNull();
     }
     expect(screen.queryByText("Saat kontrolü")).toBeNull();

@@ -165,7 +165,7 @@ export const manageTr = {
   "account.hide": "Gizle",
   "security.title": "Güvenlik.",
   "security.body":
-    "Parola, kilit ve gizli anahtar davranışı. Buradaki her değişiklik ana parolanı ister.",
+    "Parola, kilit, pano ve gizli anahtar ayarları. Kasayı koruyan değişiklikler ana parolanı ister.",
   "security.saved": "Kaydedildi.",
   "security.access": "Erişim",
   "security.password": "Ana parola",
@@ -196,7 +196,7 @@ export const manageTr = {
   "theme.dark": "Koyu",
   "theme.hint":
     "Sistem: bilgisayarın hangi moddaysa onu izler. Seçim popup ve yönetim sayfasında birlikte uygulanır.",
-  "security.view": "Görünüm",
+  "security.view": "Kod görünümü",
   "security.viewHint": "Kodlar popup'ta nasıl görünsün.",
   "view.normal": "Normal",
   "view.compact": "Kompakt",

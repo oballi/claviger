@@ -19,7 +19,7 @@ describe("PreferencesScreen", () => {
     const look = region("Görünüm");
     expect(within(look).getByRole("radiogroup", { name: "Tema" })).toBeTruthy();
     expect(within(look).getByRole("radiogroup", { name: "Dil" })).toBeTruthy();
-    expect(within(look).getByLabelText("Görünüm")).toBeTruthy();
+    expect(within(look).getByLabelText("Kod görünümü")).toBeTruthy();
     const opening = region("Açılış");
     expect(within(opening).getByLabelText("Açılış biçimi")).toBeTruthy();
     expect(within(opening).getByLabelText("Pop-up boyutu")).toBeTruthy();
