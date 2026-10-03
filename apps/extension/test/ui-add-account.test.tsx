@@ -2,6 +2,7 @@
 import { fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { RpcError } from "@claviger/ui/rpc-client";
 import { AddAccount } from "@claviger/ui/popup";
 import { QrImageTooLargeError } from "@claviger/ui/qr-limits";
 import { harness, renderUi } from "./helpers/ui";
@@ -39,6 +40,15 @@ describe("AddAccount", () => {
     expect(h.ui.openManage).toHaveBeenCalledWith("backup");
     await userEvent.click(screen.getByRole("button", { name: "Geri" }));
     expect(h.onBack).toHaveBeenCalled();
+  });
+
+  it("makes QR scanning the primary action with the paste hint right under it", async () => {
+    await open();
+    const qr = screen.getByRole("button", { name: /Ekrandan QR tara/ });
+    expect(qr.className).toContain("bg-btn");
+    expect(screen.getByRole("button", { name: /Elle gir/ }).className).not.toContain("bg-btn");
+    const hint = screen.getByText("Veya bir QR görselini buraya yapıştır (Ctrl+V).");
+    expect(qr.parentElement).toBe(hint.parentElement);
   });
 
   it("adds from a pasted link and binds the current site when the box stays ticked", async () => {
@@ -105,6 +115,9 @@ describe("AddAccount", () => {
         "Kurulum anahtarı geçersiz. Yalnızca A–Z ve 2–7 karakterleri olabilir.",
       ),
     );
+    expect(field.getAttribute("aria-invalid")).toBe("true");
+    expect(field.getAttribute("aria-describedby")).toBe("add-secret-error");
+    expect(document.activeElement).toBe(field);
     await userEvent.clear(field);
     await userEvent.type(field, SECRET);
     await userEvent.click(screen.getByRole("button", { name: "Hesabı ekle" }));
@@ -147,7 +160,7 @@ describe("AddAccount", () => {
     await userEvent.type(screen.getByLabelText("Hesap"), "2");
     expect(screen.queryByRole("button", { name: "Yine de kaydet" })).toBeNull();
     expect(screen.getByRole("button", { name: "Hesabı ekle" })).toBeTruthy();
-    expect(screen.getByRole("alert").textContent).toBe("");
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("rejects out-of-range digits locally and opens Advanced", async () => {
@@ -157,13 +170,18 @@ describe("AddAccount", () => {
       screen.getByLabelText("Kurulum anahtarı veya otpauth:// bağlantısı"),
       SECRET,
     );
+    await userEvent.click(screen.getByRole("button", { name: "Gelişmiş" }));
     const digits = screen.getByLabelText("Hane");
     fireEvent.change(digits, { target: { value: "9" } });
     await userEvent.click(screen.getByRole("button", { name: "Hesabı ekle" }));
     await vi.waitFor(() =>
       expect(screen.getByRole("alert").textContent).toBe("Hane veya süre değeri geçersiz."),
     );
-    expect(document.querySelector("details")!.open).toBe(true);
+    expect(screen.getByRole("button", { name: "Gelişmiş" }).getAttribute("aria-expanded")).toBe(
+      "true",
+    );
+    expect(digits.getAttribute("aria-invalid")).toBe("true");
+    expect(digits.getAttribute("aria-describedby")).toBe("add-digits-error");
     await vi.waitFor(() => expect(document.activeElement).toBe(digits));
     expect(await accounts(h)).toHaveLength(0);
   });
@@ -175,12 +193,97 @@ describe("AddAccount", () => {
       screen.getByLabelText("Kurulum anahtarı veya otpauth:// bağlantısı"),
       SECRET,
     );
+    await userEvent.click(screen.getByRole("button", { name: "Gelişmiş" }));
     const period = screen.getByLabelText("Süre (sn)");
     fireEvent.change(period, { target: { value: "301" } });
     await userEvent.click(screen.getByRole("button", { name: "Hesabı ekle" }));
     await screen.findByText("Hane veya süre değeri geçersiz.");
+    expect(period.getAttribute("aria-invalid")).toBe("true");
     await vi.waitFor(() => expect(document.activeElement).toBe(period));
     expect(await accounts(h)).toHaveLength(0);
+  });
+
+  it("keeps Advanced collapsed by default and toggles it", async () => {
+    await open();
+    await userEvent.click(screen.getByRole("button", { name: /Elle gir/ }));
+    const toggle = screen.getByRole("button", { name: "Gelişmiş" });
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByLabelText("Hane")).toBeNull();
+    await userEvent.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByLabelText("Hane")).toBeTruthy();
+  });
+
+  it("puts a rejected algorithm under its own field", async () => {
+    const h = await harness();
+    const rpc: typeof h.ui.rpc = async (t, payload) => {
+      if (t === "addAccountManual") throw new RpcError("unsupported-algorithm", "x");
+      return h.ui.rpc(t, payload);
+    };
+    renderUi(<AddAccount onBack={vi.fn()} onAdded={vi.fn()} />, { ...h.ui, rpc });
+    await userEvent.click(screen.getByRole("button", { name: /Elle gir/ }));
+    await userEvent.type(
+      screen.getByLabelText("Kurulum anahtarı veya otpauth:// bağlantısı"),
+      SECRET,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Hesabı ekle" }));
+    await screen.findByText("Bu algoritma desteklenmiyor.");
+    const algorithm = screen.getByLabelText("Algoritma");
+    expect(algorithm.getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getByLabelText("Tür").getAttribute("aria-invalid")).toBeNull();
+    await vi.waitFor(() => expect(document.activeElement).toBe(algorithm));
+  });
+
+  describe("otpauth paste", () => {
+    const URI = `otpauth://totp/Acme:me@x.io?secret=${SECRET}&issuer=Acme&algorithm=SHA256&digits=8&period=60`;
+
+    it("fills every field and opens Advanced for non-default values", async () => {
+      const h = await open();
+      await userEvent.click(screen.getByRole("button", { name: /Elle gir/ }));
+      const field = screen.getByLabelText("Kurulum anahtarı veya otpauth:// bağlantısı");
+      await userEvent.click(field);
+      await userEvent.paste(URI);
+      expect((field as HTMLInputElement).value).toBe(SECRET);
+      expect((screen.getByLabelText("Servis") as HTMLInputElement).value).toBe("Acme");
+      expect((screen.getByLabelText("Hesap") as HTMLInputElement).value).toBe("me@x.io");
+      expect(screen.getByRole("button", { name: "Gelişmiş" }).getAttribute("aria-expanded")).toBe(
+        "true",
+      );
+      expect((screen.getByLabelText("Algoritma") as HTMLSelectElement).value).toBe("SHA256");
+      expect((screen.getByLabelText("Hane") as HTMLSelectElement).value).toBe("8");
+      expect((screen.getByLabelText("Süre (sn)") as HTMLInputElement).value).toBe("60");
+      await userEvent.click(screen.getByRole("button", { name: "Hesabı ekle" }));
+      await vi.waitFor(() => expect(h.onAdded).toHaveBeenCalledWith("Acme"));
+      expect(await accounts(h)).toMatchObject([
+        { issuer: "Acme", label: "me@x.io", algorithm: "SHA256", digits: 8, period: 60 },
+      ]);
+    });
+
+    it("keeps Advanced closed for defaults and the pasted text for an invalid link", async () => {
+      await open();
+      await userEvent.click(screen.getByRole("button", { name: /Elle gir/ }));
+      const field = screen.getByLabelText("Kurulum anahtarı veya otpauth:// bağlantısı");
+      await userEvent.click(field);
+      await userEvent.paste("otpauth://totp/x");
+      expect((field as HTMLInputElement).value).toBe("otpauth://totp/x");
+      await userEvent.clear(field);
+      await userEvent.paste(`otpauth://totp/Acme:me?secret=${SECRET}`);
+      expect((field as HTMLInputElement).value).toBe(SECRET);
+      expect(screen.getByRole("button", { name: "Gelişmiş" }).getAttribute("aria-expanded")).toBe(
+        "false",
+      );
+    });
+
+    it("also parses a link pasted into the service field", async () => {
+      await open();
+      await userEvent.click(screen.getByRole("button", { name: /Elle gir/ }));
+      await userEvent.click(screen.getByLabelText("Servis"));
+      await userEvent.paste(URI);
+      expect(
+        (screen.getByLabelText("Kurulum anahtarı veya otpauth:// bağlantısı") as HTMLInputElement)
+          .value,
+      ).toBe(SECRET);
+    });
   });
 
   describe("pasted QR image", () => {

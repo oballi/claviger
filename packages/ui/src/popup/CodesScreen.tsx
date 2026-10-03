@@ -618,6 +618,7 @@ export function CodesScreen({
         <button
           type="button"
           aria-label={t("codes.manage")}
+          title={t("codes.manage")}
           className={iconButton}
           onClick={() => openManage()}
         >
@@ -638,6 +639,7 @@ export function CodesScreen({
         <button
           type="button"
           aria-label={t("codes.add")}
+          title={t("codes.add")}
           className={iconButton}
           onClick={() => setAdding(true)}
         >
@@ -646,6 +648,7 @@ export function CodesScreen({
         <button
           type="button"
           aria-label={t("codes.lock")}
+          title={t("codes.lock")}
           className={iconButton}
           onClick={() => void lock()}
         >
@@ -754,7 +757,16 @@ export function CodesScreen({
               </Button>
             </div>
           ) : null}
-          {filtered ? (
+          {filtered && filtered.length === 0 ? (
+            <div className="flex flex-col items-start gap-2 pt-10">
+              <p role="status" className="m-0 text-sm text-muted">
+                {t("codes.noResults")}
+              </p>
+              <Button variant="link" onClick={() => setAdding(true)} className="text-[13px]">
+                {t("codes.add")}
+              </Button>
+            </div>
+          ) : filtered ? (
             <Section title={t("codes.results")}>{filtered.map((a) => row(a))}</Section>
           ) : (
             <>

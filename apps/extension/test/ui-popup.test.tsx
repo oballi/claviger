@@ -67,7 +67,7 @@ describe("popup status screens", () => {
   it("unlocks, and links the policy and recovery to the manage page", async () => {
     const { ui } = await harness({ status: "locked" });
     renderUi(<PopupApp pollMs={0} />, ui);
-    await userEvent.click(await screen.findByRole("button", { name: "Değiştir" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Kilit ayarını değiştir" }));
     expect(ui.openManage).toHaveBeenCalledWith("security");
     await userEvent.click(screen.getByRole("button", { name: "Parolamı unuttum" }));
     expect(ui.openManage).toHaveBeenCalledWith("recover");
@@ -160,6 +160,27 @@ describe("codes screen", () => {
     expect(within(screen.getByRole("region", { name: "Sonuçlar" })).getByText("Bank")).toBeTruthy();
     await userEvent.keyboard("{Escape}");
     expect(screen.getByText("GitHub")).toBeTruthy();
+  });
+
+  it("offers an add link when the search matches nothing", async () => {
+    const { ui } = await seeded();
+    renderUi(<PopupApp pollMs={0} />, ui);
+    await screen.findByText("Bank");
+    await userEvent.type(screen.getByRole("searchbox", { name: "Hesap ara" }), "zzzz");
+    expect(screen.getByText("Aramana uyan hesap yok.")).toBeTruthy();
+    await userEvent.click(screen.getAllByRole("button", { name: "Hesap ekle" }).at(-1)!);
+    expect(await screen.findByRole("heading", { name: "Hesap ekle." })).toBeTruthy();
+  });
+
+  it("labels every header icon button", async () => {
+    const { ui } = await seeded();
+    renderUi(<PopupApp pollMs={0} />, ui);
+    await screen.findByText("Bank");
+    for (const name of ["Yönetim ve ayarlar", "Sırala", "Hesap ekle", "Kilitle"]) {
+      expect(screen.getByRole("button", { name }).getAttribute("title")).toBe(name);
+    }
+    const theme = screen.getByRole("button", { name: /temaya geç/ });
+    expect(theme.getAttribute("title")).toBe(theme.getAttribute("aria-label"));
   });
 
   it("slash with a modifier or during IME composition does not jump to search", async () => {
