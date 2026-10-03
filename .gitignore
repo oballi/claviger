@@ -7,3 +7,9 @@ dist/
 *.log
 .DS_Store
 .superpowers/
+
+# Private working notes (kept on disk, not published)
+docs/superpowers/
+docs/research/
+.claude/
+CLAUDE.md

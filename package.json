@@ -2,6 +2,15 @@
   "name": "claviger",
   "version": "0.1.0",
   "license": "MIT",
+  "author": "Ömer Faruk Ballı <farukomerballi@gmail.com> (https://github.com/oballi)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oballi/claviger.git"
+  },
+  "homepage": "https://github.com/oballi/claviger#readme",
+  "bugs": {
+    "url": "https://github.com/oballi/claviger/issues"
+  },
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.34.6",

@@ -2,6 +2,16 @@
   "name": "@claviger/ui",
   "version": "0.1.0",
   "license": "MIT",
+  "author": "Ömer Faruk Ballı <farukomerballi@gmail.com> (https://github.com/oballi)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oballi/claviger.git",
+    "directory": "packages/ui"
+  },
+  "homepage": "https://github.com/oballi/claviger#readme",
+  "bugs": {
+    "url": "https://github.com/oballi/claviger/issues"
+  },
   "private": true,
   "type": "module",
   "//": "sideEffects keeps zodConfig (z.config jitless) from being tree-shaken; popup-size.mjs asserts it.",

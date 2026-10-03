@@ -24,7 +24,7 @@ claviger follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`
 ### Preview users: the rename to claviger
 
 - Firefox: the extension id changed to `claviger@claviger.app`, so Firefox treats it as a new extension. Export an encrypted backup before updating, then import it. Settings, trash and automatic copies are not part of the backup and do not carry over; data synced under the old id stays in Firefox Sync, unused.
-- Chrome: the preview keeps its folder name (`its folder`); only the contents change. If the extension has to be loaded again, the same backup note applies.
+- Chrome: the unpacked preview keeps its folder; only the contents change. If the extension has to be loaded again, the same backup note applies.
 - Old `.otpvault` backups still import; new backups are written as `.claviger`. A backup made with the new preview cannot be restored into an older preview.
 
 ## From 1.0.0: strict SemVer

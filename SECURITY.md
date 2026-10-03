@@ -17,7 +17,7 @@ We aim to acknowledge reports within 7 days and to agree on a disclosure timelin
 
 ## Supported versions
 
-Before 1.0.0 only the latest 0.x release receives security fixes. The support policy for 1.x will be published with 1.0.0.
+Only the latest 1.x release receives security fixes. Releases before 1.0.0 were previews and are not supported.
 
 ## Security model
 
