@@ -14,7 +14,7 @@ export const manageTr = {
   "groups.deleteCount": "({count} hesap)",
   "groups.deleteCountOne": "(1 hesap)",
   "groups.hint":
-    "Grubu silmek hesapları silmez; hesaplar \u201CGrupsuz\u201D\u2019a geçer. Gruplar sürüklenerek sıralanır; hesaplar da sürüklenerek gruplara taşınır.",
+    "Grubu silmek hesapları silmez; hesaplar Grupsuz'a geçer. Gruplar sürüklenerek sıralanır; hesaplar da sürüklenerek gruplara taşınır.",
   "groups.up": "{name} grubunu yukarı taşı",
   "groups.down": "{name} grubunu aşağı taşı",
   "groups.dragHandle": "{name} grubunu sürükle",
@@ -142,7 +142,10 @@ export const manageTr = {
     "{count} / {total} hesap geri yüklendi. Kalanlar silinmiş ya da süresi dolmuş.",
   "dupes.none": "Yinelenen hesap yok.",
   "account.domains": "Siteler",
-  "account.domainsHint": 'Virgülle ayır. Kodu bu sitelerde "Bu site" altında görürsün.',
+  "account.domainsHint": 'Enter veya virgülle ekle. Kodu bu sitelerde "Bu site" altında görürsün.',
+  "account.domainsAdd": "Site ekle",
+  "accounts.welcome.hint":
+    "Telefondaki Google Authenticator'dan taşımak için: uygulamada Dışa aktar'a dokun, çıkan QR'ın ekran görüntüsünü İçe aktar'a yapıştır.",
   "account.period": "Süre",
   "account.periodValue": "{n} sn",
   "account.reveal": "Gizli anahtarı göster",

@@ -16,7 +16,7 @@ export const manageEn: Record<ManageKey, string> = {
   "groups.deleteCount": "({count} accounts)",
   "groups.deleteCountOne": "(1 account)",
   "groups.hint":
-    "Deleting a group does not delete accounts; they become \u201CUngrouped\u201D. Drag groups to reorder them; drag accounts to move them between groups.",
+    "Deleting a group does not delete accounts; they move to \u201CUngrouped\u201D. Drag groups to reorder them; drag accounts to move them between groups.",
   "groups.up": "Move group {name} up",
   "groups.down": "Move group {name} down",
   "groups.dragHandle": "Drag group {name}",
@@ -144,7 +144,11 @@ export const manageEn: Record<ManageKey, string> = {
   "dupes.undonePartial": "{count} / {total} accounts restored. The rest were deleted or expired.",
   "dupes.none": "No duplicates found.",
   "account.domains": "Sites",
-  "account.domainsHint": 'Separate with commas. Codes show under "This site" on these sites.',
+  "account.domainsHint":
+    'Press Enter or type a comma to add. Codes show under "This site" on these sites.',
+  "account.domainsAdd": "Add a site",
+  "accounts.welcome.hint":
+    "To move from Google Authenticator on your phone: tap Export in the app, then paste a screenshot of the QR it shows into Import.",
   "account.period": "Period",
   "account.periodValue": "{n} s",
   "account.reveal": "Show secret key",

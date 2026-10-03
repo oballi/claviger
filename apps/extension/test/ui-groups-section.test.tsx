@@ -207,6 +207,7 @@ describe("groups section", () => {
   it("moves focus to the section heading after deleting the last group", async () => {
     const h = await harness();
     await h.ui.rpc("createGroup", { name: "Tek" });
+    await h.ui.rpc("addAccountManual", { draft: { secret: "JBSWY3DPEHPK3PXA", issuer: "Alpha" } });
     renderUi(<AccountsScreen state={await h.ui.rpc("getState", {})} onChanged={() => {}} />, h.ui);
     const section = await screen.findByRole("region", { name: "Gruplar" });
     await userEvent.click(await within(section).findByRole("button", { name: "Tek grubunu sil" }));
@@ -250,7 +251,7 @@ describe("groups section", () => {
     const h = await open();
     const row = within(h.section).getByText("İş").closest("li")!;
     const first = row.firstElementChild as HTMLElement;
-    expect(first.className).toContain("gap-1");
+    expect(first.className).toContain("gap-x-1");
     for (const el of [
       within(row).getByTestId("drag-handle"),
       within(row).getByRole("button", { name: /^İş, \d+ hesap$/, expanded: false }),
@@ -267,7 +268,7 @@ describe("groups section", () => {
     expect(rename.className).toContain("text-xs");
     expect(rename.className).toContain("font-normal");
     const toggle = within(row).getByRole("button", { name: /^İş, \d+ hesap$/ });
-    expect(toggle.className).toContain("min-w-0");
+    expect(toggle.className).toContain("min-w-28");
     expect(toggle.className).toContain("flex-1");
     expect(within(toggle).getByText("İş").className).toContain("truncate");
     expect(within(toggle).getByText("İş").getAttribute("title")).toBe("İş");

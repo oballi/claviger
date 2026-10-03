@@ -131,8 +131,7 @@ describe("AccountsScreen", () => {
     const h = await harness();
     const onChanged = vi.fn();
     renderUi(<AccountsScreen state={await h.ui.rpc("getState", {})} onChanged={onChanged} />, h.ui);
-    expect(await screen.findByText("Henüz hesap yok.")).toBeTruthy();
-    await userEvent.click(screen.getByRole("button", { name: "Hesap ekle" }));
+    await userEvent.click(await screen.findByRole("button", { name: /Elle gir/ }));
     const dialog = screen.getByRole("dialog", { name: "Hesap ekle." });
     await userEvent.type(
       within(dialog).getByLabelText("Kurulum anahtarı veya otpauth:// bağlantısı"),
@@ -159,9 +158,10 @@ describe("AccountsScreen", () => {
     const issuer = within(dialog).getByLabelText("Servis");
     await userEvent.clear(issuer);
     await userEvent.type(issuer, "GitHub Work");
-    const sites = within(dialog).getByLabelText("Siteler");
-    await userEvent.clear(sites);
-    await userEvent.type(sites, "login.github.com, gitlab.com");
+    for (const chip of within(dialog).getAllByRole("button", { name: /bağlantısını kaldır/ }))
+      await userEvent.click(chip);
+    const sites = within(dialog).getByLabelText("Site ekle");
+    await userEvent.type(sites, "login.github.com, GitLab.com");
     await userEvent.click(within(dialog).getByRole("button", { name: "Kaydet" }));
     expect(await screen.findByText("GitHub Work kaydedildi.")).toBeTruthy();
     expect((await h.ui.rpc("listAccounts", {})).accounts[0]).toMatchObject({
@@ -169,6 +169,41 @@ describe("AccountsScreen", () => {
       label: "me@work",
       domains: ["github.com", "gitlab.com"],
     });
+  });
+
+  it("adds linked sites as chips: Enter commits, lowercases and drops repeats", async () => {
+    const h = await seeded();
+    await open(h);
+    await userEvent.click(screen.getByRole("button", { name: /GitHub.*hesabını düzenle/ }));
+    const dialog = screen.getByRole("dialog", { name: "GitHub" });
+    const sites = within(dialog).getByLabelText("Site ekle");
+    await userEvent.type(sites, "Example.com{Enter}example.com{Enter}");
+    expect(within(dialog).getAllByText("example.com")).toHaveLength(1);
+    expect((sites as HTMLInputElement).value).toBe("");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "example.com bağlantısını kaldır" }),
+    );
+    expect(within(dialog).queryByText("example.com")).toBeNull();
+  });
+
+  it("opens the editor from a row click but not from the drag handle", async () => {
+    const h = await seeded();
+    await open(h);
+    await userEvent.click(screen.getAllByTestId("drag-handle")[0]!);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    const row = screen.getByRole("button", { name: /GitHub.*hesabını düzenle/ }).closest("tr")!;
+    await userEvent.click(within(row).getByText("GitHub"));
+    expect(screen.getByRole("dialog", { name: "GitHub" })).toBeTruthy();
+  });
+
+  it("shows a welcome instead of the table while the vault has no accounts", async () => {
+    const h = await harness();
+    renderUi(<AccountsScreen state={await h.ui.rpc("getState", {})} onChanged={vi.fn()} />, h.ui);
+    expect(await screen.findByRole("heading", { name: "İlk hesabını ekle." })).toBeTruthy();
+    expect(screen.getByText(/Telefondaki Google Authenticator/)).toBeTruthy();
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Gruplar" })).toBeNull();
+    expect(screen.getByRole("button", { name: /İçe aktar/ })).toBeTruthy();
   });
 
   it("pins and reorders within the same group", async () => {

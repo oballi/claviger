@@ -228,7 +228,13 @@ export function ManageApp({ pollMs = 2000 }: { pollMs?: number }) {
       content = <AccountsScreen state={state} onChanged={() => void refresh()} />;
     }
     page = (
-      <ManageFrame active={active === "import" ? "backup" : active} onLock={lock} wide>
+      <ManageFrame
+        active={active === "import" ? "backup" : active}
+        onLock={lock}
+        theme={state.theme}
+        onThemeSaved={() => void refresh()}
+        wide
+      >
         {content}
       </ManageFrame>
     );

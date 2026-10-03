@@ -39,6 +39,29 @@ describe("parseRoute", () => {
 });
 
 describe("ManageApp", () => {
+  it("keeps the header theme toggle and Preferences > Tema in sync", async () => {
+    window.location.hash = "#/preferences";
+    const { ui } = await harness();
+    renderUi(<ManageApp pollMs={0} />, ui);
+    const group = await screen.findByRole("radiogroup", { name: "Tema" });
+    const toggle = screen.getByRole("button", { name: /temaya geç/ });
+    const before = toggle.getAttribute("aria-label");
+    await userEvent.click(toggle);
+    const dark = before === "Koyu temaya geç";
+    const target = dark ? "Koyu" : "Açık";
+    await vi.waitFor(() =>
+      expect(within(group).getByRole("radio", { name: target }).getAttribute("aria-checked")).toBe(
+        "true",
+      ),
+    );
+    await userEvent.click(within(group).getByRole("radio", { name: dark ? "Açık" : "Koyu" }));
+    await vi.waitFor(() =>
+      expect(screen.getByRole("button", { name: /temaya geç/ }).getAttribute("aria-label")).toBe(
+        before,
+      ),
+    );
+  });
+
   it("starts the setup wizard when there is no vault", async () => {
     const { ui } = await harness({ status: "no-vault" });
     renderUi(<ManageApp pollMs={0} />, ui);

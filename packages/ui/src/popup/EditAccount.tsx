@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import type { AccountView, GroupView } from "../contract/views";
 import { Button } from "../components/Button";
+import { DomainChips } from "../components/DomainChips";
 import { GroupSelect } from "../components/GroupSelect";
 import { Icon } from "../components/Icon";
 import { TextField } from "../components/TextField";
@@ -176,28 +177,10 @@ export function EditAccount({
           </div>
           <div className="flex flex-col gap-2">
             <span className="text-xs text-muted">{t("edit.sites")}</span>
-            {domains.length === 0 ? (
-              <span className="text-xs text-muted opacity-70">{t("edit.noSites")}</span>
-            ) : (
-              <ul className="m-0 flex list-none flex-wrap gap-1.5 p-0">
-                {domains.map((d) => (
-                  <li
-                    key={d}
-                    className="flex h-[30px] items-center gap-1.5 rounded-full border border-hair py-0 pr-1.5 pl-3 font-mono text-xs"
-                  >
-                    {d}
-                    <button
-                      type="button"
-                      aria-label={t("edit.removeSite", { domain: d })}
-                      onClick={() => setDomains((list) => list.filter((x) => x !== d))}
-                      className="h-[22px] w-[22px] cursor-pointer rounded-full border-0 bg-transparent p-0 text-muted"
-                    >
-                      ×
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <DomainChips
+              domains={domains}
+              onRemove={(d) => setDomains((list) => list.filter((x) => x !== d))}
+            />
           </div>
           {error ? (
             <p role="alert" className="m-0 text-xs text-warn">

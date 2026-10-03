@@ -4,6 +4,7 @@ import type { AccountView, GroupView } from "../contract/views";
 import { RpcError } from "../rpc/client";
 import { Button } from "../components/Button";
 import { Dialog } from "../components/Dialog";
+import { DomainChips } from "../components/DomainChips";
 import { GroupSelect } from "../components/GroupSelect";
 import { QrCode } from "../components/QrCode";
 import { ReauthForm } from "../components/ReauthForm";
@@ -17,6 +18,16 @@ import { useUi } from "../platform";
 type Mode = "main" | "delete" | "reveal" | "qr";
 
 const AUTO_HIDE_MS = 60_000;
+
+/** Splits on commas, trims, lowercases and drops repeats; validation stays with updateAccount. */
+function addDomains(list: readonly string[], text: string): string[] {
+  const out = [...list];
+  for (const part of text.split(",")) {
+    const d = part.trim().toLowerCase();
+    if (d && !out.includes(d)) out.push(d);
+  }
+  return out;
+}
 
 const groupSecret = (secret: string) => secret.match(/.{1,4}/g)?.join(" ") ?? secret;
 
@@ -48,7 +59,8 @@ export function AccountEditor({
   const [mode, setMode] = useState<Mode>("main");
   const [issuer, setIssuer] = useState(account.issuer);
   const [label, setLabel] = useState(account.label);
-  const [domains, setDomains] = useState(account.domains.join(", "));
+  const [domains, setDomains] = useState<string[]>(account.domains);
+  const [domainDraft, setDomainDraft] = useState("");
   const [initialGroupId] = useState(
     groups.some((g) => g.id === account.groupId) ? (account.groupId ?? "") : "",
   );
@@ -123,10 +135,8 @@ export function AccountEditor({
 
   function save(event: FormEvent) {
     event.preventDefault();
-    const list = domains
-      .split(",")
-      .map((d) => d.trim())
-      .filter(Boolean);
+    // A typed but uncommitted site still counts; dropping it silently would lose the edit.
+    const list = addDomains(domains, domainDraft);
     void run(
       () =>
         rpc("updateAccount", {
@@ -201,14 +211,33 @@ export function AccountEditor({
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
               />
-              <TextField
-                id="edit-domains"
-                label={t("account.domains")}
-                hint={t("account.domainsHint")}
-                value={domains}
-                onChange={(e) => setDomains(e.target.value)}
-                mono
-              />
+              <div className="flex flex-col gap-2">
+                <span className="text-xs text-muted">{t("account.domains")}</span>
+                <DomainChips
+                  domains={domains}
+                  onRemove={(d) => setDomains((list) => list.filter((x) => x !== d))}
+                />
+                <TextField
+                  id="edit-domains"
+                  label={t("account.domainsAdd")}
+                  hint={t("account.domainsHint")}
+                  value={domainDraft}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value.includes(",")) {
+                      setDomains((list) => addDomains(list, value));
+                      setDomainDraft("");
+                    } else setDomainDraft(value);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter") return;
+                    e.preventDefault();
+                    setDomains((list) => addDomains(list, domainDraft));
+                    setDomainDraft("");
+                  }}
+                  mono
+                />
+              </div>
               <GroupSelect id="edit-group" value={groupId} groups={groups} onChange={setGroupId} />
               <div>
                 <Button type="submit" variant="primary">
