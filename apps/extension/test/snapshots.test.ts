@@ -20,6 +20,16 @@ async function setup(opts: { recovery?: boolean } = {}) {
   return { clock, source, local, deps, vault, store, recoveryCode };
 }
 
+/** Simulates a copy written before empty vaults were skipped. */
+async function legacyEmptyCopy(local: MemoryStorage, from: { id: string }, id: string) {
+  const full = (await local.get([`snapshot:${from.id}`]))[`snapshot:${from.id}`] as {
+    createdAt: number;
+  };
+  await local.set({
+    [`snapshot:${id}`]: { ...full, id, createdAt: full.createdAt + 500, accountCount: 0 },
+  });
+}
+
 describe("SnapshotStore", () => {
   it("copies the encrypted vault records and counts accounts", async () => {
     const { source, store, vault } = await setup();
@@ -39,7 +49,8 @@ describe("SnapshotStore", () => {
   });
 
   it("never copies the site memory record", async () => {
-    const { source, store } = await setup();
+    const { source, store, vault } = await setup();
+    await vault.addAccount(acc(SECRET, "Acme", "a"));
     await source.set({ "vault:sitemem": { v: 1, data: "x" } });
     const snap = await store.take(source, "daily");
     expect(Object.keys(snap!.records)).not.toContain("vault:sitemem");
@@ -47,7 +58,8 @@ describe("SnapshotStore", () => {
   });
 
   it("skips a copy identical to the newest one", async () => {
-    const { source, store, clock } = await setup();
+    const { source, store, clock, vault } = await setup();
+    await vault.addAccount(acc(SECRET, "Acme", "a"));
     expect(await store.take(source, "daily")).not.toBeNull();
     clock.advance(1000);
     expect(await store.take(source, "before-delete")).toBeNull();
@@ -66,29 +78,76 @@ describe("SnapshotStore", () => {
     expect(list[0]!.createdAt).toBeGreaterThan(list[1]!.createdAt);
   });
 
-  it("keeps the newest non-empty copy when pruning", async () => {
-    const { source, store, clock, vault } = await setup();
+  it("skips an empty vault for every reason", async () => {
+    const { source, store } = await setup();
+    for (const reason of ["daily", "before-delete", "before-import", "before-restore"] as const)
+      expect(await store.take(source, reason)).toBeNull();
+    expect(await store.takeDaily(source)).toBeNull();
+    expect(await store.list()).toEqual([]);
+  });
+
+  it("prunes legacy empty copies when the next copy is taken", async () => {
+    const { source, store, clock, vault, local } = await setup();
     await vault.addAccount(acc(SECRET, "Acme", "a"));
-    clock.advance(1000);
     const nonEmpty = await store.take(source, "daily");
-    expect(nonEmpty!.accountCount).toBe(1);
-    // Emptying the vault makes every later copy empty; they must not evict the non-empty one.
-    const { accounts } = await vault.listAccounts();
-    for (const a of accounts) await vault.deleteAccount(a.id);
-    for (let i = 0; i < MAX_SNAPSHOTS + 2; i++) {
-      await source.set({ "vault:test-noise": i });
-      clock.advance(1000);
-      await store.take(source, "before-delete");
-    }
-    const list = await store.list();
-    expect(list.some((s) => s.id === nonEmpty!.id)).toBe(true);
-    expect(list).toHaveLength(MAX_SNAPSHOTS + 1);
+    await legacyEmptyCopy(local, nonEmpty!, "legacy-empty");
+    // list() is unfiltered: rekey and removeVault must still reach empty copies.
+    expect((await store.list()).map((x) => x.id)).toContain("legacy-empty");
+    expect(await store.removeVault(vault.vaultId)).toBeUndefined();
+    expect(await store.list()).toEqual([]);
+
+    const again = await store.take(source, "daily");
+    await legacyEmptyCopy(local, again!, "legacy-empty");
+    await vault.addAccount(acc("JBSWY3DPEHPK3PXQ", "B", "b"));
+    clock.advance(1000);
+    await store.take(source, "before-import");
+    const ids = (await store.list()).map((x) => x.id);
+    expect(ids).not.toContain("legacy-empty");
+    expect(ids).toContain(again!.id);
+  });
+
+  it("legacy empty copies never push the newest non-empty copy out of the kept window", async () => {
+    const { source, store, clock, vault, local } = await setup();
+    await vault.addAccount(acc(SECRET, "Acme", "a"));
+    const nonEmpty = await store.take(source, "daily");
+    for (let i = 0; i < MAX_SNAPSHOTS; i++) await legacyEmptyCopy(local, nonEmpty!, `legacy-${i}`);
+    await vault.addAccount(acc("JBSWY3DPEHPK3PXQ", "B", "b"));
+    clock.advance(1000);
+    const next = await store.take(source, "before-import");
+    expect((await store.list()).map((x) => x.id)).toEqual([next!.id, nonEmpty!.id]);
+  });
+
+  it("evicts a legacy empty copy first when storage is full", async () => {
+    const { source, store, clock, vault, local } = await setup();
+    await vault.addAccount(acc(SECRET, "Acme", "a"));
+    const first = await store.take(source, "daily");
+    clock.advance(1000);
+    await vault.addAccount(acc("JBSWY3DPEHPK3PXQ", "B", "b"));
+    const second = await store.take(source, "before-import");
+    await legacyEmptyCopy(local, second!, "legacy-empty");
+    await vault.addAccount(acc("JBSWY3DPEHPK3PXR", "C", "c"));
+    clock.advance(1000);
+    local.failNextSet = new Error("QUOTA_BYTES quota exceeded");
+    const third = await store.take(source, "before-import");
+    expect((await store.list()).map((x) => x.id)).toEqual([third!.id, second!.id, first!.id]);
+  });
+
+  it("rekey reaches legacy empty copies", async () => {
+    const { source, store, vault, local } = await setup();
+    await vault.addAccount(acc(SECRET, "Acme", "a"));
+    const snap = await store.take(source, "daily");
+    await legacyEmptyCopy(local, snap!, "legacy-empty");
+    await vault.changePassword("new-password-1");
+    const header = (await source.get(["vault:header"]))["vault:header"];
+    expect(await store.rekey(vault.vaultId, header)).toBe(2);
+    expect((await store.get("legacy-empty"))!.records["vault:header"]).toEqual(header);
   });
 
   it("takes a daily copy only after a day, or when the clock went back", async () => {
     const { source, store, clock, vault } = await setup();
+    await vault.addAccount(acc(SECRET, "A", "a"));
     await store.takeDaily(source);
-    await vault.addAccount(acc(SECRET, "B", "b"));
+    await vault.addAccount(acc("JBSWY3DPEHPK3PXR", "B", "b"));
     clock.advance(DAY_MS - 1);
     expect(await store.takeDaily(source)).toBeNull();
     clock.advance(1);
@@ -106,34 +165,32 @@ describe("SnapshotStore", () => {
 
   it("retries once after dropping the oldest copy when the write fails", async () => {
     const { source, store, local, clock, vault } = await setup();
-    await store.take(source, "daily");
+    await vault.addAccount(acc("JBSWY3DPEHPK3PXR", "Z", "z"));
+    const oldest = await store.take(source, "daily");
+    await vault.addAccount(acc("JBSWY3DPEHPK3PXS", "Y", "y"));
+    clock.advance(1000);
+    const protectedCopy = await store.take(source, "before-import");
     await vault.addAccount(acc(SECRET, "A", "a"));
     clock.advance(1000);
     local.failNextSet = new Error("QUOTA_BYTES quota exceeded");
     const snap = await store.take(source, "before-import");
     expect(snap).not.toBeNull();
-    expect((await store.list()).map((s) => s.id)).toEqual([snap!.id]);
+    // The oldest copy made room; the newest earlier one stays protected.
+    expect((await store.list()).map((s) => s.id)).toEqual([snap!.id, protectedCopy!.id]);
+    expect(await store.get(oldest!.id)).toBeNull();
   });
 
   it("never evicts the only non-empty copy when making room", async () => {
     const { source, store, local, clock, vault } = await setup();
     await vault.addAccount(acc(SECRET, "A", "a"));
     const nonEmpty = await store.take(source, "daily");
-    const { accounts } = await vault.listAccounts();
-    for (const a of accounts) await vault.deleteAccount(a.id);
-    clock.advance(1000);
-    const empty = await store.take(source, "before-delete");
-    // Make the non-empty copy the oldest one.
-    expect((await store.list()).at(-1)!.id).toBe(nonEmpty!.id);
-    expect(empty).not.toBeNull();
+    await legacyEmptyCopy(local, nonEmpty!, "legacy-empty");
     await vault.addAccount(acc("JBSWY3DPEHPK3PXQ", "B", "b"));
     clock.advance(1000);
     local.failNextSet = new Error("QUOTA_BYTES quota exceeded");
     const snap = await store.take(source, "before-import");
     expect(snap).not.toBeNull();
-    const ids = (await store.list()).map((s) => s.id);
-    expect(ids).toContain(nonEmpty!.id);
-    expect(ids).not.toContain(empty!.id);
+    expect((await store.list()).map((x) => x.id)).toContain(nonEmpty!.id);
   });
 
   it("rethrows the quota error with a cause when only the protected copy remains", async () => {
@@ -216,10 +273,11 @@ describe("SnapshotStore", () => {
 
       // A copy of an unrelated vault.
       const otherSource = new MemoryStorage();
-      await Vault.create(
+      const { vault: otherVault } = await Vault.create(
         { storage: otherSource, random: webRandom, clock, kdf: FAST_KDF },
         { password: "other-pw-1234", createRecoveryCode: false },
       );
+      await otherVault.addAccount(acc(SECRET, "Other", "o"));
       clock.advance(1000);
       const other = await store.take(otherSource, "daily");
       const otherBefore = structuredClone(await local.get([`snapshot:${other!.id}`]));
@@ -244,6 +302,7 @@ describe("SnapshotStore", () => {
 
     it("recomputes the digest so the next identical take is still deduped", async () => {
       const { source, store, clock, vault } = await setup();
+      await vault.addAccount(acc(SECRET, "A", "a"));
       await store.take(source, "daily");
       await vault.changePassword("new-password-1");
       await store.rekey(vault.vaultId, (await source.get(["vault:header"]))["vault:header"]);
@@ -253,6 +312,7 @@ describe("SnapshotStore", () => {
 
     it("rejects an invalid header for the same vault", async () => {
       const { source, store, vault } = await setup();
+      await vault.addAccount(acc(SECRET, "A", "a"));
       const snap = await store.take(source, "daily");
       await expect(store.rekey(vault.vaultId, { vaultId: vault.vaultId })).rejects.toThrow();
       expect((await store.get(snap!.id))!.digest).toBe(snap!.digest);

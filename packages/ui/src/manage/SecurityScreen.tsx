@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { LockPolicy, ServiceState } from "../contract/views";
 import { Button } from "../components/Button";
-import { NewPasswordFields, newPasswordProblem } from "../components/NewPasswordFields";
+import {
+  NewPasswordFields,
+  newPasswordProblem,
+  passwordsMismatch,
+} from "../components/NewPasswordFields";
 import { Notice } from "../components/Notice";
 import { ReauthForm } from "../components/ReauthForm";
 import { RecoveryCodeDisplay } from "../components/RecoveryCodeDisplay";
@@ -172,11 +176,16 @@ export function SecurityScreen({
                 idPrefix="change"
               />
               <div className="flex gap-2">
-                <Button type="submit" variant="primary">
-                  {t("common.continue")}
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={passwordsMismatch(newPassword, confirm)}
+                >
+                  {t("security.passwordChange")}
                 </Button>
                 <Button onClick={() => open(null)}>{t("common.cancel")}</Button>
               </div>
+              <p className="m-0 text-[13px] text-muted">{t("security.passwordContinueHint")}</p>
             </form>
           ) : null}
           {panel === "password" && passwordReady ? (

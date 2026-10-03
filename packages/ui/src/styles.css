@@ -97,12 +97,14 @@
   transition: opacity 150ms ease;
 }
 
-.ov-row:hover {
+.ov-row:hover,
+.ov-row[data-selected] {
   background: var(--ov-hover);
   box-shadow: inset 0 0 0 1px var(--ov-hair);
 }
 
-.ov-row:hover::after {
+.ov-row:hover::after,
+.ov-row[data-selected]::after {
   opacity: 0;
 }
 
@@ -123,6 +125,11 @@ body {
 :focus-visible {
   outline: 2px solid var(--ov-text);
   outline-offset: 2px;
+}
+
+/* Headings only take programmatic focus (tabindex -1); a ring there is noise. */
+:is(h1, h2, h3)[tabindex="-1"]:focus-visible {
+  outline: none;
 }
 
 /* Text fields use the underline-only design language: 1px inset shadow + 1px border form the 2px line; the transparent outline keeps forced-colors focus visible. */

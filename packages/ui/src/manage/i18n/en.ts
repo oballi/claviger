@@ -16,7 +16,7 @@ export const manageEn: Record<ManageKey, string> = {
   "groups.deleteCount": "({count} accounts)",
   "groups.deleteCountOne": "(1 account)",
   "groups.hint":
-    "Deleting a group does not delete accounts; they become \u201CUngrouped\u201D. Drag groups to reorder them; drag accounts to move them between groups.",
+    "Deleting a group does not delete accounts; they move to \u201CUngrouped\u201D. Drag groups to reorder them; drag accounts to move them between groups.",
   "groups.up": "Move group {name} up",
   "groups.down": "Move group {name} down",
   "groups.dragHandle": "Drag group {name}",
@@ -144,7 +144,11 @@ export const manageEn: Record<ManageKey, string> = {
   "dupes.undonePartial": "{count} / {total} accounts restored. The rest were deleted or expired.",
   "dupes.none": "No duplicates found.",
   "account.domains": "Sites",
-  "account.domainsHint": 'Separate with commas. Codes show under "This site" on these sites.',
+  "account.domainsHint":
+    'Press Enter or type a comma to add. Codes show under "This site" on these sites.',
+  "account.domainsAdd": "Add a site",
+  "accounts.welcome.hint":
+    "To move from Google Authenticator on your phone: tap Export in the app, then paste a screenshot of the QR it shows into Import.",
   "account.period": "Period",
   "account.periodValue": "{n} s",
   "account.reveal": "Show secret key",
@@ -174,10 +178,10 @@ export const manageEn: Record<ManageKey, string> = {
   "security.passwordHint":
     "The password that protects all your accounts. Changing it leaves accounts untouched; only the vault key is re-protected.",
   "security.passwordChange": "Change password",
+  "security.passwordContinueHint": "We'll ask for your current password next.",
   "security.passwordChanged": "Password changed.",
   "security.recovery": "Recovery code",
-  "security.recoveryYes":
-    "The only way into your vault if you forget your password. Creating a new one invalidates the old.",
+  "security.recoveryYes": "The only way into your vault if you forget your password.",
   "security.recoveryNo":
     "You have no recovery code. If you forget your password, you lose access to your codes.",
   "security.recoveryNew": "Create new code",
@@ -230,6 +234,9 @@ export const manageEn: Record<ManageKey, string> = {
   "preferences.body": "How claviger looks and opens. These settings don't ask for your password.",
   "preferences.opening": "Opening",
   "preferences.shortcuts": "Shortcuts and codes",
+  "preferences.keysTitle": "Keyboard in the popup",
+  "preferences.keysHint":
+    "/ search, type a letter \u2192 search, \u2191\u2193 move, Enter copy, Shift+Enter fill, Esc clear/close",
   "security.reveal": "Ask for the password to show a secret key",
   "security.revealHint":
     "Viewing an account's setup key and QR code asks for the password every time.",
@@ -433,7 +440,7 @@ export const manageEn: Record<ManageKey, string> = {
   "transfer.accounts": "Accounts to move",
   "transfer.show": "Show QR codes",
   "transfer.position": "QR {n} / {total}",
-  "transfer.qrLabel": "Transfer QR {n} / {total}",
+  "transfer.qrLabel": "QR to move {n} / {total}",
   "transfer.prev": "Previous",
   "transfer.next": "Next",
   "transfer.warning":

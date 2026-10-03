@@ -8,6 +8,7 @@ import { useT } from "../i18n/i18n";
 import { useUi } from "../platform";
 import { Button } from "./Button";
 import { Icon } from "./Icon";
+import { PasswordEye } from "./TextField";
 
 const Dots = () => (
   <div aria-hidden="true" className="flex items-center gap-[18px]">
@@ -38,6 +39,7 @@ export function LockScreen({
   const { rpc } = useUi();
   const t = useT();
   const [password, setPassword] = useState("");
+  const [shown, setShown] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [waitUntil, setWaitUntil] = useState(() =>
@@ -53,6 +55,7 @@ export function LockScreen({
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    setShown(false);
     setBusy(true);
     setError(null);
     try {
@@ -100,8 +103,11 @@ export function LockScreen({
             <div className="ov-line flex items-center gap-2.5 border-b border-line pb-1.5">
               <input
                 id="unlock-password"
-                type="password"
+                type={shown ? "text" : "password"}
                 data-bare=""
+                spellCheck={false}
+                autoCorrect="off"
+                autoCapitalize="off"
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -110,6 +116,7 @@ export function LockScreen({
                 autoFocus
                 className="h-11 min-w-0 flex-1 border-0 bg-transparent p-0 font-mono text-lg tracking-widest text-text outline-none"
               />
+              <PasswordEye shown={shown} onToggle={() => setShown(!shown)} />
               <button
                 type="submit"
                 aria-label={t("lock.submit")}
@@ -136,6 +143,7 @@ export function LockScreen({
               {t("lock.forgot")}
             </Button>
           </div>
+          <p className="m-0 text-right text-[11px] text-muted">{t("lock.forgotHint")}</p>
         </form>
       </div>
       <footer className="flex items-center justify-between border-t border-hair pt-1 pb-1 text-[11px] text-muted">

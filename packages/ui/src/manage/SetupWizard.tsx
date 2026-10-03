@@ -13,7 +13,11 @@ import { AccountForm } from "../components/AccountForm";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { LockPolicyOptions } from "../components/LockPolicyOptions";
-import { NewPasswordFields, newPasswordProblem } from "../components/NewPasswordFields";
+import {
+  NewPasswordFields,
+  newPasswordProblem,
+  passwordsMismatch,
+} from "../components/NewPasswordFields";
 import { Notice } from "../components/Notice";
 import { RecoveryCodeDisplay } from "../components/RecoveryCodeDisplay";
 import { errorMessage } from "../errors";
@@ -62,17 +66,22 @@ function Choice({
   const id = useId();
   return (
     <label className="flex min-h-11 cursor-pointer items-start gap-4 border-t border-hair py-4">
-      <input
-        type="radio"
-        name={name}
-        checked={checked}
-        onChange={onSelect}
-        aria-labelledby={`${id}-title`}
-        aria-describedby={`${id}-hint`}
-        className="mt-1 h-4 w-4 accent-[var(--ov-text)]"
-      />
+      <span className="flex h-11 items-center">
+        <input
+          type="radio"
+          name={name}
+          checked={checked}
+          onChange={onSelect}
+          aria-labelledby={`${id}-title`}
+          aria-describedby={`${id}-hint`}
+          className="h-4 w-4 accent-[var(--ov-text)]"
+        />
+      </span>
       <span className="flex flex-col gap-1">
-        <span id={`${id}-title`} className="flex items-center gap-2 text-[15px] font-medium">
+        <span
+          id={`${id}-title`}
+          className="flex min-h-11 items-center gap-2 text-[15px] font-medium"
+        >
           {title}
           {badge ? (
             <span className="rounded-full border border-line px-[7px] py-px font-mono text-[10px] font-normal text-muted">
@@ -122,6 +131,43 @@ function NumberedOption({
       </span>
       <Icon name="next" className="mt-0.5 shrink-0 text-muted" />
     </button>
+  );
+}
+
+/** The three ways to add a first account; shared by the wizard's last step and the empty Accounts page. */
+export function FirstAccountPaths({
+  onManual,
+  onImport,
+}: {
+  onManual: () => void;
+  onImport: () => void;
+}) {
+  const t = useT();
+  return (
+    <div className="flex flex-col border-b border-hair">
+      <div className="flex items-start gap-4 border-t border-hair py-5">
+        <span className="pt-0.5 font-mono text-[11px] text-muted">01</span>
+        <span className="flex flex-1 flex-col items-start gap-1">
+          <span className="text-[15px] font-medium">{t("add.qr")}</span>
+          <span className="text-[13px] leading-normal text-muted">{t("setup.account.qrHint")}</span>
+          <Button variant="link" onClick={onImport} className="text-[13px]">
+            {t("setup.account.qrImport")}
+          </Button>
+        </span>
+      </div>
+      <NumberedOption
+        num="02"
+        title={t("add.manual")}
+        hint={t("add.manualHint")}
+        onClick={onManual}
+      />
+      <NumberedOption
+        num="03"
+        title={t("add.import")}
+        hint={t("add.importHint")}
+        onClick={onImport}
+      />
+    </div>
   );
 }
 
@@ -321,7 +367,12 @@ export function SetupWizard({
       footer = (
         <>
           {enterHint}
-          <Button type="submit" form="setup-password" variant="primary">
+          <Button
+            type="submit"
+            form="setup-password"
+            variant="primary"
+            disabled={passwordsMismatch(password, confirm)}
+          >
             {t("common.continue")}
             <Icon name="arrow" size={15} />
           </Button>
@@ -453,36 +504,10 @@ export function SetupWizard({
               }}
             />
           ) : (
-            <div className="flex flex-col border-b border-hair">
-              <div className="flex items-start gap-4 border-t border-hair py-5">
-                <span className="pt-0.5 font-mono text-[11px] text-muted">01</span>
-                <span className="flex flex-1 flex-col items-start gap-1">
-                  <span className="text-[15px] font-medium">{t("add.qr")}</span>
-                  <span className="text-[13px] leading-normal text-muted">
-                    {t("setup.account.qrHint")}
-                  </span>
-                  <Button
-                    variant="link"
-                    onClick={() => onFinished("backup")}
-                    className="text-[13px]"
-                  >
-                    {t("setup.account.qrImport")}
-                  </Button>
-                </span>
-              </div>
-              <NumberedOption
-                num="02"
-                title={t("add.manual")}
-                hint={t("add.manualHint")}
-                onClick={() => setAdding(true)}
-              />
-              <NumberedOption
-                num="03"
-                title={t("add.import")}
-                hint={t("add.importHint")}
-                onClick={() => onFinished("backup")}
-              />
-            </div>
+            <FirstAccountPaths
+              onManual={() => setAdding(true)}
+              onImport={() => onFinished("backup")}
+            />
           )}
         </>
       );

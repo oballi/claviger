@@ -18,6 +18,8 @@ export function AccountRow({
   onNextHotp,
   revealed = false,
   onToggleReveal,
+  copied = false,
+  selected = false,
 }: {
   account: AccountView;
   /** "This site" rows use the large code layout from the design. */
@@ -33,6 +35,10 @@ export function AccountRow({
   /** Hidden mode only: the code is shown in clear until the owner hides it again. */
   revealed?: boolean;
   onToggleReveal?: (account: AccountView) => void;
+  /** Brief "Copied" feedback that replaces the code text in this row. */
+  copied?: boolean;
+  /** Keyboard selection (Enter copies, Shift+Enter fills); focus on the code button selects too. */
+  selected?: boolean;
 }) {
   const t = useT();
   const name = account.issuer || account.label;
@@ -40,6 +46,8 @@ export function AccountRow({
   const compact = mode === "compact";
   const masked = hidden && !revealed;
   const code = masked ? maskCode(account.digits) : formatCode(account.code);
+  // Not rendered at all in Hidden view (there the copy path also stays on the current code).
+  const nextCode = !hidden && account.nextCode ? formatCode(account.nextCode) : null;
   // Convenience only: the code button stays the keyboard/screen-reader control, so the row has no role.
   const copyFromRow = (e: MouseEvent<HTMLLIElement>) => {
     if (window.getSelection()?.toString()) return;
@@ -49,7 +57,8 @@ export function AccountRow({
       return;
     onCopy(account);
   };
-  const showLabel = !large && !compact && Boolean(account.issuer && account.label);
+  const hasLabel = Boolean(account.issuer && account.label);
+  const showLabel = !large && !compact && hasLabel;
   // With a label line the 44px hit areas hang down from the row top (not centred), so they never
   // reach into the previous row; the label line is pointer-events-none underneath them.
   const hitDown = "h-11 -mt-[7px] self-start pb-2.5";
@@ -75,10 +84,12 @@ export function AccountRow({
         {t("codes.deleteConfirm")}
       </p>
       <div className="flex gap-2">
-        <Button variant="danger" autoFocus onClick={confirmDelete.onConfirm}>
+        <Button variant="danger" onClick={confirmDelete.onConfirm}>
           {t("menu.deleteYes")}
         </Button>
-        <Button onClick={confirmDelete.onCancel}>{t("common.cancel")}</Button>
+        <Button autoFocus onClick={confirmDelete.onCancel}>
+          {t("common.cancel")}
+        </Button>
       </div>
     </div>
   ) : null;
@@ -88,15 +99,36 @@ export function AccountRow({
     <button
       type="button"
       data-code-button=""
+      id={`code-${account.id}`}
       aria-label={
-        masked ? t("codes.copyHidden", { issuer: name }) : t("codes.copy", { issuer: name, code })
+        masked
+          ? t("codes.copyHidden", { issuer: name })
+          : nextCode
+            ? t("codes.copyNext", { issuer: name })
+            : t("codes.copy", { issuer: name, code })
       }
       onClick={() => onCopy(account)}
       className={`shrink-0 cursor-pointer whitespace-nowrap border-0 bg-transparent p-0 text-left font-mono tracking-wide ${large ? (compact ? "min-h-11 text-2xl leading-tight" : "min-h-11 text-[34px] leading-tight") : `${showLabel ? hitDown : "min-h-11"} ${compact ? "text-base" : "text-xl"}`} ${critical ? "text-critical" : urgent ? "text-warn" : "text-text"}`}
     >
-      {code}
+      {copied ? (
+        <span className="inline-flex items-center gap-1.5 font-sans text-[13px] text-text">
+          <Icon name="check" size={14} />
+          {t("codes.copiedShort")}
+        </span>
+      ) : (
+        code
+      )}
     </button>
   );
+  const nextCodeView = nextCode ? (
+    <span
+      data-next-code=""
+      aria-hidden="true"
+      className={`shrink-0 font-mono tracking-wide text-muted opacity-70 ${large ? "pb-1 text-base" : "text-[13px]"}`}
+    >
+      {nextCode}
+    </span>
+  ) : null;
   const eyeButton =
     hidden && onToggleReveal ? (
       <button
@@ -132,11 +164,21 @@ export function AccountRow({
     return (
       <li
         onClick={copyFromRow}
+        data-account-id={account.id}
+        data-selected={selected ? "" : undefined}
         className="ov-row -mx-3 flex cursor-pointer flex-col gap-1 rounded-xl px-3 pt-3 pb-5"
       >
         <div className="truncate text-[13px]">{name}</div>
+        {hasLabel ? (
+          <div data-row-label="" className="truncate text-xs leading-4 text-muted">
+            {account.label}
+          </div>
+        ) : null}
         <div className="flex items-end justify-between gap-4">
-          {copyButton}
+          <div className="flex min-w-0 items-end gap-3">
+            {copyButton}
+            {nextCodeView}
+          </div>
           <div className="flex items-center gap-1 pb-3">
             {eyeButton}
             {tail}
@@ -150,6 +192,8 @@ export function AccountRow({
   return (
     <li
       onClick={copyFromRow}
+      data-account-id={account.id}
+      data-selected={selected ? "" : undefined}
       title={
         account.issuer && account.label ? `${account.issuer}: ${account.label}` : name || undefined
       }
@@ -163,6 +207,7 @@ export function AccountRow({
             <span className="text-muted"> · {t("codes.pinnedMark")}</span>
           ) : null}
         </div>
+        {nextCodeView}
         {copyButton}
         {eyeButton}
         {tail}

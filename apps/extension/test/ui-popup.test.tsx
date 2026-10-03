@@ -67,7 +67,7 @@ describe("popup status screens", () => {
   it("unlocks, and links the policy and recovery to the manage page", async () => {
     const { ui } = await harness({ status: "locked" });
     renderUi(<PopupApp pollMs={0} />, ui);
-    await userEvent.click(await screen.findByRole("button", { name: "Değiştir" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Kilit ayarını değiştir" }));
     expect(ui.openManage).toHaveBeenCalledWith("security");
     await userEvent.click(screen.getByRole("button", { name: "Parolamı unuttum" }));
     expect(ui.openManage).toHaveBeenCalledWith("recover");
@@ -124,7 +124,16 @@ describe("codes screen", () => {
     renderUi(<PopupApp pollMs={0} />, ui);
     await userEvent.click(await screen.findByRole("button", { name: /^GitHub kodunu kopyala/ }));
     expect(ui.copy).toHaveBeenCalledWith(githubCode);
-    expect(screen.getByText("GitHub kodu kopyalandı").closest('[role="status"]')).toBeTruthy();
+    const button = screen.getByRole("button", { name: /^GitHub kodunu kopyala/ });
+    expect(button.textContent).toBe("Kopyalandı");
+    expect(button.getAttribute("aria-label")).not.toContain("Kopyalandı");
+    expect(screen.queryByText("GitHub kodu kopyalandı")).toBeNull();
+    const region = screen
+      .getAllByText("Kopyalandı")
+      .map((n) => n.closest("[aria-live=polite]"))
+      .find(Boolean)!;
+    expect(region.textContent).toBe("Kopyalandı");
+    expect(region.textContent).not.toContain(githubCode);
   });
 
   it("shows an error instead of failing silently when copying is refused", async () => {
@@ -152,6 +161,8 @@ describe("codes screen", () => {
     const { ui } = await seeded();
     renderUi(<PopupApp pollMs={0} />, ui);
     await screen.findByText("Bank");
+    expect(document.activeElement).toBe(screen.getByRole("searchbox", { name: "Hesap ara" }));
+    (document.activeElement as HTMLElement).blur();
     expect(document.activeElement).toBe(document.body);
     await userEvent.keyboard("/");
     expect(document.activeElement).toBe(screen.getByRole("searchbox", { name: "Hesap ara" }));
@@ -162,11 +173,33 @@ describe("codes screen", () => {
     expect(screen.getByText("GitHub")).toBeTruthy();
   });
 
+  it("offers an add link when the search matches nothing", async () => {
+    const { ui } = await seeded();
+    renderUi(<PopupApp pollMs={0} />, ui);
+    await screen.findByText("Bank");
+    await userEvent.type(screen.getByRole("searchbox", { name: "Hesap ara" }), "zzzz");
+    expect(screen.getByText("Aramana uyan hesap yok.")).toBeTruthy();
+    await userEvent.click(screen.getAllByRole("button", { name: "Hesap ekle" }).at(-1)!);
+    expect(await screen.findByRole("heading", { name: "Hesap ekle." })).toBeTruthy();
+  });
+
+  it("labels every header icon button", async () => {
+    const { ui } = await seeded();
+    renderUi(<PopupApp pollMs={0} />, ui);
+    await screen.findByText("Bank");
+    for (const name of ["Yönetim ve ayarlar", "Sırala", "Hesap ekle", "Kilitle"]) {
+      expect(screen.getByRole("button", { name }).getAttribute("title")).toBe(name);
+    }
+    const theme = screen.getByRole("button", { name: /temaya geç/ });
+    expect(theme.getAttribute("title")).toBe(theme.getAttribute("aria-label"));
+  });
+
   it("slash with a modifier or during IME composition does not jump to search", async () => {
     const { ui } = await seeded();
     renderUi(<PopupApp pollMs={0} />, ui);
     await screen.findByText("Bank");
     const search = screen.getByRole("searchbox", { name: "Hesap ara" });
+    search.blur();
     for (const init of [
       { ctrlKey: true },
       { metaKey: true },
@@ -183,14 +216,23 @@ describe("codes screen", () => {
   it("moves exactly one code per arrow key press", async () => {
     const { ui } = await seeded();
     renderUi(<PopupApp pollMs={0} />, ui);
+    // All rows must be rendered before focus moves, or a late list refresh remounts the focused button.
+    await screen.findByRole("button", { name: /^GitHub kodunu/ });
+    await screen.findByRole("button", { name: /^Bank kodunu/ });
     const first = await screen.findByRole("button", { name: /^Steam kodunu kopyala/ });
     first.focus();
     await userEvent.keyboard("{ArrowDown}");
-    expect(document.activeElement?.getAttribute("aria-label")).toMatch(/^GitHub kodunu/);
+    await vi.waitFor(() =>
+      expect(document.activeElement?.getAttribute("aria-label")).toMatch(/^GitHub kodunu/),
+    );
     await userEvent.keyboard("{ArrowUp}");
-    expect(document.activeElement).toBe(first);
+    await vi.waitFor(() =>
+      expect(document.activeElement?.getAttribute("aria-label")).toMatch(/^Steam kodunu/),
+    );
     await userEvent.keyboard("{ArrowUp}");
-    expect(document.activeElement?.getAttribute("aria-label")).toMatch(/^Bank kodunu/);
+    await vi.waitFor(() =>
+      expect(document.activeElement?.getAttribute("aria-label")).toMatch(/^Bank kodunu/),
+    );
   });
 
   it("generates the next HOTP code", async () => {

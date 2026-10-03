@@ -73,17 +73,22 @@ function Radio({
   const id = useId();
   return (
     <label className="flex min-h-11 cursor-pointer items-start gap-4 border-t border-hair py-4">
-      <input
-        type="radio"
-        name={name}
-        checked={checked}
-        onChange={onSelect}
-        aria-labelledby={`${id}-title`}
-        aria-describedby={`${id}-hint`}
-        className="mt-1 h-4 w-4 accent-[var(--ov-text)]"
-      />
+      <span className="flex h-11 items-center">
+        <input
+          type="radio"
+          name={name}
+          checked={checked}
+          onChange={onSelect}
+          aria-labelledby={`${id}-title`}
+          aria-describedby={`${id}-hint`}
+          className="h-4 w-4 accent-[var(--ov-text)]"
+        />
+      </span>
       <span className="flex flex-col gap-1">
-        <span id={`${id}-title`} className="flex items-center gap-2 text-[15px] font-medium">
+        <span
+          id={`${id}-title`}
+          className="flex min-h-11 items-center gap-2 text-[15px] font-medium"
+        >
           {title}
           {badge ? (
             <span className="rounded-full border border-line px-[7px] py-px font-mono text-[10px] font-normal text-muted">

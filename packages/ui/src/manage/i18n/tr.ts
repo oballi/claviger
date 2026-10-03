@@ -14,7 +14,7 @@ export const manageTr = {
   "groups.deleteCount": "({count} hesap)",
   "groups.deleteCountOne": "(1 hesap)",
   "groups.hint":
-    "Grubu silmek hesapları silmez; hesaplar \u201CGrupsuz\u201D\u2019a geçer. Gruplar sürüklenerek sıralanır; hesaplar da sürüklenerek gruplara taşınır.",
+    "Grubu silmek hesapları silmez; hesaplar Grupsuz'a geçer. Gruplar sürüklenerek sıralanır; hesaplar da sürüklenerek gruplara taşınır.",
   "groups.up": "{name} grubunu yukarı taşı",
   "groups.down": "{name} grubunu aşağı taşı",
   "groups.dragHandle": "{name} grubunu sürükle",
@@ -142,7 +142,10 @@ export const manageTr = {
     "{count} / {total} hesap geri yüklendi. Kalanlar silinmiş ya da süresi dolmuş.",
   "dupes.none": "Yinelenen hesap yok.",
   "account.domains": "Siteler",
-  "account.domainsHint": 'Virgülle ayır. Kodu bu sitelerde "Bu site" altında görürsün.',
+  "account.domainsHint": 'Enter veya virgülle ekle. Kodu bu sitelerde "Bu site" altında görürsün.',
+  "account.domainsAdd": "Site ekle",
+  "accounts.welcome.hint":
+    "Telefondaki Google Authenticator'dan taşımak için: uygulamada Dışa aktar'a dokun, çıkan QR'ın ekran görüntüsünü İçe aktar'a yapıştır.",
   "account.period": "Süre",
   "account.periodValue": "{n} sn",
   "account.reveal": "Gizli anahtarı göster",
@@ -172,10 +175,10 @@ export const manageTr = {
   "security.passwordHint":
     "Tüm hesaplarını koruyan parola. Değiştirmek hesaplarına dokunmaz; yalnızca kasa anahtarı yeni parolayla korunur.",
   "security.passwordChange": "Parolayı değiştir",
+  "security.passwordContinueHint": "Mevcut parolan sonraki adımda sorulacak.",
   "security.passwordChanged": "Parola değiştirildi.",
   "security.recovery": "Kurtarma kodu",
-  "security.recoveryYes":
-    "Parolanı unutursan kasanı açmanın tek yolu. Yenisini oluşturunca eskisi geçersiz olur.",
+  "security.recoveryYes": "Parolanı unutursan kasanı açmanın tek yolu.",
   "security.recoveryNo": "Kurtarma kodun yok. Parolanı unutursan kodlarına erişemezsin.",
   "security.recoveryNew": "Yeni kod oluştur",
   "security.recoveryCreate": "Kod oluştur",
@@ -205,11 +208,11 @@ export const manageTr = {
     "Kodlar gizli kalır; göz simgesi {seconds} sn gösterir, tıklayınca kopyalanır.",
   "security.openMode": "Açılış biçimi",
   "security.openModeHint": "Pencere ve yan panel, kod kopyalarken kapanmaz.",
-  "openMode.popup": "Pop-up",
+  "openMode.popup": "Popup",
   "openMode.window": "Pencere",
   "openMode.panel": "Yan panel",
-  "security.popupSize": "Pop-up boyutu",
-  "security.popupSizeHint": "Yalnızca pop-up biçiminde geçerlidir; sonraki açılışta uygulanır.",
+  "security.popupSize": "Popup boyutu",
+  "security.popupSizeHint": "Yalnızca popup biçiminde geçerlidir; sonraki açılışta uygulanır.",
   "popupSize.small": "Küçük",
   "popupSize.medium": "Orta",
   "popupSize.large": "Büyük",
@@ -228,7 +231,10 @@ export const manageTr = {
   "preferences.body": "claviger'ın nasıl göründüğü ve nasıl açıldığı. Bu ayarlar parola istemez.",
   "preferences.opening": "Açılış",
   "preferences.shortcuts": "Kısayollar ve kodlar",
-  "security.reveal": "Gizli anahtarı göster için parola iste",
+  "preferences.keysTitle": "Popup'ta klavye",
+  "preferences.keysHint":
+    "/ arama, harf yaz \u2192 arama, \u2191\u2193 gezin, Enter kopyala, Shift+Enter doldur, Esc temizle/kapat",
+  "security.reveal": "Gizli anahtarı göstermeden önce parola iste",
   "security.revealHint":
     "Bir hesabın kurulum anahtarını ve QR kodunu görüntülemek her seferinde parola ister.",
   "security.revealOffWarning":
@@ -420,7 +426,7 @@ export const manageTr = {
   "trash.purgeYes": "Listeden kaldır",
   "trash.purged": "{name} listeden kaldırıldı.",
   "trash.purgedAll": "Son silinenler listesi boşaltıldı.",
-  "transfer.title": "Telefona aktar (Google Authenticator biçimi)",
+  "transfer.title": "Telefona taşı (Google Authenticator biçimi)",
   "transfer.hint":
     "Google Authenticator ve uyumlu uygulamaların tarayabileceği QR kodlarını gösterir. Bu bir yedek değildir.",
   "transfer.choose": "Hesapları seç\u2026",

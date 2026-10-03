@@ -135,6 +135,9 @@ export function assertPassword(password: string): void {
   }
 }
 
+/** Last seconds of a period in which the popup also shows (and copies) the next code. */
+export const NEXT_CODE_WINDOW_SEC = 7;
+
 /** Single writer for the vault. In-memory state is never trusted: a restarted service worker rebuilds it from KeyCache. */
 export class VaultService {
   protected vault: Vault | null = null;
@@ -245,13 +248,15 @@ export class VaultService {
 
   async listSnapshots(): Promise<SnapshotInfo[]> {
     const vault = await this.requireVault();
-    return (await this.snapshots.list()).map((s) => ({
-      id: s.id,
-      createdAt: s.createdAt,
-      reason: s.reason,
-      accountCount: s.accountCount,
-      sameVault: s.vaultId === vault.vaultId,
-    }));
+    return (await this.snapshots.list())
+      .filter((s) => s.accountCount > 0)
+      .map((s) => ({
+        id: s.id,
+        createdAt: s.createdAt,
+        reason: s.reason,
+        accountCount: s.accountCount,
+        sameVault: s.vaultId === vault.vaultId,
+      }));
   }
 
   /**
@@ -839,6 +844,15 @@ export class VaultService {
     const accounts = await Promise.all(
       listing.accounts.map(async (a): Promise<AccountView> => {
         const generated = await generateCode(a, now, clockOffsetSec);
+        // The next code leaves the background only inside the window (never for HOTP).
+        const period = generated.period;
+        const nextCode =
+          generated.remaining !== null &&
+          period !== null &&
+          period >= 2 * NEXT_CODE_WINDOW_SEC &&
+          generated.remaining <= NEXT_CODE_WINDOW_SEC
+            ? (await generateCode(a, now + period * 1000, clockOffsetSec)).code
+            : null;
         return {
           id: a.id,
           type: a.type,
@@ -852,6 +866,7 @@ export class VaultService {
           groupId: a.groupId ?? null,
           code: generated.code,
           remaining: generated.remaining,
+          nextCode,
         };
       }),
     );
@@ -1151,7 +1166,8 @@ export class VaultService {
   ): Promise<{ added: number; skipped: number; unreadable: number; ungrouped: number }> {
     return this.exclusive(async () => {
       const snap = await this.snapshots.get(id);
-      if (!snap) throw new ServiceError("not-found", "The local copy no longer exists");
+      if (!snap || snap.accountCount === 0)
+        throw new ServiceError("not-found", "The local copy no longer exists");
       const current = await this.requireVault();
       const sameVault = snap.vaultId === current.vaultId;
       if ((await current.listAccounts()).indexDamaged) {
@@ -1612,7 +1628,7 @@ export class VaultService {
     frameId?: number;
     frameUrl?: string;
     explicit?: boolean;
-  }): Promise<{ result: FillOutcome; code: string | null }> {
+  }): Promise<{ result: FillOutcome; code: string | null; advanced: boolean }> {
     const vault = await this.requireVault();
     const epoch = this.lockEpoch;
     const settings = await this.settings();
@@ -1646,13 +1662,19 @@ export class VaultService {
       }
       return { domain };
     };
-    const refused = { result: "refused" as const, code: generated.code };
+    const refused = { result: "refused" as const, code: generated.code, advanced: false };
 
     if (!(await check())) return refused;
     // HOTP advances only after the first check, so a refused fill never burns a counter value.
     const code = account.type === "hotp" ? await this.advanceHotp(opts.id) : generated.code;
-    const target = await check();
-    if (!target) return { result: "refused", code };
+    const advanced = account.type === "hotp";
+    // After the advance a not-linked tab is a refusal that still hands the code back, not a throw.
+    const target = await check().catch((e: unknown) => {
+      if (advanced && e instanceof ServiceError && e.code === "not-linked") return null;
+      throw e;
+    });
+    if (!target) return { result: "refused", code, advanced };
+    if (epoch !== this.lockEpoch) throw new ServiceError("locked", "The vault is locked");
     const result = await this.p.tabs.fill(
       opts.tabId,
       opts.frameId,
@@ -1660,8 +1682,8 @@ export class VaultService {
       opts.explicit === true,
       target.domain,
     );
-    if (result === "filled") return { result: "filled", code: null };
-    return { result: result === "no-field" ? "copied-instead" : "refused", code };
+    if (result === "filled") return { result: "filled", code: null, advanced };
+    return { result: result === "no-field" ? "copied-instead" : "refused", code, advanced };
   }
 
   private async advanceHotp(id: string): Promise<string> {
@@ -1722,6 +1744,21 @@ export class VaultService {
     } catch {
       await this.flashBadge("!");
     }
+  }
+
+  /**
+   * Popup fill for an account the user picked. Same checks as every other fill (fillInto re-reads the tab).
+   * A code leaves only when it would otherwise be lost: the page had no field, or an HOTP counter already
+   * advanced and the fill was then refused (returned as copied-instead). Never on success or a refusal before the advance.
+   */
+  async fillAccount(
+    id: string,
+    tabId: number,
+  ): Promise<{ result: FillOutcome; code: string | null }> {
+    const r = await this.fillInto({ id, tabId, explicit: true });
+    if (r.result === "copied-instead") return { result: r.result, code: r.code };
+    if (r.result === "refused" && r.advanced) return { result: "copied-instead", code: r.code };
+    return { result: r.result, code: null };
   }
 
   /** "locked" tells the trigger to open the popup; Firefox already did so before awaiting. */

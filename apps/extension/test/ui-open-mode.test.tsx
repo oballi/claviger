@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, screen, waitFor } from "@testing-library/react";
+import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 import { PreferencesScreen } from "@claviger/ui/manage";
@@ -10,6 +10,9 @@ afterEach(() => {
   cleanup();
   localStorage.clear();
 });
+
+const radio = (group: string, name: string) =>
+  within(screen.getByRole("radiogroup", { name: group })).getByRole("radio", { name });
 
 async function security() {
   const h = await harness();
@@ -57,9 +60,9 @@ describe("popup layout", () => {
 describe("open mode settings", () => {
   it("saves the open mode through the RPC and disables the size row outside popup mode", async () => {
     const { h } = await security();
-    const size = screen.getByRole("combobox", { name: "Pop-up boyutu" });
-    expect((size as HTMLSelectElement).disabled).toBe(false);
-    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Açılış biçimi" }), "panel");
+    const size = screen.getByRole("radiogroup", { name: "Popup boyutu" });
+    expect(within(size).getByRole("radio", { name: "Küçük" })).toHaveProperty("disabled", false);
+    await userEvent.click(radio("Açılış biçimi", "Yan panel"));
     await waitFor(async () => expect((await h.service.getState()).openMode).toBe("panel"));
   });
 
@@ -67,13 +70,12 @@ describe("open mode settings", () => {
     const h = await harness();
     await h.ui.rpc("setOpenMode", { mode: "window" });
     renderUi(<PreferencesScreen state={await h.service.getState()} onChanged={() => {}} />, h.ui);
-    const size = screen.getByRole("combobox", { name: "Pop-up boyutu" }) as HTMLSelectElement;
-    expect(size.disabled).toBe(true);
+    expect(radio("Popup boyutu", "Küçük")).toHaveProperty("disabled", true);
   });
 
   it("saves the popup size", async () => {
     const { h } = await security();
-    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Pop-up boyutu" }), "small");
+    await userEvent.click(radio("Popup boyutu", "Küçük"));
     await waitFor(async () => expect((await h.service.getState()).popupSize).toBe("small"));
   });
 
@@ -84,7 +86,7 @@ describe("open mode settings", () => {
       throw new Error("no side panel");
     };
     renderUi(<PreferencesScreen state={await h.service.getState()} onChanged={() => {}} />, h.ui);
-    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Açılış biçimi" }), "panel");
+    await userEvent.click(radio("Açılış biçimi", "Yan panel"));
     expect(await screen.findByText("Bu tarayıcı bu açılış biçimini desteklemiyor.")).toBeTruthy();
     expect((await h.service.getState()).openMode).toBe("popup");
   });

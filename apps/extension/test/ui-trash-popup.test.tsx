@@ -58,8 +58,8 @@ describe("undo after delete", () => {
     renderUi(<PopupApp pollMs={0} />, h.ui);
     await userEvent.click(await trigger("Beta"));
     await userEvent.click(screen.getByRole("menuitem", { name: "Sil…" }));
-    // The confirm button is auto-focused; activating it by keyboard marks the delete as keyboard-driven.
-    await userEvent.keyboard("{Enter}");
+    // Cancel is auto-focused; Shift+Tab reaches Delete, and activating it by keyboard marks the delete as keyboard-driven.
+    await userEvent.keyboard("{Shift>}{Tab}{/Shift}{Enter}");
     const undo = await screen.findByRole("button", { name: "Geri al" });
     await waitFor(() => expect(document.activeElement).toBe(undo));
     await userEvent.keyboard("{Escape}");
@@ -158,7 +158,7 @@ describe("undo toast fix round 1", () => {
         (await screen.findAllByRole("button", { name: "Google için işlemler" }))[0]!,
       );
       await userEvent.click(screen.getByRole("menuitem", { name: "Sil…" }));
-      await userEvent.keyboard("{Enter}");
+      await userEvent.keyboard("{Shift>}{Tab}{/Shift}{Enter}");
       const undo = await screen.findByRole("button", { name: "Geri al" });
       await waitFor(() => expect(document.activeElement).toBe(undo));
       if (i === 0)
@@ -185,8 +185,9 @@ describe("undo toast fix round 1", () => {
     renderUi(<PopupApp pollMs={0} />, h.ui);
     await deleteViaMenu("Beta");
     await screen.findByText("Beta silindi");
-    await userEvent.click((await screen.findAllByRole("button", { name: /^Alpha/ }))[0]!);
-    const copied = await screen.findByText(/kodu kopyalandı/);
+    await userEvent.click(await trigger("Alpha"));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Sabitle" }));
+    const copied = await screen.findByText("Alpha sabitlendi.");
     expect(copied.closest('[role="status"]')!.className).toContain("bottom-[84px]");
   });
 

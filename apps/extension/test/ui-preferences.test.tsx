@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import { cleanup, screen, within } from "@testing-library/react";
+import { cleanup, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 import { PreferencesScreen } from "@claviger/ui/manage";
 import { harness, renderUi } from "./helpers/ui";
@@ -22,11 +23,24 @@ describe("PreferencesScreen", () => {
     expect(within(look).getByLabelText("Kod görünümü")).toBeTruthy();
     const opening = region("Açılış");
     expect(within(opening).getByLabelText("Açılış biçimi")).toBeTruthy();
-    expect(within(opening).getByLabelText("Pop-up boyutu")).toBeTruthy();
+    expect(within(opening).getByLabelText("Popup boyutu")).toBeTruthy();
     const more = region("Kısayollar ve kodlar");
     expect(within(more).getByText("Klavye kısayolu: Alt+Shift+O")).toBeTruthy();
     expect(within(more).getByText("Kilitleme kısayolu")).toBeTruthy();
     expect(within(more).getByText("Saat kontrolü")).toBeTruthy();
+    expect(within(more).getByText("Popup'ta klavye")).toBeTruthy();
+    expect(within(more).getByText(/Shift\+Enter doldur, Esc temizle\/kapat/)).toBeTruthy();
     expect(screen.queryByLabelText("Ana parola")).toBeNull();
+  });
+
+  it("uses segmented controls for the short option lists", async () => {
+    const h = await harness();
+    renderUi(<PreferencesScreen state={await h.service.getState()} onChanged={() => {}} />, h.ui);
+    const view = screen.getByRole("radiogroup", { name: "Kod görünümü" });
+    await userEvent.click(within(view).getByRole("radio", { name: "Gizli" }));
+    await waitFor(async () => expect((await h.service.getState()).viewMode).toBe("hidden"));
+    expect(screen.getByRole("radiogroup", { name: "Açılış biçimi" })).toBeTruthy();
+    expect(screen.getByRole("radiogroup", { name: "Popup boyutu" })).toBeTruthy();
+    expect(document.querySelector("select")).toBeNull();
   });
 });

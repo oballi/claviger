@@ -1,4 +1,30 @@
-import type { InputHTMLAttributes } from "react";
+import { useEffect, useState, type InputHTMLAttributes } from "react";
+import { useT } from "../i18n/i18n";
+import { Icon } from "./Icon";
+
+/** Eye button that toggles a password input between hidden and visible. */
+export function PasswordEye({
+  shown,
+  onToggle,
+  className = "",
+}: {
+  shown: boolean;
+  onToggle: () => void;
+  className?: string;
+}) {
+  const t = useT();
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={shown}
+      aria-label={t("password.show")}
+      className={`inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-muted hover:text-text focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-text ${className}`}
+    >
+      <Icon name={shown ? "eye-off" : "eye"} />
+    </button>
+  );
+}
 
 export function TextField({
   id,
@@ -15,6 +41,15 @@ export function TextField({
   error?: string | null;
   mono?: boolean;
 }) {
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    // A revealed password must not stay on screen after any form was submitted; some fields
+    // (export password, old password) sit outside the form whose button confirms them.
+    const hide = () => setShown(false);
+    document.addEventListener("submit", hide, true);
+    return () => document.removeEventListener("submit", hide, true);
+  }, []);
+  const isPassword = props.type === "password";
   const described = [hint ? `${id}-hint` : null, error ? `${id}-error` : null]
     .filter(Boolean)
     .join(" ");
@@ -23,13 +58,24 @@ export function TextField({
       <label htmlFor={id} className="text-xs text-muted">
         {label}
       </label>
-      <input
-        id={id}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={described || undefined}
-        className={`h-11 min-w-0 border-0 border-b border-line bg-transparent px-0 text-text outline-none focus-visible:border-text ${mono ? "font-mono text-base tracking-wider" : "text-sm"}`}
-        {...props}
-      />
+      <div className="relative flex items-center">
+        <input
+          id={id}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={described || undefined}
+          className={`h-11 min-w-0 flex-1 border-0 border-b border-line bg-transparent ${isPassword ? "pl-0 pr-11" : "px-0"} text-text outline-none focus-visible:border-text ${mono ? "font-mono text-base tracking-wider" : "text-sm"}`}
+          {...props}
+          type={isPassword && shown ? "text" : props.type}
+          {...(isPassword ? { spellCheck: false, autoCorrect: "off", autoCapitalize: "off" } : {})}
+        />
+        {isPassword ? (
+          <PasswordEye
+            shown={shown}
+            onToggle={() => setShown(!shown)}
+            className="absolute right-0"
+          />
+        ) : null}
+      </div>
       {hint ? (
         <p id={`${id}-hint`} className="m-0 text-xs text-muted">
           {hint}

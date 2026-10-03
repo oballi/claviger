@@ -160,7 +160,7 @@ describe("view modes", () => {
     await userEvent
       .setup()
       .click(await screen.findByRole("button", { name: /^Acme kodunu kopyala/ }));
-    await screen.findByText(/kopyalandı/i);
+    await screen.findAllByText(/kopyalandı/i);
     await vi.waitFor(() => expect(h.p.alarms.scheduled.has("clipboard-clear")).toBe(true));
   });
 
@@ -198,7 +198,7 @@ describe("view modes", () => {
     await userEvent
       .setup()
       .click(await screen.findByRole("button", { name: /^Acme kodunu kopyala/ }));
-    expect(await screen.findByText(/kopyalandı/i)).toBeTruthy();
+    expect((await screen.findAllByText(/kopyalandı/i)).length).toBeGreaterThan(0);
     expect(screen.queryByRole("alert")).toBeNull();
   });
 

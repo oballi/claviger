@@ -15,6 +15,7 @@ import { DuplicatesDialog } from "./DuplicatesDialog";
 import { GroupsSection } from "./GroupsSection";
 import { GroupChips, type GroupFilter } from "./GroupChips";
 import { PageTitle } from "./ManageFrame";
+import { FirstAccountPaths } from "./SetupWizard";
 import { TrashSection } from "./TrashSection";
 import { TextField } from "../components/TextField";
 import { ACCOUNT_DRAG, GROUP_DRAG } from "../dragTypes";
@@ -255,6 +256,62 @@ export function AccountsScreen({
     }
   }
 
+  const dialogs = (
+    <>
+      {adding ? (
+        <Dialog title={t("add.title")} onClose={() => setAdding(false)}>
+          <AccountForm
+            onAdded={(name) => {
+              setAdding(false);
+              changed(t("codes.added", { issuer: name }));
+            }}
+          />
+        </Dialog>
+      ) : null}
+    </>
+  );
+
+  // Only once the list has loaded, so a slow first poll never flashes the welcome.
+  if (list && accounts.length === 0 && !q) {
+    return (
+      <div className="flex flex-col gap-12">
+        <PageTitle title={t("accounts.title")} count={0} />
+        <section
+          aria-label={t("setup.account.title")}
+          className="mx-auto flex w-full max-w-[520px] flex-col gap-6"
+        >
+          <h2 className="m-0 text-center text-[32px] leading-none font-medium tracking-tight">
+            {t("setup.account.title")}
+          </h2>
+          <FirstAccountPaths
+            onManual={() => setAdding(true)}
+            onImport={() => openManage("backup")}
+          />
+          <p className="m-0 text-center text-[13px] leading-normal text-muted">
+            {t("accounts.welcome.hint")}
+          </p>
+          {state.snapshotOffer ? (
+            <Button
+              variant="link"
+              onClick={() => openManage("backup")}
+              className="justify-center text-[13px]"
+            >
+              {t(
+                state.snapshotOffer.accountCount === 1 ? "snapshots.offerOne" : "snapshots.offer",
+                { count: state.snapshotOffer.accountCount },
+              )}
+            </Button>
+          ) : null}
+        </section>
+        <p role="status" className="m-0 min-h-4 text-sm">
+          {message}
+        </p>
+        <TrashSection version={trashVersion} onMessage={(text) => void changed(text)} />
+        {dialogs}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-12">
       {state.backupReminder ? (
@@ -454,25 +511,7 @@ export function AccountsScreen({
               {list && rows.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-6 text-muted">
-                    {q
-                      ? t("accounts.noMatch")
-                      : effective !== "all" && accounts.length > 0
-                        ? t("groups.empty")
-                        : t("codes.empty")}
-                    {!q && effective === "all" && state.snapshotOffer ? (
-                      <Button
-                        variant="link"
-                        onClick={() => openManage("backup")}
-                        className="mt-3 block justify-start text-[13px]"
-                      >
-                        {t(
-                          state.snapshotOffer.accountCount === 1
-                            ? "snapshots.offerOne"
-                            : "snapshots.offer",
-                          { count: state.snapshotOffer.accountCount },
-                        )}
-                      </Button>
-                    ) : null}
+                    {q ? t("accounts.noMatch") : t("groups.empty")}
                   </td>
                 </tr>
               ) : null}
@@ -483,7 +522,16 @@ export function AccountsScreen({
                 return (
                   <tr
                     key={a.id}
-                    className="h-14 border-b border-hair"
+                    // Mouse shortcut; keyboard users keep the Düzenle link, so rows stay out of the tab order.
+                    onClick={(e) => {
+                      if (
+                        !(e.target as HTMLElement).closest(
+                          "button, a, input, select, textarea, [draggable]",
+                        )
+                      )
+                        setEditing(a.id);
+                    }}
+                    className="h-14 cursor-pointer border-b border-hair hover:bg-hair"
                     onDragOver={(e) => {
                       if (!q && drag?.source === "table" && sameGroup(drag.id, a.id))
                         e.preventDefault();
@@ -614,16 +662,7 @@ export function AccountsScreen({
         />
       ) : null}
 
-      {adding ? (
-        <Dialog title={t("add.title")} onClose={() => setAdding(false)}>
-          <AccountForm
-            onAdded={(name) => {
-              setAdding(false);
-              changed(t("codes.added", { issuer: name }));
-            }}
-          />
-        </Dialog>
-      ) : null}
+      {dialogs}
 
       {creating ? (
         <Dialog title={t("group.new")} onClose={() => !savingGroup && setCreating(false)}>

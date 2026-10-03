@@ -500,3 +500,118 @@ describe("user trigger", () => {
     ).resolves.toBeUndefined();
   });
 });
+
+describe("fillAccount (popup picks the account)", () => {
+  it("fills a linked account on an https tab and returns no code", async () => {
+    const { p, service, id } = await setup();
+    const r = await service.fillAccount(id, TAB);
+    expect(r).toEqual({ result: "filled", code: null });
+    expect(p.tabs.fills).toHaveLength(1);
+    expect(p.tabs.fills[0]).toMatchObject({
+      tabId: TAB,
+      explicit: true,
+      expectedDomain: "bank.com",
+    });
+  });
+
+  it("refuses an unlinked account with not-linked, fills nothing and keeps the HOTP counter", async () => {
+    const { p, service, id } = await setup({ type: "hotp" });
+    p.tabs.activeTab = { id: TAB, url: "https://other.com/" };
+    await expect(service.fillAccount(id, TAB)).rejects.toMatchObject({ code: "not-linked" });
+    expect(p.tabs.fills).toHaveLength(0);
+    expect((await service.listAccounts()).accounts[0]?.code).toBe(
+      (
+        await generateCode(
+          { type: "hotp", secret: SECRET, algorithm: "SHA1", digits: 6, period: 30, counter: 5 },
+          0,
+        )
+      ).code,
+    );
+  });
+
+  it("refuses a plain http page without a code and without burning HOTP", async () => {
+    const { p, service, id } = await setup({ type: "hotp" });
+    p.tabs.activeTab = { id: TAB, url: "http://bank.com/" };
+    const r = await service.fillAccount(id, TAB);
+    expect(r).toEqual({ result: "refused", code: null });
+    expect(p.tabs.fills).toHaveLength(0);
+    expect((await service.listAccounts()).accounts[0]?.code).toBe(
+      (
+        await generateCode(
+          { type: "hotp", secret: SECRET, algorithm: "SHA1", digits: 6, period: 30, counter: 5 },
+          0,
+        )
+      ).code,
+    );
+  });
+
+  it("re-reads the tab url instead of trusting the caller", async () => {
+    const { p, service, id } = await setup();
+    p.tabs.liveUrl = "https://bank.com.evil.io/";
+    await expect(service.fillAccount(id, TAB)).rejects.toMatchObject({ code: "not-linked" });
+    expect(p.tabs.fills).toHaveLength(0);
+  });
+
+  it("is refused while the vault is locked", async () => {
+    const { p, service, id } = await setup();
+    await service.lock();
+    await expect(service.fillAccount(id, TAB)).rejects.toMatchObject({ code: "locked" });
+    expect(p.tabs.fills).toHaveLength(0);
+  });
+
+  it("only hands a code back when the page had no field", async () => {
+    const { p, service, id } = await setup();
+    p.tabs.next = "no-field";
+    const r = await service.fillAccount(id, TAB);
+    expect(r.result).toBe("copied-instead");
+    expect(r.code).toBe((await totpNow(p.clock.now())).code);
+    p.tabs.next = "wrong-site";
+    expect(await service.fillAccount(id, TAB)).toEqual({ result: "refused", code: null });
+  });
+
+  it("hands the advanced HOTP code back when the second check navigates away", async () => {
+    const { p, service, id } = await setup({ type: "hotp" });
+    const urls = [BANK, "https://evil.io/"];
+    p.tabs.url = async () => urls.shift() ?? "https://evil.io/";
+    const r = await service.fillAccount(id, TAB);
+    expect(r.result).toBe("copied-instead");
+    expect(r.code).toMatch(/^\d{6}$/);
+    expect(p.tabs.fills).toHaveLength(0);
+  });
+
+  it("hands the advanced HOTP code back when the second check is not-linked", async () => {
+    const { p, service, id } = await setup({ type: "hotp" });
+    const urls = [BANK, "https://other.com/"];
+    p.tabs.url = async () => urls.shift() ?? "https://other.com/";
+    const r = await service.fillAccount(id, TAB);
+    expect(r.result).toBe("copied-instead");
+    expect(r.code).toMatch(/^\d{6}$/);
+  });
+
+  it("hands the advanced HOTP code back when the page answers wrong-site", async () => {
+    const { p, service, id } = await setup({ type: "hotp" });
+    p.tabs.next = "wrong-site";
+    const r = await service.fillAccount(id, TAB);
+    expect(r.result).toBe("copied-instead");
+    expect(r.code).toMatch(/^\d{6}$/);
+  });
+
+  it("throws locked when the vault locks between the second check and the injection", async () => {
+    const { p, service, id } = await setup();
+    const real = p.tabs.url.bind(p.tabs);
+    let calls = 0;
+    p.tabs.url = async (t: number) => {
+      calls += 1;
+      const u = await real(t);
+      if (calls === 2) await service.lock();
+      return u;
+    };
+    await expect(service.fillAccount(id, TAB)).rejects.toMatchObject({ code: "locked" });
+    expect(p.tabs.fills).toHaveLength(0);
+  });
+
+  it("throws not-found for an unknown account", async () => {
+    const { service } = await setup();
+    await expect(service.fillAccount("nope", TAB)).rejects.toMatchObject({ code: "not-found" });
+  });
+});

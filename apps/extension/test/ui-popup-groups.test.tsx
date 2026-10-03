@@ -28,7 +28,7 @@ describe("popup groups", () => {
   it("opens the manage page from the header", async () => {
     const h = await harness();
     renderUi(<PopupApp pollMs={0} />, h.ui);
-    await userEvent.click(await screen.findByRole("button", { name: "Yönetim sayfası" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Yönetim ve ayarlar" }));
     expect(h.ui.openManage).toHaveBeenCalledWith();
   });
 

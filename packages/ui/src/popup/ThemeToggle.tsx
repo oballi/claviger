@@ -18,9 +18,11 @@ export function resolvedScheme(theme: Theme): "light" | "dark" {
 export function ThemeToggle({
   theme,
   onError,
+  onSaved,
 }: {
   theme: Theme;
   onError: (message: string | null) => void;
+  onSaved?: () => void;
 }) {
   const { rpc } = useUi();
   const t = useT();
@@ -36,6 +38,7 @@ export function ThemeToggle({
     applyTheme(next);
     try {
       await rpc("setTheme", { theme: next });
+      onSaved?.();
     } catch (e) {
       setCurrent(previous);
       applyTheme(previous);
