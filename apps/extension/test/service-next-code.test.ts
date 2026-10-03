@@ -51,6 +51,12 @@ describe("next code window", () => {
     expect(view.nextCode).toBeNull();
   });
 
+  it("is not sent when the period is shorter than twice the window", async () => {
+    const { view } = await nextAt(`otpauth://totp/x?secret=${SECRET}&period=8`, 5, 8);
+    expect(view.remaining).toBeLessThanOrEqual(7);
+    expect(view.nextCode).toBeNull();
+  });
+
   it("is never sent for HOTP", async () => {
     const { view } = await nextAt(`otpauth://hotp/x?secret=${SECRET}&counter=1`, 3);
     expect(view.remaining).toBeNull();

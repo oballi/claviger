@@ -128,10 +128,12 @@ describe("codes screen", () => {
     expect(button.textContent).toBe("Kopyalandı");
     expect(button.getAttribute("aria-label")).not.toContain("Kopyalandı");
     expect(screen.queryByText("GitHub kodu kopyalandı")).toBeNull();
-    expect(screen.getAllByText("Kopyalandı").some((n) => n.closest("[aria-live=polite]"))).toBe(
-      true,
-    );
-    expect(document.querySelector("[aria-live=polite]")?.textContent).not.toContain(githubCode);
+    const region = screen
+      .getAllByText("Kopyalandı")
+      .map((n) => n.closest("[aria-live=polite]"))
+      .find(Boolean)!;
+    expect(region.textContent).toBe("Kopyalandı");
+    expect(region.textContent).not.toContain(githubCode);
   });
 
   it("shows an error instead of failing silently when copying is refused", async () => {

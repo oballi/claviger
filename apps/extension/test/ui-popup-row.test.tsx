@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { CountdownRing } from "@claviger/ui";
 import { CodesScreen, PopupApp } from "@claviger/ui/popup";
 import { harness, renderUi } from "./helpers/ui";
@@ -47,6 +47,7 @@ describe("next code in the row", () => {
 
   it("shows the dimmed next code in the window and copies it", async () => {
     const { h, account } = await popup({ remaining: 7 });
+    await h.service.setClipboardClear(30);
     await screen.findByText("Acme");
     const next = document.querySelector("[data-next-code]")!;
     expect(next.textContent).toBe(`${account.nextCode!.slice(0, 3)} ${account.nextCode!.slice(3)}`);
@@ -54,7 +55,8 @@ describe("next code in the row", () => {
     expect(button.getAttribute("aria-label")).not.toMatch(/\d/);
     await userEvent.click(button);
     expect(h.ui.copy).toHaveBeenCalledWith(account.nextCode);
-    expect(h.p.alarms.scheduled).toBeDefined();
+    expect(h.ui.copy).toHaveBeenLastCalledWith(account.nextCode);
+    await vi.waitFor(() => expect(h.p.alarms.scheduled.has("clipboard-clear")).toBe(true));
     expect(button.textContent).toBe("Kopyalandı");
   });
 

@@ -135,10 +135,10 @@ export function assertPassword(password: string): void {
   }
 }
 
-/** Single writer for the vault. In-memory state is never trusted: a restarted service worker rebuilds it from KeyCache. */
 /** Last seconds of a period in which the popup also shows (and copies) the next code. */
 export const NEXT_CODE_WINDOW_SEC = 7;
 
+/** Single writer for the vault. In-memory state is never trusted: a restarted service worker rebuilds it from KeyCache. */
 export class VaultService {
   protected vault: Vault | null = null;
   protected readonly keys: KeyCache;
@@ -847,7 +847,7 @@ export class VaultService {
         const nextCode =
           generated.remaining !== null &&
           period !== null &&
-          period > NEXT_CODE_WINDOW_SEC &&
+          period >= 2 * NEXT_CODE_WINDOW_SEC &&
           generated.remaining <= NEXT_CODE_WINDOW_SEC
             ? (await generateCode(a, now + period * 1000, clockOffsetSec)).code
             : null;
