@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.2 — 2026-10-03
+
+### Fixed
+
+- Drop-down menus (lock, clipboard, backup reminder, group, and the add form's type, algorithm and digits) show their arrow comfortably inside the rounded edge, in light and dark themes.
+
+### Changed
+
+- CI uses the current versions of the checkout, Node and pnpm setup actions.
+
 ## 1.0.1 — 2026-10-03
 
 ### Changed
