@@ -3,6 +3,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type KeyboardEvent,
@@ -207,14 +208,15 @@ export function CodesScreen({
   }, [sorting]);
 
   // Search takes focus once, on the first list render; poll reloads must never steal it back.
-  useEffect(() => {
+  // Layout effects: a key pressed right after the list paints must already find focus and selection.
+  useLayoutEffect(() => {
     if (searchFocused.current || !list) return;
     searchFocused.current = true;
     if (!adding && editing === null && !showTrash && !sorting) searchRef.current?.focus();
   }, [list, adding, editing, showTrash, sorting]);
 
   // The selection is the first visible row until the user moves it (or its row disappears).
-  useEffect(() => {
+  useLayoutEffect(() => {
     const ids = Array.from(
       listRef.current?.querySelectorAll<HTMLElement>("[data-code-button]") ?? [],
       (b) => b.closest("li")?.getAttribute("data-account-id") ?? "",

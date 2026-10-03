@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 /** Counts down while `active` and calls `onHide` on timeout or when the page is hidden. */
 export function useAutoHide(
@@ -11,8 +11,13 @@ export function useAutoHide(
   const hideRef = useRef(onHide);
   hideRef.current = onHide;
 
-  useEffect(() => {
+  // Layout effect: the hidden-page listener must exist in the same commit that shows the secret.
+  useLayoutEffect(() => {
     if (!active) return;
+    if (document.visibilityState === "hidden") {
+      hideRef.current();
+      return;
+    }
     const end = Date.now() + ms;
     setSecondsLeft(Math.ceil(ms / 1000));
     const tick = setInterval(() => {

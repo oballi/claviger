@@ -1,4 +1,4 @@
-import { useState, type ClipboardEvent, type FormEvent } from "react";
+import { useLayoutEffect, useState, type ClipboardEvent, type FormEvent } from "react";
 import { RpcError } from "../rpc/client";
 import { errorMessage } from "../errors";
 import { useT } from "../i18n/i18n";
@@ -72,17 +72,23 @@ export function AccountForm({
     setFieldErrors({});
   };
 
-  // Focus after the disclosure has rendered, otherwise a collapsed field cannot take focus.
+  // An object, so the same field can be requested twice in a row.
+  const [focusRequest, setFocusRequest] = useState<{ field: Field } | null>(null);
+  // Layout effect: runs in the commit that opened the disclosure and showed the error, so the
+  // field exists and focus never lands after a key the user already typed.
+  useLayoutEffect(() => {
+    if (!focusRequest) return;
+    const el = document.getElementById(`add-${focusRequest.field}`);
+    el?.focus();
+    el?.scrollIntoView?.({ block: "nearest" });
+  }, [focusRequest]);
+
   function showFieldErrors(errors: FieldErrors) {
     setFieldErrors(errors);
     const first = FIELD_ORDER.find((f) => errors[f]);
     if (!first) return;
     if (ADVANCED.includes(first)) setAdvancedOpen(true);
-    setTimeout(() => {
-      const el = document.getElementById(`add-${first}`);
-      el?.focus();
-      el?.scrollIntoView?.({ block: "nearest" });
-    }, 0);
+    setFocusRequest({ field: first });
   }
 
   function fillFrom(text: string, event: ClipboardEvent) {
