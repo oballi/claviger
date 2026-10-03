@@ -8,8 +8,9 @@ import { Button } from "./Button";
 import { Icon } from "./Icon";
 import { TextField } from "./TextField";
 
-const selectClass =
+const fieldClass =
   "h-11 border-0 border-b border-line bg-transparent px-0 text-sm text-text outline-none";
+const selectClass = `ov-select ov-select-line ${fieldClass}`;
 
 type Field = "secret" | "type" | "algorithm" | "digits" | "period";
 type FieldErrors = Partial<Record<Field, string>>;
@@ -273,7 +274,7 @@ export function AccountForm({
               </label>
               <input
                 id="add-period"
-                className={selectClass}
+                className={fieldClass}
                 inputMode="numeric"
                 value={period}
                 aria-invalid={fieldErrors.period ? true : undefined}

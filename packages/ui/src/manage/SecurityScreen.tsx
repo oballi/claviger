@@ -32,7 +32,7 @@ const policyKey = (p: LockPolicy) => (p.kind === "timeout" ? `timeout-${p.minute
 const CLIPBOARD_SECONDS = [30, 60, 0] as const;
 
 const selectClass =
-  "h-11 rounded-full border border-line bg-bg px-3 font-sans text-[13px] text-text";
+  "ov-select h-11 rounded-full border border-line bg-bg pl-3 font-sans text-[13px] text-text";
 
 /** Every security change asks for the master password. */
 export function SecurityScreen({
