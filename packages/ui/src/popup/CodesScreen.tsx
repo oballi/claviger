@@ -87,6 +87,7 @@ export function CodesScreen({
   const [editing, setEditing] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [refocus, setRefocus] = useState<string | null>(null);
+  const refocusBase = useRef<typeof list>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [usage, setUsage] = useState<StorageUsageView | null>(null);
   const { collapsed, toggle } = useCollapsed();
@@ -244,6 +245,10 @@ export function CodesScreen({
   // A row can move to another section (and remount), so focus returns to its menu trigger by id.
   useEffect(() => {
     if (!refocus) return;
+    // A reload superseded by a newer request resolves without setting the list; wait for the
+    // fresh one, or the stale row's trigger takes focus and then unmounts.
+    if (refocusBase.current && list === refocusBase.current) return;
+    refocusBase.current = null;
     const root = listRef.current;
     const trigger = root?.querySelector<HTMLElement>(`[data-menu-for="${CSS.escape(refocus)}"]`);
     if (trigger) trigger.focus();
@@ -493,8 +498,12 @@ export function CodesScreen({
     try {
       await action();
       if (message) setToast(message);
+      const before = list;
       await reload();
-      if (focusId) setRefocus(focusId);
+      if (focusId) {
+        refocusBase.current = before;
+        setRefocus(focusId);
+      }
     } catch (e) {
       setActionError(errorMessage(t, e));
     }

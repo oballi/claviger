@@ -125,9 +125,11 @@ describe("manage group filter", () => {
       ]),
     );
     // A1 is now the last of its group; the next row belongs to another group.
-    expect(within(dialog).getByRole("button", { name: "Aşağı taşı" })).toHaveProperty(
-      "disabled",
-      true,
+    await vi.waitFor(() =>
+      expect(within(dialog).getByRole("button", { name: "Aşağı taşı" })).toHaveProperty(
+        "disabled",
+        true,
+      ),
     );
     await userEvent.click(within(dialog).getByRole("button", { name: "Kapat" }));
     await userEvent.click(await screen.findByRole("button", { name: "B1 hesabını düzenle" }));
