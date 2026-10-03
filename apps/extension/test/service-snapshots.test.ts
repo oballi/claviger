@@ -1,4 +1,4 @@
-import { Vault } from "@claviger/core";
+import { normalizeAccountInput, Vault } from "@claviger/core";
 import { MemoryStorage } from "@claviger/core/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DAILY_CHECK_MS } from "../src/background/vaultService";
@@ -27,7 +27,10 @@ describe("service snapshots", () => {
 
   it("takes a copy before an import commit", async () => {
     const { service } = await unlockedService();
-    const preview = await service.importPreview(URI);
+    await service.addAccount({ uri: URI });
+    const preview = await service.importPreview(
+      URI.replace("JBSWY3DPEHPK3PXP", "GEZDGNBVGY3TQOJQ"),
+    );
     if (preview.status !== "ok") throw new Error("preview");
     await service.importCommit(preview.previewId, [0]);
     expect((await service.listSnapshots()).map((s) => s.reason)).toContain("before-import");
@@ -71,12 +74,15 @@ describe("service snapshots", () => {
 
   it("still imports when the snapshot cannot be stored", async () => {
     const { service, p } = await unlockedService();
-    const preview = await service.importPreview(URI);
+    await service.addAccount({ uri: URI });
+    const preview = await service.importPreview(
+      URI.replace("JBSWY3DPEHPK3PXP", "GEZDGNBVGY3TQOJQ"),
+    );
     if (preview.status !== "ok") throw new Error("unexpected");
     await p.local.remove(await snapKeys(p));
     p.local.failNextSet = new Error("QUOTA_BYTES quota exceeded");
     await expect(service.importCommit(preview.previewId, [0])).resolves.toMatchObject({ added: 1 });
-    expect((await service.listAccounts()).accounts).toHaveLength(1);
+    expect((await service.listAccounts()).accounts).toHaveLength(2);
   });
 
   it("still moves the vault when the snapshot cannot be stored", async () => {
@@ -91,6 +97,7 @@ describe("service snapshots", () => {
 
   it("takes a daily copy from getState at most once per hour, even while locked", async () => {
     const { service, p } = await unlockedService();
+    await service.addAccount({ uri: URI });
     await service.lock();
     await service.getState();
     const first = (await snapKeys(p)).length;
@@ -128,6 +135,30 @@ describe("service snapshots", () => {
     );
   });
 
+  it("takes no copy of an empty vault, daily or before a risky operation", async () => {
+    const { service, p } = await unlockedService();
+    await service.getState();
+    const preview = await service.importPreview(URI);
+    if (preview.status !== "ok") throw new Error("preview");
+    await service.importCommit(preview.previewId, [0]);
+    expect(await snapKeys(p)).toEqual([]);
+  });
+
+  it("hides legacy empty copies from listSnapshots and refuses to restore them", async () => {
+    const { service, p } = await unlockedService();
+    await service.addAccount({ uri: URI });
+    await service.getState();
+    const [real] = await new SnapshotStore(p.local, p.clock, p.random).list();
+    await p.local.set({
+      "snapshot:legacy-empty": { ...real!, id: "legacy-empty", accountCount: 0 },
+    });
+    expect((await service.listSnapshots()).map((s) => s.id)).toEqual([real!.id]);
+    const { token } = await service.reauth(PASSWORD);
+    await expect(service.restoreSnapshot(token, "legacy-empty")).rejects.toMatchObject({
+      code: "not-found",
+    });
+  });
+
   it("listSnapshots needs an unlocked vault", async () => {
     const { service } = await unlockedService();
     await service.lock();
@@ -144,7 +175,11 @@ const deps = (p: TestPlatform, storage: MemoryStorage | ReturnType<typeof record
 
 async function foreignSnapshot(p: TestPlatform) {
   const other = new MemoryStorage();
-  await Vault.create(deps(p, other), { password: "other-vault-pw", createRecoveryCode: false });
+  const { vault } = await Vault.create(deps(p, other), {
+    password: "other-vault-pw",
+    createRecoveryCode: false,
+  });
+  await vault.addAccount(normalizeAccountInput({ secret: "JBSWY3DPEHPK3PXP", label: "o" }));
   const snap = await new SnapshotStore(p.local, p.clock, p.random).take(other, "daily");
   return snap!;
 }
@@ -175,6 +210,7 @@ describe("snapshot revocation (keyslot changes)", () => {
 
   it("old recovery code no longer opens any same-vault copy after createRecoveryCode", async () => {
     const { service, p, recoveryCode } = await unlockedService();
+    await service.addAccount({ uri: URI });
     await service.getState();
     const foreign = await foreignSnapshot(p);
     const sameVault = (await service.listSnapshots()).filter((s) => s.sameVault);
@@ -206,6 +242,7 @@ describe("snapshot revocation (keyslot changes)", () => {
 
   it("recovery unlock revokes the old password in copies", async () => {
     const { service, p, recoveryCode } = await unlockedService();
+    await service.addAccount({ uri: URI });
     await service.getState();
     await service.lock();
     await service.unlockWithRecovery(recoveryCode!, "another password 1");
@@ -221,6 +258,7 @@ describe("snapshot revocation (keyslot changes)", () => {
 
   it("deletes same-vault copies when the rekey fails, leaving other vaults alone", async () => {
     const { service, p } = await unlockedService();
+    await service.addAccount({ uri: URI });
     await service.getState();
     const foreign = await foreignSnapshot(p);
     vi.spyOn(SnapshotStore.prototype, "rekey").mockRejectedValueOnce(new Error("boom"));
@@ -271,11 +309,13 @@ describe("snapshot ordering and repair", () => {
     release();
     await Promise.all([gs, cp]);
     (p.local as { get: unknown }).get = origGet;
+    expect((await snapKeys(p)).length).toBeGreaterThan(0);
     expect(await oldCannotOpen(p, PASSWORD)).toEqual([]);
   });
 
   it("the next unlock repairs a crash between the keyslot write and revocation", async () => {
     const { service, p } = await unlockedService();
+    await service.addAccount({ uri: URI });
     await service.getState();
     vi.spyOn(SnapshotStore.prototype, "rekey").mockRejectedValue(new Error("crash"));
     vi.spyOn(SnapshotStore.prototype, "removeVault").mockRejectedValue(new Error("crash"));
@@ -290,6 +330,7 @@ describe("snapshot ordering and repair", () => {
 
   it("a double failure still returns the new recovery code and unlocks", async () => {
     const { service } = await unlockedService();
+    await service.addAccount({ uri: URI });
     await service.getState();
     vi.spyOn(SnapshotStore.prototype, "rekey").mockRejectedValue(new Error("x"));
     vi.spyOn(SnapshotStore.prototype, "removeVault").mockRejectedValue(new Error("x"));
@@ -376,7 +417,9 @@ describe("reconcile and gating (round 2)", () => {
     const p = memoryPlatform();
     sortedLocal(p);
     const { service } = await unlockedService(p);
+    await service.addAccount({ uri: URI });
     await service.getState();
+    expect((await snapKeys(p)).length).toBeGreaterThan(0);
     const spy = vi.spyOn(SnapshotStore.prototype, "rekey");
     await service.lock();
     await service.unlock(PASSWORD);
@@ -388,6 +431,7 @@ describe("reconcile and gating (round 2)", () => {
     await service.lock();
     await service.unlock("a brand new password");
     expect(spy).not.toHaveBeenCalled();
+    expect((await snapKeys(p)).length).toBeGreaterThan(0);
     expect(await oldCannotOpen(p, PASSWORD)).toEqual([]);
   });
 
@@ -410,6 +454,7 @@ describe("reconcile and gating (round 2)", () => {
 
   it("a restarted service repairs the crash window from the cached key", async () => {
     const { service, p } = await unlockedService(undefined, { kind: "never" });
+    await service.addAccount({ uri: URI });
     await service.getState();
     vi.spyOn(SnapshotStore.prototype, "rekey").mockRejectedValue(new Error("crash"));
     vi.spyOn(SnapshotStore.prototype, "removeVault").mockRejectedValue(new Error("crash"));
@@ -424,6 +469,7 @@ describe("reconcile and gating (round 2)", () => {
 
   it("setup clears leftover copies of a deleted vault", async () => {
     const { service, p } = await unlockedService();
+    await service.addAccount({ uri: URI });
     await service.getState();
     vi.spyOn(SnapshotStore.prototype, "removeAll").mockRejectedValueOnce(new Error("x"));
     const { token } = await service.reauth(PASSWORD);
@@ -442,7 +488,11 @@ describe("reconcile and gating (round 2)", () => {
     const p = memoryPlatform();
     const { recoveryCode } = await unlockedService(p, { kind: "never" });
     const service = new VaultService(p);
+    await service.unlock(PASSWORD);
+    await service.addAccount({ uri: URI });
+    p.clock.advance(DAILY_CHECK_MS + 1);
     await service.getState();
+    expect((await snapKeys(p)).length).toBeGreaterThan(0);
     await service.lock();
     // Cached key was cleared by lock; log in again so a restart can load from cache.
     await service.unlock(PASSWORD);
@@ -466,6 +516,7 @@ describe("reconcile and gating (round 2)", () => {
     await listing;
     await recovery;
     await restarted.getState();
+    expect((await snapKeys(p)).length).toBeGreaterThan(0);
     expect(await oldCannotOpen(p, PASSWORD)).toEqual([]);
   });
 });

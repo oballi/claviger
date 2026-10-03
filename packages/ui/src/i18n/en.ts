@@ -145,6 +145,7 @@ export const en: Record<PopupKey, string> = {
   "common.recommended": "recommended",
   "reauth.password": "Master password",
   "reauth.hint": "Confirm your password for this action.",
+  "password.show": "Show password",
   "password.new": "Master password",
   "password.confirm": "Repeat the password",
   "password.tooShort": "The password must be at least 8 characters.",

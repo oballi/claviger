@@ -178,10 +178,10 @@ export const manageEn: Record<ManageKey, string> = {
   "security.passwordHint":
     "The password that protects all your accounts. Changing it leaves accounts untouched; only the vault key is re-protected.",
   "security.passwordChange": "Change password",
+  "security.passwordContinueHint": "We'll ask for your current password next.",
   "security.passwordChanged": "Password changed.",
   "security.recovery": "Recovery code",
-  "security.recoveryYes":
-    "The only way into your vault if you forget your password. Creating a new one invalidates the old.",
+  "security.recoveryYes": "The only way into your vault if you forget your password.",
   "security.recoveryNo":
     "You have no recovery code. If you forget your password, you lose access to your codes.",
   "security.recoveryNew": "Create new code",
@@ -440,7 +440,7 @@ export const manageEn: Record<ManageKey, string> = {
   "transfer.accounts": "Accounts to move",
   "transfer.show": "Show QR codes",
   "transfer.position": "QR {n} / {total}",
-  "transfer.qrLabel": "Transfer QR {n} / {total}",
+  "transfer.qrLabel": "QR to move {n} / {total}",
   "transfer.prev": "Previous",
   "transfer.next": "Next",
   "transfer.warning":

@@ -23,12 +23,12 @@ describe("PreferencesScreen", () => {
     expect(within(look).getByLabelText("Kod görünümü")).toBeTruthy();
     const opening = region("Açılış");
     expect(within(opening).getByLabelText("Açılış biçimi")).toBeTruthy();
-    expect(within(opening).getByLabelText("Pop-up boyutu")).toBeTruthy();
+    expect(within(opening).getByLabelText("Popup boyutu")).toBeTruthy();
     const more = region("Kısayollar ve kodlar");
     expect(within(more).getByText("Klavye kısayolu: Alt+Shift+O")).toBeTruthy();
     expect(within(more).getByText("Kilitleme kısayolu")).toBeTruthy();
     expect(within(more).getByText("Saat kontrolü")).toBeTruthy();
-    expect(within(more).getByText("Açılır pencerede klavye")).toBeTruthy();
+    expect(within(more).getByText("Popup'ta klavye")).toBeTruthy();
     expect(within(more).getByText(/Shift\+Enter doldur, Esc temizle\/kapat/)).toBeTruthy();
     expect(screen.queryByLabelText("Ana parola")).toBeNull();
   });
@@ -40,7 +40,7 @@ describe("PreferencesScreen", () => {
     await userEvent.click(within(view).getByRole("radio", { name: "Gizli" }));
     await waitFor(async () => expect((await h.service.getState()).viewMode).toBe("hidden"));
     expect(screen.getByRole("radiogroup", { name: "Açılış biçimi" })).toBeTruthy();
-    expect(screen.getByRole("radiogroup", { name: "Pop-up boyutu" })).toBeTruthy();
+    expect(screen.getByRole("radiogroup", { name: "Popup boyutu" })).toBeTruthy();
     expect(document.querySelector("select")).toBeNull();
   });
 });

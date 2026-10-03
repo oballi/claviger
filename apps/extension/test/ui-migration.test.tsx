@@ -38,7 +38,7 @@ async function open(count = 12) {
   return h;
 }
 
-const section = () => screen.getByRole("region", { name: /Telefona aktar/ });
+const section = () => screen.getByRole("region", { name: /Telefona taşı/ });
 
 async function toViewer(user: Pick<typeof userEvent, "click" | "type"> = userEvent) {
   await user.click(within(section()).getByRole("button", { name: "Hesapları seç…" }));

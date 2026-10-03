@@ -21,15 +21,17 @@ function Option({
   const id = useId();
   return (
     <div className="flex items-start gap-4 border-t border-hair py-4">
-      <input
-        id={id}
-        type="radio"
-        name="lock-policy"
-        checked={checked}
-        onChange={onSelect}
-        aria-describedby={`${id}-hint`}
-        className="mt-1 h-4 w-4 accent-[var(--ov-text)]"
-      />
+      <span className="flex h-11 items-center">
+        <input
+          id={id}
+          type="radio"
+          name="lock-policy"
+          checked={checked}
+          onChange={onSelect}
+          aria-describedby={`${id}-hint`}
+          className="h-4 w-4 accent-[var(--ov-text)]"
+        />
+      </span>
       <div className="flex flex-1 flex-col gap-1">
         <label
           htmlFor={id}

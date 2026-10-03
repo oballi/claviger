@@ -36,7 +36,7 @@ describe("SecurityScreen", () => {
       within(access).getByLabelText("Parolayı tekrar gir"),
       "yeni parola cümlesi",
     );
-    await userEvent.click(within(access).getByRole("button", { name: "Devam" }));
+    await userEvent.click(within(access).getByRole("button", { name: "Parolayı değiştir" }));
     await confirmPassword(access, "Parolayı değiştir");
     expect(await screen.findByText("Parola değiştirildi.")).toBeTruthy();
     expect(onChanged).toHaveBeenCalled();
@@ -49,10 +49,26 @@ describe("SecurityScreen", () => {
     const access = region("Erişim");
     await userEvent.click(within(access).getByRole("button", { name: "Parolayı değiştir" }));
     await userEvent.type(within(access).getByLabelText("Yeni ana parola"), "short");
-    await userEvent.click(within(access).getByRole("button", { name: "Devam" }));
+    await userEvent.click(within(access).getByRole("button", { name: "Parolayı değiştir" }));
     expect(within(access).getByText("Parola en az 8 karakter olmalı.")).toBeTruthy();
     await userEvent.click(within(access).getByRole("button", { name: "Vazgeç" }));
     expect(within(access).queryByLabelText("Yeni ana parola")).toBeNull();
+  });
+
+  it("disables the password change button while the confirmation does not match", async () => {
+    await open();
+    const access = region("Erişim");
+    await userEvent.click(within(access).getByRole("button", { name: "Parolayı değiştir" }));
+    await userEvent.type(within(access).getByLabelText("Yeni ana parola"), "yeni parola cümlesi");
+    await userEvent.type(
+      within(access).getByLabelText("Parolayı tekrar gir"),
+      "yeni parola cümlesi!",
+    );
+    expect(within(access).getByText("Parolalar eşleşmiyor.")).toBeTruthy();
+    expect(within(access).getByRole("button", { name: "Parolayı değiştir" })).toHaveProperty(
+      "disabled",
+      true,
+    );
   });
 
   it("creates a replacement recovery code that invalidates the old one", async () => {
@@ -125,7 +141,7 @@ describe("SecurityScreen", () => {
     const { ui } = await open();
     const secrets = region("Pano ve gizli anahtarlar");
     const toggle = within(secrets).getByRole("switch", {
-      name: "Gizli anahtarı göster için parola iste",
+      name: "Gizli anahtarı göstermeden önce parola iste",
     });
     expect(toggle).toHaveProperty("checked", true);
     await userEvent.click(toggle);
@@ -199,7 +215,7 @@ describe("SecurityScreen", () => {
       within(access).getByLabelText("Parolayı tekrar gir"),
       "yeni parola cümlesi",
     );
-    await userEvent.click(within(access).getByRole("button", { name: "Devam" }));
+    await userEvent.click(within(access).getByRole("button", { name: "Parolayı değiştir" }));
     await confirmPassword(access, "Parolayı değiştir", "wrong password");
     await within(access).findByText("Parola yanlış.");
     await userEvent.click(within(access).getByRole("button", { name: "Vazgeç" }));
@@ -366,7 +382,7 @@ describe("SecurityScreen", () => {
       within(access).getByLabelText("Parolayı tekrar gir"),
       "yeni parola cümlesi",
     );
-    await userEvent.click(within(access).getByRole("button", { name: "Devam" }));
+    await userEvent.click(within(access).getByRole("button", { name: "Parolayı değiştir" }));
     await confirmPassword(access, "Parolayı değiştir");
     await screen.findByText("Parola değiştirildi.");
     await userEvent.click(within(access).getByRole("button", { name: "Parolayı değiştir" }));
@@ -414,7 +430,7 @@ describe("SecurityScreen", () => {
       within(access).getByLabelText("Parolayı tekrar gir"),
       "yeni parola cümlesi",
     );
-    await userEvent.click(within(access).getByRole("button", { name: "Devam" }));
+    await userEvent.click(within(access).getByRole("button", { name: "Parolayı değiştir" }));
     await confirmPassword(access, "Parolayı değiştir");
     await vi.waitFor(() =>
       expect(document.activeElement).toBe(
@@ -498,7 +514,7 @@ describe("SecurityScreen", () => {
     ["Erişim", "Pano ve gizli anahtarlar", "Tehlikeli bölge"].forEach((title, i) => {
       expect(within(region(title)).getByText(`0${i + 1}`)).toBeTruthy();
     });
-    for (const label of ["Tema", "Dil", "Kod görünümü", "Açılış biçimi", "Pop-up boyutu"]) {
+    for (const label of ["Tema", "Dil", "Kod görünümü", "Açılış biçimi", "Popup boyutu"]) {
       expect(screen.queryByText(label)).toBeNull();
     }
     expect(screen.queryByText("Saat kontrolü")).toBeNull();

@@ -60,7 +60,7 @@ describe("popup layout", () => {
 describe("open mode settings", () => {
   it("saves the open mode through the RPC and disables the size row outside popup mode", async () => {
     const { h } = await security();
-    const size = screen.getByRole("radiogroup", { name: "Pop-up boyutu" });
+    const size = screen.getByRole("radiogroup", { name: "Popup boyutu" });
     expect(within(size).getByRole("radio", { name: "Küçük" })).toHaveProperty("disabled", false);
     await userEvent.click(radio("Açılış biçimi", "Yan panel"));
     await waitFor(async () => expect((await h.service.getState()).openMode).toBe("panel"));
@@ -70,12 +70,12 @@ describe("open mode settings", () => {
     const h = await harness();
     await h.ui.rpc("setOpenMode", { mode: "window" });
     renderUi(<PreferencesScreen state={await h.service.getState()} onChanged={() => {}} />, h.ui);
-    expect(radio("Pop-up boyutu", "Küçük")).toHaveProperty("disabled", true);
+    expect(radio("Popup boyutu", "Küçük")).toHaveProperty("disabled", true);
   });
 
   it("saves the popup size", async () => {
     const { h } = await security();
-    await userEvent.click(radio("Pop-up boyutu", "Küçük"));
+    await userEvent.click(radio("Popup boyutu", "Küçük"));
     await waitFor(async () => expect((await h.service.getState()).popupSize).toBe("small"));
   });
 

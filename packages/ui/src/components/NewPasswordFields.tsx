@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { passwordStrength } from "../format";
 import { useT, type Translate } from "../i18n/i18n";
 import { TextField } from "./TextField";
@@ -6,6 +7,11 @@ export function newPasswordProblem(t: Translate, password: string, confirm: stri
   if (password.length < 8) return t("password.tooShort");
   if (password !== confirm) return t("password.mismatch");
   return null;
+}
+
+/** True once the confirmation is at least as long as the password and still differs. */
+export function passwordsMismatch(password: string, confirm: string): boolean {
+  return confirm.length > 0 && confirm.length >= password.length && confirm !== password;
 }
 
 export function NewPasswordFields({
@@ -28,6 +34,11 @@ export function NewPasswordFields({
   autoFocus?: boolean;
 }) {
   const t = useT();
+  const [blurred, setBlurred] = useState(false);
+  const live =
+    passwordsMismatch(password, confirm) || (blurred && confirm.length > 0 && confirm !== password)
+      ? t("password.mismatch")
+      : null;
   const score = passwordStrength(password);
   return (
     <div className="flex flex-col gap-6">
@@ -67,7 +78,8 @@ export function NewPasswordFields({
         label={labels?.confirm ?? t("password.confirm")}
         value={confirm}
         onChange={(e) => onConfirm(e.target.value)}
-        error={error}
+        error={live ?? error}
+        onBlur={() => setBlurred(true)}
         mono
       />
     </div>
