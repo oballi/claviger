@@ -19,7 +19,7 @@ type Stage =
   | { kind: "failed" }
   | { kind: "result"; added: number; duplicates: number; ungrouped: number };
 
-/** Design board "Yönetim — içe aktarma önizlemesi": nothing is saved until the user confirms. */
+/** Import preview: nothing is saved until the user confirms. */
 export function ImportScreen({
   source,
   onDone,

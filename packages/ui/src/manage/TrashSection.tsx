@@ -11,7 +11,7 @@ import { deletedLabel } from "./trashLabels";
 
 type Confirm = { kind: "one"; item: TrashItemView } | { kind: "all" };
 
-/** Design board "Yönetim — son silinenler". Codes and secrets are never shown here. */
+/** Recently deleted accounts. Codes and secrets are never shown here. */
 export function TrashSection({
   version,
   onMessage,

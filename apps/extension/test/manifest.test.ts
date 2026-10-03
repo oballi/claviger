@@ -174,10 +174,10 @@ describe("manifest", () => {
   });
 
   it("keeps the source SVGs next to the generator", () => {
-    for (const name of ["icon.svg", "icon-16.svg"]) {
-      const svg = readFileSync(new URL(`../assets/${name}`, import.meta.url), "utf8");
-      expect(svg).toContain('viewBox="0 0 32 32"');
-      expect(svg).toContain("#19191B");
+    for (const name of ["icon.svg", "icon-small.svg"]) {
+      const svg = readFileSync(new URL(`../icon-src/${name}`, import.meta.url), "utf8");
+      expect(svg).toContain('viewBox="0 0 128 128"');
+      expect(svg).toContain("#19191b");
     }
   });
 });

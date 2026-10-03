@@ -36,10 +36,8 @@ import type {
   AccountView,
   FillOutcome,
   GroupView,
-  ImportPreviewItemView,
   ImportPreviewView,
   ServiceState,
-  ServiceStatus,
   SnapshotInfo,
   StorageUsageView,
   TrashItemView,
@@ -75,18 +73,7 @@ import {
 import { backupReminderFor, needsReminderStamp, SNOOZE_DAYS } from "./backupReminder";
 import { SNAPSHOT_ATTEMPTS_KEY, Throttle } from "./throttle";
 
-export type {
-  AccountListView,
-  AccountView,
-  FillOutcome,
-  GroupView,
-  ImportPreviewItemView,
-  ImportPreviewView,
-  ServiceState,
-  ServiceStatus,
-  SnapshotInfo,
-  StorageUsageView,
-};
+export type { ServiceState };
 
 export const AUTOLOCK_ALARM = "autolock";
 export const CLIPBOARD_ALARM = "clipboard-clear";
@@ -98,7 +85,6 @@ export const MERGE_UNDO_MS = 60_000;
 const CAPTURE_PREFIX = "data:image/png;base64,";
 /** A slower round trip makes the midpoint too uncertain. */
 export const MAX_CLOCK_SAMPLE_MS = 10_000;
-export { MAX_CLOCK_OFFSET_SEC };
 export const DAILY_CHECK_MS = 60 * 60_000;
 export const SYNC_QUOTA_BYTES = 102_400;
 export const SYNC_ITEM_QUOTA_BYTES = 8_192;

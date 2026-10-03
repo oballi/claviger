@@ -247,20 +247,29 @@ describe("groups section", () => {
     expect(await groupNames(h)).toEqual(["İş", "Kişisel"]);
   });
 
-  it("keeps grip, name toggle, up, down, rename and delete on one row", async () => {
+  it("keeps grip and name on one row and the actions together as one unit", async () => {
     const h = await open();
     const row = within(h.section).getByText("İş").closest("li")!;
     const first = row.firstElementChild as HTMLElement;
     expect(first.className).toContain("gap-x-1");
+    expect(first.className).toContain("flex-wrap");
+    const actions = within(row).getByTestId("group-actions");
+    expect(actions.parentElement).toBe(first);
+    // A narrow panel may move the whole group under the name, never split it.
+    for (const cls of ["flex-nowrap", "shrink-0", "ml-auto"])
+      expect(actions.className).toContain(cls);
     for (const el of [
       within(row).getByTestId("drag-handle"),
       within(row).getByRole("button", { name: /^İş, \d+ hesap$/, expanded: false }),
+    ])
+      expect(el.parentElement).toBe(first);
+    for (const el of [
       within(row).getByRole("button", { name: "İş grubunu yukarı taşı" }),
       within(row).getByRole("button", { name: "İş grubunu aşağı taşı" }),
       within(row).getByRole("button", { name: "İş grubunu yeniden adlandır" }),
       within(row).getByRole("button", { name: "İş grubunu sil" }),
     ])
-      expect(el.parentElement).toBe(first);
+      expect(el.parentElement).toBe(actions);
     const up = within(row).getByRole("button", { name: "İş grubunu yukarı taşı" });
     expect(up.className).toContain("px-1");
     expect(up.className).toContain("min-h-11");
@@ -268,7 +277,7 @@ describe("groups section", () => {
     expect(rename.className).toContain("text-xs");
     expect(rename.className).toContain("font-normal");
     const toggle = within(row).getByRole("button", { name: /^İş, \d+ hesap$/ });
-    expect(toggle.className).toContain("min-w-28");
+    expect(toggle.className).toContain("min-w-16");
     expect(toggle.className).toContain("flex-1");
     expect(within(toggle).getByText("İş").className).toContain("truncate");
     expect(within(toggle).getByText("İş").getAttribute("title")).toBe("İş");

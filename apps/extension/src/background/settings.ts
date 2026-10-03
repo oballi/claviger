@@ -22,16 +22,7 @@ import { z } from "zod";
 
 export const MAX_CLOCK_OFFSET_SEC = 12 * 3600;
 
-export {
-  backupReminderDaysSchema,
-  clipboardClearSchema,
-  languageSchema,
-  lockPolicySchema,
-  openModeSchema,
-  popupSizeSchema,
-  themeSchema,
-  viewModeSchema,
-};
+export { lockPolicySchema };
 export type {
   BackupReminderDays,
   ClipboardClearSec,
@@ -68,7 +59,7 @@ export type Settings = z.infer<typeof settingsSchema>;
 
 export const SETTINGS_KEY = "settings";
 
-/** spec §5.4: default is "lock when the browser closes"; spec §7: default is this device only. */
+/** Defaults: lock when the browser closes; vault on this device only. */
 export const DEFAULT_SETTINGS: Settings = {
   lockPolicy: { kind: "browser-close" },
   storageArea: "local",

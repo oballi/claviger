@@ -31,8 +31,14 @@ export default defineConfig(
     rules: {
       "no-restricted-globals": [
         "error",
-        { name: "chrome", message: "core platformdan bağımsız kalmalı (spec §3.1)" },
-        { name: "browser", message: "core platformdan bağımsız kalmalı (spec §3.1)" },
+        {
+          name: "chrome",
+          message: "packages/core must stay platform-independent; no browser APIs.",
+        },
+        {
+          name: "browser",
+          message: "packages/core must stay platform-independent; no browser APIs.",
+        },
       ],
     },
   },
@@ -43,11 +49,11 @@ export default defineConfig(
         "error",
         {
           name: "chrome",
-          message: "Arka plan mantığı tarayıcıdan bağımsız kalmalı; Platform portunu kullan.",
+          message: "Background logic stays browser-independent; use the Platform port.",
         },
         {
           name: "browser",
-          message: "Arka plan mantığı tarayıcıdan bağımsız kalmalı; Platform portunu kullan.",
+          message: "Background logic stays browser-independent; use the Platform port.",
         },
       ],
       "no-restricted-imports": [
@@ -56,7 +62,7 @@ export default defineConfig(
           patterns: [
             {
               group: ["wxt", "wxt/*"],
-              message: "src/background ve src/rpc tarayıcıdan bağımsız kalmalı.",
+              message: "src/background and src/rpc stay browser-independent.",
             },
           ],
         },

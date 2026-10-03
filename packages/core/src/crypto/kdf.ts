@@ -7,7 +7,7 @@ export interface Argon2Params {
   parallelism: number;
 }
 
-/** spec §5.1: m = 64 MiB, t = 3, p = 1 */
+/** Argon2id defaults: m = 64 MiB, t = 3, p = 1 */
 export const DEFAULT_ARGON2: Argon2Params = { memoryKiB: 65536, iterations: 3, parallelism: 1 };
 
 export async function deriveArgon2id(

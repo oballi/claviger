@@ -10,7 +10,7 @@
   <img src="docs/screenshots/manage-en-light.png" alt="claviger accounts page with groups" width="520">
 </p>
 
-> **Status: early development (0.x).** claviger is not in any browser store yet; until 1.0.0 it can only be installed from source. Expect breaking changes and keep an exported backup.
+> **Status: 1.0.** The browser store listings are on the way; until they are live, install claviger from source (see below). Keep an exported backup either way.
 
 ## Features
 
