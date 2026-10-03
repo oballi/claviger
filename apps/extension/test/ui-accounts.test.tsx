@@ -217,6 +217,32 @@ describe("AccountsScreen", () => {
     expect(await screen.findByRole("heading", { name: /Son silinenler/ })).toBeTruthy();
   });
 
+  for (const [what, open] of [
+    ["purging the last bin item", { name: "Gone hesabını listeden kaldır" }],
+    ["emptying the bin", { name: "Tümünü listeden kaldır…" }],
+  ] as const) {
+    it(`moves focus to the welcome heading after ${what}`, async () => {
+      const h = await harness();
+      const { id } = await h.ui.rpc("addAccountManual", {
+        draft: { secret: "JBSWY3DPEHPK3PXA", issuer: "Gone", label: "" },
+      });
+      await h.ui.rpc("deleteAccount", { id });
+      renderUi(<AccountsScreen state={await h.ui.rpc("getState", {})} onChanged={vi.fn()} />, h.ui);
+      await userEvent.click(await screen.findByRole("button", open));
+      const dialog = screen.getByRole("dialog");
+      await userEvent.click(within(dialog).getByRole("button", { name: "Listeden kaldır" }));
+      await waitFor(() =>
+        expect(screen.queryByRole("heading", { name: /Son silinenler/ })).toBeNull(),
+      );
+      await waitFor(() =>
+        expect(document.activeElement).toBe(
+          screen.getByRole("heading", { name: "İlk hesabını ekle." }),
+        ),
+      );
+      expect(await h.ui.rpc("listTrash", {})).toEqual([]);
+    });
+  }
+
   it("pins and reorders within the same group", async () => {
     const h = await seeded();
     await open(h);

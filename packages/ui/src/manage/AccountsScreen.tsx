@@ -53,6 +53,7 @@ export function AccountsScreen({
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const welcomeHeading = useRef<HTMLHeadingElement>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [maintenanceError, setMaintenanceError] = useState<string | null>(null);
   const [reorderError, setReorderError] = useState<string | null>(null);
@@ -280,7 +281,11 @@ export function AccountsScreen({
           aria-label={t("setup.account.title")}
           className="mx-auto flex w-full max-w-[520px] flex-col gap-6"
         >
-          <h2 className="m-0 text-center text-[32px] leading-none font-medium tracking-tight">
+          <h2
+            ref={welcomeHeading}
+            tabIndex={-1}
+            className="m-0 text-center text-[32px] leading-none font-medium tracking-tight outline-none"
+          >
             {t("setup.account.title")}
           </h2>
           <FirstAccountPaths
@@ -309,6 +314,7 @@ export function AccountsScreen({
         <TrashSection
           version={trashVersion}
           hideWhenEmpty
+          onEmptied={() => welcomeHeading.current?.focus()}
           onMessage={(text) => void changed(text)}
         />
         {dialogs}

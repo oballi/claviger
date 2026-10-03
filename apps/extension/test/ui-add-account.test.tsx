@@ -312,11 +312,19 @@ describe("AddAccount", () => {
       ["digits=10", "digits=10"],
       ["period=0", "period=0"],
       ["counter=-1 (hotp)", "counter=-1"],
-    ])("keeps a link with %s as typed", async (_name, param) => {
-      const uri =
-        (param.startsWith("counter") ? base.replace("/totp/", "/hotp/") : base) + `&${param}`;
+      ["period=abc (hotp)", "period=abc"],
+      ["digits=abc (steam)", "encoder=steam&digits=abc"],
+      ["period=abc (steam)", "encoder=steam&period=abc"],
+      ["counter=abc (steam)", "encoder=steam&counter=abc"],
+    ])("keeps a link with %s as typed", async (name, param) => {
+      const uri = (name.includes("hotp") ? base.replace("/totp/", "/hotp/") : base) + `&${param}`;
       const { field } = await pasteInto(uri);
       expect(field.value).toBe(uri);
+    });
+
+    it("still fills a Steam link whose numbers are finite (Steam ignores them)", async () => {
+      const { field } = await pasteInto(`${base}&encoder=steam&digits=8&period=60`);
+      expect(field.value).toBe(SECRET);
     });
 
     it("also parses a link pasted into the service field", async () => {

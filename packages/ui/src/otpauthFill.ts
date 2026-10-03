@@ -50,15 +50,19 @@ export function parseOtpauthFill(text: string): OtpauthFill | null {
 
   const algorithm = (get("algorithm") ?? "SHA1").toUpperCase().replace(/-/g, "");
   if (!["SHA1", "SHA256", "SHA512"].includes(algorithm)) return null;
-  const digits = get("digits")?.trim() || "6";
-  if (type !== "steam" && !/^\d+$/.test(digits)) return null;
-  if (type !== "steam" && (Number(digits) < 6 || Number(digits) > 8)) return null;
-  const period = get("period")?.trim() || "30";
-  if (type === "totp" && (!/^\d+$/.test(period) || Number(period) < 1 || Number(period) > 300))
+  // Mirrors core: every numeric parameter must be finite, whatever the type (Steam ignores the value).
+  const numeric = (name: string): string | null => get(name)?.trim() || null;
+  if (["digits", "period", "counter"].some((n) => !Number.isFinite(Number(numeric(n) ?? 0))))
     return null;
-  const rawCounter = get("counter");
-  const counter = Number(rawCounter);
-  if (rawCounter !== null && (!Number.isSafeInteger(counter) || counter < 0)) return null;
+  const digits = numeric("digits") ?? "6";
+  const period = numeric("period") ?? "30";
+  const rawCounter = numeric("counter");
+  const counter = Number(rawCounter ?? 0);
+  if (type !== "steam") {
+    if (!/^\d+$/.test(digits) || Number(digits) < 6 || Number(digits) > 8) return null;
+    if (!/^\d+$/.test(period) || Number(period) < 1 || Number(period) > 300) return null;
+    if (!Number.isSafeInteger(counter) || counter < 0) return null;
+  }
   return {
     issuer: issuer.trim(),
     label: label.trim(),

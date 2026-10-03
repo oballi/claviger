@@ -16,11 +16,14 @@ export function TrashSection({
   version,
   onMessage,
   hideWhenEmpty = false,
+  onEmptied,
 }: {
   version: number;
   onMessage: (text: string) => void;
   /** Render nothing while the bin is loading or empty (first-run welcome). */
   hideWhenEmpty?: boolean;
+  /** With hideWhenEmpty: the section vanished under the focused button; the caller moves focus. */
+  onEmptied?: () => void;
 }) {
   const { rpc } = useUi();
   const t = useT();
@@ -32,6 +35,8 @@ export function TrashSection({
   const heading = useRef<HTMLHeadingElement>(null);
   // Row index to refocus once the list has re-rendered after an action took the focused button away.
   const refocus = useRef<number | null>(null);
+  const emptied = useRef(onEmptied);
+  emptied.current = onEmptied;
 
   const load = useCallback(async () => {
     try {
@@ -61,6 +66,11 @@ export function TrashSection({
 
   useEffect(() => {
     if (refocus.current === null || !items) return;
+    if (hideWhenEmpty && items.length === 0) {
+      refocus.current = null;
+      emptied.current?.();
+      return;
+    }
     const buttons = root.current?.querySelectorAll<HTMLElement>("[data-restore]") ?? [];
     const target = buttons[Math.min(refocus.current, buttons.length - 1)] ?? heading.current;
     refocus.current = null;
