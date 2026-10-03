@@ -135,6 +135,9 @@ export function assertPassword(password: string): void {
   }
 }
 
+/** Last seconds of a period in which the popup also shows (and copies) the next code. */
+export const NEXT_CODE_WINDOW_SEC = 7;
+
 /** Single writer for the vault. In-memory state is never trusted: a restarted service worker rebuilds it from KeyCache. */
 export class VaultService {
   protected vault: Vault | null = null;
@@ -839,6 +842,15 @@ export class VaultService {
     const accounts = await Promise.all(
       listing.accounts.map(async (a): Promise<AccountView> => {
         const generated = await generateCode(a, now, clockOffsetSec);
+        // The next code leaves the background only inside the window (never for HOTP).
+        const period = generated.period;
+        const nextCode =
+          generated.remaining !== null &&
+          period !== null &&
+          period >= 2 * NEXT_CODE_WINDOW_SEC &&
+          generated.remaining <= NEXT_CODE_WINDOW_SEC
+            ? (await generateCode(a, now + period * 1000, clockOffsetSec)).code
+            : null;
         return {
           id: a.id,
           type: a.type,
@@ -852,6 +864,7 @@ export class VaultService {
           groupId: a.groupId ?? null,
           code: generated.code,
           remaining: generated.remaining,
+          nextCode,
         };
       }),
     );

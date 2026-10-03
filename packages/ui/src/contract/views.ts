@@ -81,6 +81,8 @@ export interface AccountView {
   groupId: string | null;
   code: string;
   remaining: number | null;
+  /** Next period's code, only in the last seconds of a period; null otherwise and for HOTP. */
+  nextCode: string | null;
 }
 
 /** Ids only: secrets never cross the RPC boundary. `keepId` is the suggested keeper of an exact group. */
