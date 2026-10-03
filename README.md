@@ -28,7 +28,7 @@
 - Every account is encrypted with AES-256-GCM. The key is protected by your master password (Argon2id) and an optional recovery code. Details: [docs/vault-format.md](docs/vault-format.md).
 - You choose when it locks: when the browser closes, when the screen locks, after 15 minutes, 1 hour or 4 hours of inactivity, or never. You can also assign a keyboard shortcut that locks it at once.
 - Exporting and changing security settings ask for the password again, and so does showing a secret key unless you turn that off. The lock settings themselves are sealed with the vault key, so they cannot be changed behind your back.
-- The clipboard can be cleared 30 seconds or 1 minute after you copy a code.
+- The clipboard is cleared 1 minute after you copy a code (30 seconds or never are also available).
 - Deleted accounts stay in **Recently deleted** for 30 days, and encrypted copies of the vault are made on this device every day and before risky changes (the last 7 are kept).
 
 ### Moving in and out

@@ -59,6 +59,8 @@ export const settingsSchema = z.object({
   openMode: openModeSchema,
   popupSize: popupSizeSchema,
   clipboardClearSec: clipboardClearSchema,
+  // Set once the user picks a value; until then the stored clipboardClearSec is only a default.
+  clipboardClearChosen: z.boolean(),
   recoveryCodeConfirmed: z.boolean(),
 });
 
@@ -81,7 +83,8 @@ export const DEFAULT_SETTINGS: Settings = {
   language: "system",
   openMode: "popup",
   popupSize: "medium",
-  clipboardClearSec: 0,
+  clipboardClearSec: 60,
+  clipboardClearChosen: false,
   // 0.0.1 users already confirmed their code during setup.
   recoveryCodeConfirmed: true,
 };
@@ -95,6 +98,10 @@ export async function loadSettings(local: StoragePort): Promise<Settings> {
   for (const field of fields) {
     const parsed = settingsSchema.shape[field].safeParse((raw as Record<string, unknown>)[field]);
     if (parsed.success) Object.assign(settings, { [field]: parsed.data });
+  }
+  // Before the marker existed every save wrote the old default 0, so an unmarked 0 is not a choice.
+  if (!settings.clipboardClearChosen && settings.clipboardClearSec === 0) {
+    settings.clipboardClearSec = DEFAULT_SETTINGS.clipboardClearSec;
   }
   return settings;
 }

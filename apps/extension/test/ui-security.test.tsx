@@ -456,7 +456,9 @@ describe("SecurityScreen", () => {
   it("changes clipboard clearing without a password", async () => {
     const { service, onChanged } = await open();
     const display = region("Pano ve gizli anahtarlar");
-    await userEvent.selectOptions(within(display).getByLabelText("Panoyu temizle"), "30 sn sonra");
+    const select = within(display).getByLabelText("Panoyu temizle") as HTMLSelectElement;
+    expect(select.selectedOptions[0]?.textContent).toBe("1 dk sonra");
+    await userEvent.selectOptions(select, "30 sn sonra");
     expect(await screen.findByText("Kaydedildi.")).toBeTruthy();
     expect((await service.getState()).clipboardClearSec).toBe(30);
     expect(onChanged).toHaveBeenCalled();

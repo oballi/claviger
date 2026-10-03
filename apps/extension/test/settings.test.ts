@@ -24,7 +24,8 @@ describe("settings", () => {
       language: "system",
       openMode: "popup",
       popupSize: "medium",
-      clipboardClearSec: 0,
+      clipboardClearSec: 60,
+      clipboardClearChosen: false,
       recoveryCodeConfirmed: true,
     });
     expect(DEFAULT_SETTINGS.lockPolicy).toEqual({ kind: "browser-close" });
@@ -81,7 +82,7 @@ describe("settings", () => {
     expect(await loadSettings(local)).toMatchObject({
       viewMode: "normal",
       theme: "system",
-      clipboardClearSec: 0,
+      clipboardClearSec: 60,
       recoveryCodeConfirmed: true,
       storageArea: "sync",
       lastBackupAt: 7,
@@ -112,10 +113,28 @@ describe("settings", () => {
       [SETTINGS_KEY]: { clipboardClearSec: 45, viewMode: "compact", storageArea: "sync" },
     });
     expect(await loadSettings(local)).toMatchObject({
-      clipboardClearSec: 0,
+      clipboardClearSec: 60,
       viewMode: "compact",
       storageArea: "sync",
     });
+  });
+
+  it("keeps a chosen clipboard value, never included, and treats an unchosen 0 as unset", async () => {
+    const local = new MemoryStorage();
+    for (const [stored, expected] of [
+      [{ clipboardClearSec: 0, clipboardClearChosen: true }, 0],
+      [{ clipboardClearSec: 30, clipboardClearChosen: true }, 30],
+      [{ clipboardClearSec: 0 }, 60],
+      [{ clipboardClearSec: 0, clipboardClearChosen: false }, 60],
+      [{ clipboardClearSec: 30 }, 30],
+      [{ clipboardClearChosen: true }, 60],
+    ] as const) {
+      await local.set({ [SETTINGS_KEY]: stored });
+      expect((await loadSettings(local)).clipboardClearSec).toBe(expected);
+    }
+    await local.set({ [SETTINGS_KEY]: { clipboardClearSec: 0, clipboardClearChosen: true } });
+    await saveSettings(local, { theme: "dark" });
+    expect((await loadSettings(local)).clipboardClearSec).toBe(0);
   });
 
   it("falls back to the default for an invalid backup reminder value without touching other fields", async () => {

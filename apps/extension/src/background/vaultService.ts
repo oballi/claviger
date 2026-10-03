@@ -765,7 +765,7 @@ export class VaultService {
 
   setClipboardClear(seconds: ClipboardClearSec): Promise<void> {
     return this.exclusive(async () => {
-      await saveSettings(this.p.local, { clipboardClearSec: seconds });
+      await saveSettings(this.p.local, { clipboardClearSec: seconds, clipboardClearChosen: true });
       if (seconds === 0) await this.p.alarms.clear(CLIPBOARD_ALARM);
     });
   }
