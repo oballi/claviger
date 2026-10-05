@@ -443,6 +443,7 @@ export class VaultService {
       openMode: settings.openMode,
       popupSize: settings.popupSize,
       clipboardClearSec: settings.clipboardClearSec,
+      showLastSeconds: settings.showLastSeconds,
       recoveryCodeConfirmed: settings.recoveryCodeConfirmed,
       retryAfterMs: await this.throttle.retryAfterMs(),
     };
@@ -756,6 +757,12 @@ export class VaultService {
     });
   }
 
+  setShowLastSeconds(enabled: boolean): Promise<void> {
+    return this.exclusive(async () => {
+      await saveSettings(this.p.local, { showLastSeconds: enabled });
+    });
+  }
+
   // Device-local and not secret: allowed while locked, like the theme.
   setBackupReminder(days: BackupReminderDays): Promise<void> {
     return this.exclusive(async () => {
@@ -823,16 +830,17 @@ export class VaultService {
 
   async listAccounts(opts: { pageUrl?: string; passive?: boolean } = {}): Promise<AccountListView> {
     const vault = await this.requireVault({ touch: !opts.passive });
-    const { clockOffsetSec } = await this.settings();
+    const { clockOffsetSec, showLastSeconds } = await this.settings();
     const listing = await vault.listAccounts();
     const now = this.p.clock.now();
     const pinned = new Set(listing.pinned);
     const accounts = await Promise.all(
       listing.accounts.map(async (a): Promise<AccountView> => {
         const generated = await generateCode(a, now, clockOffsetSec);
-        // The next code leaves the background only inside the window (never for HOTP).
+        // The next code leaves the background only inside the window, only when enabled, never for HOTP.
         const period = generated.period;
         const nextCode =
+          showLastSeconds &&
           generated.remaining !== null &&
           period !== null &&
           period >= 2 * NEXT_CODE_WINDOW_SEC &&

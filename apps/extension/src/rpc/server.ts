@@ -158,6 +158,9 @@ async function dispatch(
     case "setClipboardClear":
       await service.setClipboardClear(req.seconds);
       return null;
+    case "setShowLastSeconds":
+      await service.setShowLastSeconds(req.enabled);
+      return null;
     case "setBackupReminder":
       await service.setBackupReminder(req.days);
       return null;

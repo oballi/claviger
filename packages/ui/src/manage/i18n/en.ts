@@ -232,6 +232,9 @@ export const manageEn: Record<ManageKey, string> = {
   "security.clipboardSecrets": "Clipboard and secret keys",
   "preferences.title": "Preferences.",
   "preferences.body": "How claviger looks and opens. These settings don't ask for your password.",
+  "preferences.lastSeconds": "Show the last seconds",
+  "preferences.lastSecondsHint":
+    "When a code is about to expire, also shows the seconds left and the next code; copying then gives the next code.",
   "preferences.opening": "Opening",
   "preferences.shortcuts": "Shortcuts and codes",
   "preferences.keysTitle": "Keyboard in the popup",

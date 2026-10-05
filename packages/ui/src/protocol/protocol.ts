@@ -139,6 +139,7 @@ export const rpcRequestSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("setOpenMode"), mode: openModeSchema }),
   z.object({ type: z.literal("setPopupSize"), size: popupSizeSchema }),
   z.object({ type: z.literal("setClipboardClear"), seconds: clipboardClearSchema }),
+  z.object({ type: z.literal("setShowLastSeconds"), enabled: z.boolean() }),
   z.object({ type: z.literal("setBackupReminder"), days: backupReminderDaysSchema }),
   z.object({ type: z.literal("dismissBackupReminder") }),
   z.object({ type: z.literal("confirmRecoveryCode") }),
@@ -227,6 +228,7 @@ export interface RpcResults {
   setOpenMode: null;
   setPopupSize: null;
   setClipboardClear: null;
+  setShowLastSeconds: null;
   setBackupReminder: null;
   dismissBackupReminder: null;
   confirmRecoveryCode: null;

@@ -52,6 +52,7 @@ export const settingsSchema = z.object({
   clipboardClearSec: clipboardClearSchema,
   // Set once the user picks a value; until then the stored clipboardClearSec is only a default.
   clipboardClearChosen: z.boolean(),
+  showLastSeconds: z.boolean(),
   recoveryCodeConfirmed: z.boolean(),
 });
 
@@ -76,6 +77,7 @@ export const DEFAULT_SETTINGS: Settings = {
   popupSize: "medium",
   clipboardClearSec: 60,
   clipboardClearChosen: false,
+  showLastSeconds: false,
   // 0.0.1 users already confirmed their code during setup.
   recoveryCodeConfirmed: true,
 };

@@ -7,9 +7,15 @@ import { unlockedService } from "./helpers/service";
 const SECRET = "JBSWY3DPEHPK3PXP";
 const BASE = 1_700_000_000_000 - 20_000; // a multiple of 30 s
 
-async function nextAt(uri: string, remaining: number, period = 30, offsetSec = 0) {
+async function nextAt(
+  uri: string,
+  remaining: number,
+  period = 30,
+  offsetSec = 0,
+  showLastSeconds = true,
+) {
   const { p, service } = await unlockedService();
-  if (offsetSec) await saveSettings(p.local, { clockOffsetSec: offsetSec });
+  await saveSettings(p.local, { clockOffsetSec: offsetSec, showLastSeconds });
   await service.addAccount({ uri });
   p.clock.ms = BASE + (period - remaining) * 1000 - offsetSec * 1000;
   const view = (await service.listAccounts()).accounts[0]!;
@@ -32,6 +38,14 @@ describe("next code window", () => {
     );
     expect(inside.view.nextCode).toBe(expected.code);
     expect(inside.view.nextCode).not.toBe(inside.view.code);
+  });
+
+  it("is never sent while the setting is off (the default)", async () => {
+    const { service } = await unlockedService();
+    expect((await service.getState()).showLastSeconds).toBe(false);
+    const { view } = await nextAt(`otpauth://totp/x?secret=${SECRET}`, 3, 30, 0, false);
+    expect(view.remaining).toBe(3);
+    expect(view.nextCode).toBeNull();
   });
 
   it("uses the clock offset for both the window and the code", async () => {
@@ -66,6 +80,7 @@ describe("next code window", () => {
   it("applies to Steam accounts inside the window only", async () => {
     const run = async (remaining: number) => {
       const { p, service } = await unlockedService();
+      await service.setShowLastSeconds(true);
       await service.addAccount({ draft: { secret: SECRET, type: "steam", issuer: "Steam" } });
       p.clock.ms = BASE + (30 - remaining) * 1000;
       return (await service.listAccounts()).accounts[0]!;

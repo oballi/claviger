@@ -50,6 +50,8 @@ export interface ServiceState {
   openMode: OpenMode;
   popupSize: PopupSize;
   clipboardClearSec: ClipboardClearSec;
+  /** Seconds count and next code at the end of a period; off keeps the row uncluttered. */
+  showLastSeconds: boolean;
   recoveryCodeConfirmed: boolean;
   /** Set only when the unlocked vault is empty and a non-empty local copy exists. */
   snapshotOffer: { id: string; createdAt: number; accountCount: number } | null;
