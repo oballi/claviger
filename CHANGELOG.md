@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.4 — 2026-10-05
+
+### Changed
+
+- The seconds count and the next code shown in a code's last seconds are now optional: turn on "Show the last seconds" in Preferences. It is off by default, which keeps the rows uncluttered.
+
 ## 1.0.3 — 2026-10-03
 
 ### Fixed
