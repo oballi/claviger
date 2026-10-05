@@ -675,6 +675,7 @@ export function CodesScreen({
           : undefined
       }
       mode={state.viewMode}
+      showSeconds={state.showLastSeconds}
       onCopy={(a) => void copyCode(a)}
       onNextHotp={(a) => void nextHotp(a)}
       copied={copiedId === account.id}

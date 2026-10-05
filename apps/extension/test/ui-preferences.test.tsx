@@ -43,4 +43,15 @@ describe("PreferencesScreen", () => {
     expect(screen.getByRole("radiogroup", { name: "Popup boyutu" })).toBeTruthy();
     expect(document.querySelector("select")).toBeNull();
   });
+
+  it("has an off-by-default switch for the last seconds", async () => {
+    const h = await harness();
+    renderUi(<PreferencesScreen state={await h.service.getState()} onChanged={() => {}} />, h.ui);
+    const toggle = within(region("Görünüm")).getByRole("switch", {
+      name: "Son saniyeleri göster",
+    }) as HTMLInputElement;
+    expect(toggle.checked).toBe(false);
+    await userEvent.click(toggle);
+    await waitFor(async () => expect((await h.service.getState()).showLastSeconds).toBe(true));
+  });
 });

@@ -14,6 +14,7 @@ export function AccountRow({
   menu,
   confirmDelete,
   mode,
+  showSeconds = false,
   onCopy,
   onNextHotp,
   revealed = false,
@@ -30,6 +31,8 @@ export function AccountRow({
   /** Inline delete confirmation shown under the row. */
   confirmDelete?: { onConfirm: () => void; onCancel: () => void };
   mode: ViewMode;
+  /** Seconds count in the last seconds of a period (the next code arrives only when this is on). */
+  showSeconds?: boolean;
   onCopy: (account: AccountView) => void;
   onNextHotp: (account: AccountView) => void;
   /** Hidden mode only: the code is shown in clear until the owner hides it again. */
@@ -157,6 +160,7 @@ export function AccountRow({
         remaining={account.remaining ?? 0}
         period={account.period}
         size={large ? 20 : 18}
+        showSeconds={showSeconds}
       />
     );
 

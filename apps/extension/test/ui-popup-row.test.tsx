@@ -12,9 +12,15 @@ const BASE = 1_700_000_000_000 - 20_000; // a multiple of 30 s
 afterEach(cleanup);
 
 async function popup(
-  opts: { remaining?: number; mode?: "normal" | "hidden"; tabUrl?: string } = {},
+  opts: {
+    remaining?: number;
+    mode?: "normal" | "hidden";
+    tabUrl?: string;
+    lastSeconds?: boolean;
+  } = {},
 ) {
   const h = await harness({ tabUrl: opts.tabUrl });
+  await h.service.setShowLastSeconds(opts.lastSeconds ?? true);
   await h.service.addAccount({ uri: A }, opts.tabUrl ? { sourceUrl: "https://acme.com" } : {});
   if (opts.mode) await h.service.setViewMode(opts.mode);
   if (opts.remaining) h.p.clock.ms = BASE + (30 - opts.remaining) * 1000;
@@ -31,6 +37,9 @@ describe("countdown ring number", () => {
     expect(screen.getByRole("img", { name: "12 s left" })).toBeTruthy();
     rerender(<CountdownRing remaining={4} period={30} />);
     expect(container.textContent).toBe("4");
+    expect(screen.getByRole("img", { name: "4 s left" })).toBeTruthy();
+    rerender(<CountdownRing remaining={4} period={30} showSeconds={false} />);
+    expect(container.textContent).toBe("");
     expect(screen.getByRole("img", { name: "4 s left" })).toBeTruthy();
   });
 });
@@ -58,6 +67,16 @@ describe("next code in the row", () => {
     expect(h.ui.copy).toHaveBeenLastCalledWith(account.nextCode);
     await vi.waitFor(() => expect(h.p.alarms.scheduled.has("clipboard-clear")).toBe(true));
     expect(button.textContent).toBe("Kopyalandı");
+  });
+
+  it("shows neither seconds nor the next code when the setting is off", async () => {
+    const { h, account } = await popup({ remaining: 3, lastSeconds: false });
+    const row = (await screen.findByText("Acme")).closest("li")!;
+    expect(account.nextCode).toBeNull();
+    expect(document.querySelector("[data-next-code]")).toBeNull();
+    expect(row.querySelector("[role=img]")!.textContent).toBe("");
+    await userEvent.click(screen.getByRole("button", { name: /^Acme kodunu kopyala/ }));
+    expect(h.ui.copy).toHaveBeenCalledWith(account.code);
   });
 
   it("is not rendered in Hidden view and copy keeps the current code", async () => {

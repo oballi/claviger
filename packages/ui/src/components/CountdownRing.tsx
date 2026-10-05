@@ -7,10 +7,12 @@ export function CountdownRing({
   remaining,
   period,
   size = 18,
+  showSeconds = true,
 }: {
   remaining: number;
   period: number;
   size?: number;
+  showSeconds?: boolean;
 }) {
   const t = useT();
   const urgent = remaining <= 5;
@@ -23,7 +25,7 @@ export function CountdownRing({
       aria-label={t("codes.secondsLeft", { seconds: remaining })}
       className="flex shrink-0 items-center gap-1"
     >
-      {urgent ? (
+      {urgent && showSeconds ? (
         <span
           aria-hidden="true"
           className={`min-w-[1ch] text-right font-mono text-[11px] tabular-nums ${critical ? "text-critical" : "text-warn"}`}

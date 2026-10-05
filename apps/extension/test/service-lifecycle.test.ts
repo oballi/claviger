@@ -33,6 +33,7 @@ describe("setup", () => {
       language: "system",
       openMode: "popup",
       popupSize: "medium",
+      showLastSeconds: false,
       clipboardClearSec: 60,
       recoveryCodeConfirmed: true,
     });

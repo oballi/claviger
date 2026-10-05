@@ -26,6 +26,7 @@ describe("settings", () => {
       popupSize: "medium",
       clipboardClearSec: 60,
       clipboardClearChosen: false,
+      showLastSeconds: false,
       recoveryCodeConfirmed: true,
     });
     expect(DEFAULT_SETTINGS.lockPolicy).toEqual({ kind: "browser-close" });

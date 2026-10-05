@@ -60,6 +60,25 @@ export function PreferencesScreen({
             />
           }
         />
+        <SettingsRow
+          title={t("preferences.lastSeconds")}
+          description={t("preferences.lastSecondsHint")}
+          action={
+            <span className="flex min-h-11 min-w-11 items-center justify-center">
+              <input
+                type="checkbox"
+                role="switch"
+                aria-label={t("preferences.lastSeconds")}
+                checked={state.showLastSeconds}
+                onChange={(e) => {
+                  const enabled = e.target.checked;
+                  void savePreference(() => rpc("setShowLastSeconds", { enabled }));
+                }}
+                className="h-5 w-5 accent-[var(--ov-text)]"
+              />
+            </span>
+          }
+        />
       </SettingsSection>
 
       <SettingsSection num="02" title={t("preferences.opening")}>

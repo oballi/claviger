@@ -230,6 +230,9 @@ export const manageTr = {
   "preferences.title": "Tercihler.",
   "preferences.body": "claviger'ın nasıl göründüğü ve nasıl açıldığı. Bu ayarlar parola istemez.",
   "preferences.opening": "Açılış",
+  "preferences.lastSeconds": "Son saniyeleri göster",
+  "preferences.lastSecondsHint":
+    "Kodun süresi dolmak üzereyken kalan saniyeyi ve sıradaki kodu da gösterir; o sırada kopyalanan sıradaki kod olur.",
   "preferences.shortcuts": "Kısayollar ve kodlar",
   "preferences.keysTitle": "Popup'ta klavye",
   "preferences.keysHint":
