@@ -31,11 +31,11 @@
   },
   "devDependencies": {
     "@types/crypto-js": "4.2.2",
-    "@types/node": "22.20.4",
-    "@vitest/coverage-v8": "4.1.11",
+    "@types/node": "26.6.4",
+    "@vitest/coverage-v8": "5.0.3",
     "crypto-js": "4.2.0",
     "fast-check": "4.10.2",
-    "typescript": "5.9.3",
-    "vitest": "4.1.11"
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
   }
 }
