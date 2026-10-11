@@ -8,7 +8,10 @@
   <img src="docs/media/claviger-tr.gif" alt="claviger, Alt+Shift+O ile bir giriş sayfasına iki adımlı doğrulama kodunu dolduruyor" width="800">
 </p>
 
-> **Durum: 1.0.** Tarayıcı mağazası sayfaları hazırlanıyor; yayına girene kadar claviger'ı [Releases](https://github.com/oballi/claviger/releases/latest) sayfasından indirebilirsin (aşağıya bak). Her durumda dışa aktarılmış bir yedeğin olsun.
+<p align="center">
+  <a href="https://chromewebstore.google.com/detail/claviger/lnpdgnhoakebbhkdhchedgpfnmcpadbg"><strong>Chrome Web Mağazası</strong></a> ·
+  <a href="https://addons.mozilla.org/firefox/addon/claviger/"><strong>Firefox Eklentileri</strong></a>
+</p>
 
 ## Özellikler
 
@@ -54,12 +57,28 @@ claviger'ın hesabı, sunucusu ya da analitiği yok. Kasa, tarayıcı eşitlemes
 | `sidePanel` (Chrome)            | O açılış biçimini seçersen claviger'ı yan panelde göstermek.                      |
 | `www.google.com` (isteğe bağlı) | Yalnızca saat kontrolünü çalıştırdığında istenir.                                 |
 
-## Sürüm paketinden kurulum
+## Kurulum
 
-Tarayıcına uygun dosyaları [son sürüm](https://github.com/oballi/claviger/releases/latest) sayfasından indir.
+- **Chrome, Edge, Brave (116+):** [Chrome Web Mağazası](https://chromewebstore.google.com/detail/claviger/lnpdgnhoakebbhkdhchedgpfnmcpadbg). Edge'de sorulduğunda önce diğer mağazalardan eklentilere izin ver.
+- **Firefox (140+):** [Firefox Eklentileri](https://addons.mozilla.org/firefox/addon/claviger/).
+
+Mağaza sürümleri kendiliğinden güncellenir. Yeni bir sürüm, mağazalar onu incelerken GitHub'dan birkaç gün sonra mağazaya ulaşabilir.
+
+### Elle kurulumdan mağaza sürümüne geçiş
+
+claviger'ı bir GitHub sürümünden elle kurduysan, mağaza sürümü Chrome'da onun verilerini görmez, Firefox'ta da görmeyebilir. Hesaplarını şöyle taşı:
+
+1. Eski claviger'da: yönetim sayfası → **Yedekleme** → **Dışa aktar** → **Şifreli claviger yedeği**.
+2. claviger'ı mağazadan kur ve kurulumu tamamla.
+3. Yönetim sayfası → **Yedekleme** → **İçe aktar** → yedek dosyasını seç.
+4. Hesaplarının geldiğini kontrol et, sonra eski kopyayı kaldır (Chrome: `chrome://extensions`; Firefox: yeniden başlatınca kendiliğinden gider).
+
+## Sürüm paketinden kurulum (elle)
+
+Bir sürümü mağazalara ulaşmadan denemek için. Tarayıcına uygun dosyaları [son sürüm](https://github.com/oballi/claviger/releases/latest) sayfasından indir.
 
 - **Chrome, Edge, Brave (116+):** `claviger-<sürüm>-chrome.zip` dosyasını indir ve silmeyeceğin bir klasöre aç (tarayıcı eklentiyi oradan yükler). `chrome://extensions` sayfasını aç, _Geliştirici modu_'nu aç, _Paketlenmemiş öğe yükle_'yi seç ve o klasörü göster. Klasörün yerini değiştirme: eklentinin verileri bu klasöre bağlıdır.
-- **Firefox (140+):** eklenti addons.mozilla.org'da imzalanana kadar Firefox onu yalnızca geçici eklenti olarak kabul eder; Firefox kapanınca kaldırılır. `claviger-<sürüm>-firefox.zip` dosyasını indir, `about:debugging#/runtime/this-firefox` sayfasını aç, _Geçici Eklenti Yükle_'yi seç ve zip dosyasını göster.
+- **Firefox (140+):** sürüm zip'i imzalı olmadığı için Firefox onu yalnızca geçici eklenti olarak kabul eder; Firefox kapanınca kaldırılır. `claviger-<sürüm>-firefox.zip` dosyasını indir, `about:debugging#/runtime/this-firefox` sayfasını aç, _Geçici Eklenti Yükle_'yi seç ve zip dosyasını göster.
 
 Sürümdeki `SHA256SUMS.txt` dosyası, dosyaların sağlama toplamlarını listeler.
 
