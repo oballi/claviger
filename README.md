@@ -8,7 +8,10 @@
   <img src="docs/media/claviger-en.gif" alt="claviger fills a two-factor code into a sign-in page with Alt+Shift+O" width="800">
 </p>
 
-> **Status: 1.0.** The browser store listings are on the way; until they are live, download claviger from [Releases](https://github.com/oballi/claviger/releases/latest) (see below). Keep an exported backup either way.
+<p align="center">
+  <a href="https://chromewebstore.google.com/detail/claviger/lnpdgnhoakebbhkdhchedgpfnmcpadbg"><strong>Chrome Web Store</strong></a> ·
+  <a href="https://addons.mozilla.org/firefox/addon/claviger/"><strong>Firefox Add-ons</strong></a>
+</p>
 
 ## Features
 
@@ -54,12 +57,28 @@ claviger has no account, no server and no analytics. The vault stays in your bro
 | `sidePanel` (Chrome)        | Show claviger in the side panel when you pick that open mode.                                 |
 | `www.google.com` (optional) | Requested only when you run the clock check.                                                  |
 
-## Install from a release
+## Install
 
-Download the files for your browser from the [latest release](https://github.com/oballi/claviger/releases/latest).
+- **Chrome, Edge, Brave (116+):** [Chrome Web Store](https://chromewebstore.google.com/detail/claviger/lnpdgnhoakebbhkdhchedgpfnmcpadbg). In Edge, first allow extensions from other stores when it asks.
+- **Firefox (140+):** [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/claviger/).
+
+Store versions update automatically. A new release can reach the stores a few days after it appears on GitHub, while the stores review it.
+
+### Moving from a manual install
+
+If you installed claviger by hand from a GitHub release, the store version does not share its data in Chrome, and may not in Firefox. Move your accounts like this:
+
+1. In the old claviger: manage page → **Backup** → **Export** → **Encrypted claviger backup**.
+2. Install claviger from the store and set it up.
+3. Manage page → **Backup** → **Import** → choose the backup file.
+4. Check that your accounts are there, then remove the old copy (Chrome: `chrome://extensions`; Firefox: it is gone after a restart).
+
+## Install from a release (manual)
+
+For testing a release before it reaches the stores. Download the files for your browser from the [latest release](https://github.com/oballi/claviger/releases/latest).
 
 - **Chrome, Edge, Brave (116+):** download `claviger-<version>-chrome.zip` and unzip it into a folder you will keep (the browser loads the extension from there). Open `chrome://extensions`, turn on _Developer mode_, choose _Load unpacked_ and select that folder. Keep the folder in the same place: the extension's data is tied to it.
-- **Firefox (140+):** until the add-on is signed on addons.mozilla.org, Firefox only accepts it as a temporary add-on, which is removed when Firefox closes. Download `claviger-<version>-firefox.zip`, open `about:debugging#/runtime/this-firefox`, choose _Load Temporary Add-on_ and select the zip.
+- **Firefox (140+):** the release zip is not signed, so Firefox only accepts it as a temporary add-on, which is removed when Firefox closes. Download `claviger-<version>-firefox.zip`, open `about:debugging#/runtime/this-firefox`, choose _Load Temporary Add-on_ and select the zip.
 
 `SHA256SUMS.txt` in the release lists the checksums of the files.
 
