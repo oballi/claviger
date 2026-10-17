@@ -36,7 +36,7 @@
     "@claviger/ui": "workspace:*",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "zod": "4.6.5",
+    "zod": "4.6.7",
     "zxing-wasm": "3.1.4"
   },
   "devDependencies": {
