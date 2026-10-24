@@ -41,7 +41,7 @@
     "@fontsource/geist-mono": "5.3.0",
     "@claviger/core": "workspace:*",
     "qrcode-generator": "2.0.4",
-    "react": "19.3.0",
+    "react": "19.3.1",
     "react-dom": "19.3.0",
     "tailwindcss": "4.3.3",
     "zod": "4.6.5"
